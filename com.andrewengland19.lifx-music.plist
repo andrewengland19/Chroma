@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.andrewengland19.lifx-music.plist
+  LaunchAgent — runs lifx_music_daemon.py at login, restarts on crash.
+
+  INSTALL:
+    1. Edit the path in ProgramArguments to match where you saved the script.
+    2. cp com.andrewengland19.lifx-music.plist ~/Library/LaunchAgents/
+    3. launchctl load ~/Library/LaunchAgents/com.andrewengland19.lifx-music.plist
+
+  UNLOAD:
+    launchctl unload ~/Library/LaunchAgents/com.andrewengland19.lifx-music.plist
+
+  LOGS:
+    tail -f /tmp/lifx-music.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.andrewengland19.lifx-music</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Change this path to wherever you place lifx_music_daemon.py -->
+        <string>/usr/local/bin/python3</string>
+        <string>/Users/YOUR_USERNAME/scripts/lifx_music_daemon.py</string>
+    </array>
+
+    <!-- Start automatically when you log in -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if it crashes -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Log output -->
+    <key>StandardOutPath</key>
+    <string>/tmp/lifx-music.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/lifx-music.log</string>
+
+    <!-- Give it a moment before restarting on crash -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>
