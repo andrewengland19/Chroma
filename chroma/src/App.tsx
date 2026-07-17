@@ -32,7 +32,17 @@ export function App() {
             </span>
           ))}
         </div>
-        <LinkButton onClick={s.clearPins}>Reset pins</LinkButton>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={s.refresh}
+            title="Re-detect the current song and re-push colors"
+            className="text-[11px] font-semibold accent-transition flex items-center gap-1 px-2 py-0.5 rounded-full hover:text-fg"
+            style={{ color: "var(--accent)", border: "1px solid var(--border)" }}
+          >
+            ↻ Refresh
+          </button>
+          <LinkButton onClick={s.clearPins}>Reset pins</LinkButton>
+        </div>
       </div>
 
       <div className="h-px bg-border" />

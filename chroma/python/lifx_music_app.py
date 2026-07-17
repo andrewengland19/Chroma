@@ -382,13 +382,25 @@ class DaemonThread(threading.Thread):
     def __init__(self):
         super().__init__(daemon=True)
         self._stop_event = threading.Event()
+        self._wake = threading.Event()
         self.running = False
         self.last_track_id: Optional[str] = None
         self.last_pin_signature: Optional[str] = None
 
     def stop(self):
         self._stop_event.set()
+        self._wake.set()
         self.running = False
+
+    def request_refresh(self):
+        # Force the next poll to treat the current track as new, so artwork is
+        # re-fetched and colors re-pushed even when the song hasn't changed.
+        self.last_track_id = None
+        self._wake.set()
+
+    def _sleep(self):
+        self._wake.wait(cfg.poll_interval)
+        self._wake.clear()
 
     def run(self):
         self.running = True
@@ -403,7 +415,7 @@ class DaemonThread(threading.Thread):
             try:
                 np = get_now_playing()
                 if np is None:
-                    self._stop_event.wait(cfg.poll_interval)
+                    self._sleep()
                     continue
 
                 track_id = np.track_id()
@@ -422,7 +434,7 @@ class DaemonThread(threading.Thread):
                         emit("track_change",
                              artist=np.artist, title=np.title, album=np.album,
                              artwork_path="")
-                        self._stop_event.wait(cfg.poll_interval)
+                        self._sleep()
                         continue
 
                 # Determine palette: pins override ColorThief
@@ -434,24 +446,24 @@ class DaemonThread(threading.Thread):
                     rgb_colors = pins_snapshot
                     pin_changed = pin_sig != self.last_pin_signature
                     if not (track_changed or pin_changed):
-                        self._stop_event.wait(cfg.poll_interval)
+                        self._sleep()
                         continue
                     self.last_pin_signature = pin_sig
                 else:
                     if not track_changed and self.last_pin_signature is None:
                         # Nothing to do; track unchanged & no pins
-                        self._stop_event.wait(cfg.poll_interval)
+                        self._sleep()
                         continue
                     self.last_pin_signature = None
                     artwork = getattr(self, "_last_artwork", None)
                     if not artwork:
-                        self._stop_event.wait(cfg.poll_interval)
+                        self._sleep()
                         continue
                     num = 1 if cfg.single_color else min(cfg.num_colors, len(lights))
                     rgb_colors = extract_colors(artwork, count=num)
                     if not rgb_colors:
                         emit("white_skip", reason="majority white artwork")
-                        self._stop_event.wait(cfg.poll_interval)
+                        self._sleep()
                         continue
 
                 if cfg.single_color and rgb_colors:
@@ -471,7 +483,7 @@ class DaemonThread(threading.Thread):
             except Exception as e:
                 emit("error", message=f"Daemon error: {e}")
 
-            self._stop_event.wait(cfg.poll_interval)
+            self._sleep()
 
         self.running = False
 
@@ -496,6 +508,18 @@ def stop_daemon():
             _daemon.stop()
             _daemon = None
     emit("status", message="Stopped")
+
+
+def refresh_daemon():
+    with _daemon_lock:
+        d = _daemon
+        running = bool(d and d.running)
+    emit("status", message="Refreshing…")
+    if running:
+        d.request_refresh()
+    else:
+        # Not tracking yet — start, which detects the current track immediately.
+        start_daemon()
 
 # =============================================================================
 # STDIN COMMAND LOOP
@@ -552,6 +576,9 @@ def handle_command(cmd: dict):
 
     elif name == "stop":
         stop_daemon()
+
+    elif name == "refresh":
+        refresh_daemon()
 
     elif name == "get_config":
         emit("config", config=asdict(cfg))

@@ -81,6 +81,10 @@ export function useChromaState() {
     else start();
   }, [running, start, stop]);
 
+  const refresh = useCallback(() => {
+    send({ cmd: "refresh" });
+  }, [send]);
+
   const syncPinsToSidecar = useCallback(
     (next: Pin[]) => {
       if (next.length === 0) {
@@ -159,6 +163,7 @@ export function useChromaState() {
     pins,
     setConfigKey,
     toggleRunning,
+    refresh,
     addPin,
     removePin,
     clearPins,
