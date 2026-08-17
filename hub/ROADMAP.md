@@ -15,14 +15,20 @@ bulbs from the album art.
   Electron UI, `state.json` for tooling).
 - **Control.** `showctl.py` + `lite show {start|stop|status|restart}` — background process
   management with a PID/log under `~/.chroma/`.
+- **Pass 3 — local control plane.** `server.py`: FastAPI + WebSocket embedding the engine in
+  one loop. REST (`/state`, `/config`, `/transport`, `/enabled`, `/stop`), a `/ws` event
+  stream (`track_change`/`colors_pushed`/`status`), a built-in status page, and `/artwork.jpg`.
+  LAN-bound, no auth. `lite show start` now boots this. `EventBus` + `snapshot()` +
+  `set_config`/`transport`/`set_enabled` on the engine.
 
 ## Planned
 
-- **Pass 3 — local control plane.** FastAPI + WebSocket around the engine. `state.json`
-  already models `GET /state`. Reuse event names `track_change`/`colors_pushed`/`status`
-  and commands `set_config`/transport/`stop`. LAN-bound.
-- **Pass 4 — iPhone control PWA.** Re-point the existing React renderer (`../chroma/src`) at
-  the WebSocket API; serve from the hub; add-to-home-screen.
+- **Pass 3.5 — Ollama palette enhancement.** `PaletteEnhancer` seam (see below); local model
+  refines the album-art palette; off-hot-path timeout + fallback + per-album cache; toggles
+  surfaced by the Pass 3 API.
+- **Pass 4 — iPhone app controller (name TBD, "Vibrant"-something).** Client over the Pass 3
+  API — now-playing card, palette, live tuning sliders, transport. Start from the React
+  renderer (`../chroma/src`) re-pointed at the WS/REST API; PWA first, native later.
 - **Pass 5 — first-run config + packaging.** Light discovery/selection + ATV pairing wizard;
   venv/PyInstaller bundle; launchd agent (replaces the placeholder plist); one-command
   install; survives reboot.
@@ -93,11 +99,14 @@ bulbs from the album art.
 > front end over the Pass 3 control plane, so the whole thing is set-and-forget with a
 > real UI, no terminal.
 
-### Name candidates (the app, not the CHROMA engine underneath)
-The product is "your room reacts to whatever's on your screen." Naming should lean into
+### Name — decided direction
+**The name should contain "Vibrant"** (e.g. *Vibrant*, *Vibrance*), with a stylized **V**
+logo. **Second choice: Afterglow.** Earlier shortlist kept below for reference.
+
+The product is "your room reacts to whatever's on your screen." Naming leans into
 ambient/bias-lighting, not "music visualizer."
-- **Afterglow** — warm, evocative; the glow around the screen. Favorite.
-- **Backdrop** — the room as a living backdrop to what you're watching. Favorite.
+- **Afterglow** — warm, evocative; the glow around the screen. (Second choice.)
+- **Backdrop** — the room as a living backdrop to what you're watching.
 - **Bias / BiasLight** — *bias lighting* is the actual A/V term for ambient light behind a
   TV; the insider-cool pick.
 - **Aura** — the room's aura follows the content.
