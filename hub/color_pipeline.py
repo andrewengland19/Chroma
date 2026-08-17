@@ -97,3 +97,27 @@ def artwork_to_hsbk(image_bytes: bytes, count: int, p: PipelineParams = _DEFAULT
         return []
     scales = compute_brightness_scales(rgb, p)
     return [rgb_to_hsbk(r, g, b, bs, p) for (r, g, b), bs in zip(rgb, scales)]
+
+
+def region_colors(image_bytes: bytes, coords: list, layout, p: PipelineParams = _DEFAULTS) -> list:
+    """One dominant non-white RGB per (x, y) coordinate, cropping the art around
+    each. Falls back to the whole-image dominant color for a region that's all
+    white (so a bulb over a white patch still gets an on-theme color, not skipped).
+
+    `coords` is a list of (x, y) in 0..1; `layout` supplies region_w/region_h.
+    Returns a list of RGB tuples aligned with `coords`.
+    """
+    from PIL import Image
+    from layout import crop_region, region_to_jpeg
+
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    # Whole-image fallback color (first non-white dominant, else raw dominant).
+    whole = extract_colors(image_bytes, 1, p)
+    fallback = whole[0] if whole else ColorThief(io.BytesIO(image_bytes)).get_color(quality=1)
+
+    out = []
+    for (x, y) in coords:
+        crop = crop_region(img, x, y, layout.region_w, layout.region_h)
+        got = extract_colors(region_to_jpeg(crop), 1, p)
+        out.append(got[0] if got else fallback)
+    return out
