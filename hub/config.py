@@ -43,6 +43,11 @@ class Config:
 
     # Behaviour
     reconcile_seconds: float = 15.0  # safety re-poll in case a push update is missed
+    enabled: bool = True             # False = stay connected but don't paint the bulbs
+
+    # Control plane (Pass 3) — LAN-bound, no auth (trusted home network)
+    api_host: str = "0.0.0.0"
+    api_port: int = 8765
 
     def pipeline_params(self) -> PipelineParams:
         return PipelineParams(
