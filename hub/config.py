@@ -24,8 +24,19 @@ class Config:
     group_name: str = "Living Room"  # used only when use_group is True
 
     # Color mode
+    # "classic" → single_color/num_colors as before; "spatial" → project the
+    # album art across the room using the per-bulb layout (~/.chroma/layout.json).
+    mode: str = "classic"
     single_color: bool = False
     num_colors: int = 3
+
+    # AI palette enhancement (Pass 3.5) — local Ollama vision model over the LAN.
+    # Disabled unless ai_enhance is on AND ollama_url is set. Model returns hues;
+    # brightness/HSBK still applied from this config, so sliders stay instant.
+    ai_enhance: bool = False
+    ollama_url: str = ""            # e.g. "http://192.168.0.42:11434"
+    ollama_model: str = "gemma3:4b"
+    ai_timeout_ms: int = 6000
 
     # Brightness
     brightness: float = 0.75
