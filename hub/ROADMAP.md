@@ -83,3 +83,81 @@ bulbs from the album art.
 - Structured output: enforce a JSON schema (hex list + rationale) vs. free-text parsing.
 - Do we enhance the RGB palette, the final HSBK, or the `Config` params — or a mix?
 - Is per-album caching enough, or do we want per-track (live remixes, singles vs albums)?
+
+---
+
+## Speculative — productize into a MOSH-suite app
+
+> Status: **ideas only, not scheduled.** Vision: graduate the hub from a headless
+> `lite show` daemon into a polished consumer app in the MOSH suite — an iOS (and tvOS)
+> front end over the Pass 3 control plane, so the whole thing is set-and-forget with a
+> real UI, no terminal.
+
+### Name candidates (the app, not the CHROMA engine underneath)
+The product is "your room reacts to whatever's on your screen." Naming should lean into
+ambient/bias-lighting, not "music visualizer."
+- **Afterglow** — warm, evocative; the glow around the screen. Favorite.
+- **Backdrop** — the room as a living backdrop to what you're watching. Favorite.
+- **Bias / BiasLight** — *bias lighting* is the actual A/V term for ambient light behind a
+  TV; the insider-cool pick.
+- **Aura** — the room's aura follows the content.
+- **Limelight / Halo / Wash / Gel** — stage-lighting vocabulary (a color "wash", light
+  "gels", the "limelight").
+- **Lumen** — clean, brandable unit-of-light name.
+
+### iOS / tvOS app features
+- **Now-Playing card** — mirror the current artwork + live extracted palette (reuse the
+  existing `../chroma/src` renderer: artwork panel, color pins, accent-reactive sliders).
+- **Manual paint / pin override** — tap the art to force a color (the pin system already
+  exists in the Electron UI); great for parties.
+- **Scene library** — save/name/apply scenes (SPECTRUM already has a scenes model in
+  `~/.spectrum_scenes.json` worth converging on).
+- **Live tuning** — brightness / dynamic range / white-filter / transition sliders over the
+  Pass 3 API (these are already `Config` fields).
+- **"Follow the Apple TV" master toggle** + per-room device groups; multi-room later.
+- **Home-screen widget / Live Activity** showing the current palette + track/show.
+- **Siri Shortcuts / automations** — "Movie Night" sets a profile; Focus-mode & time-of-day
+  awareness (dimmer after 11pm).
+- **tvOS companion** — control from the couch with the Siri remote; on-screen scene picker.
+- **Pairing wizard** — wrap `pair_atv.py` in a friendly first-run flow (feeds Pass 5).
+
+---
+
+## Speculative — content-aware scenes (the room reacts to *what's on screen*)
+
+> Status: **ideas only, not scheduled.** The neat discovery: pyatv reports far more than
+> music. It exposes what app is open and what kind of media is playing, including TV show
+> details — so the room can switch lighting *modes* based on what you're actually watching.
+
+### What pyatv already gives us (grounded, verified in 0.18)
+- `Metadata.app` → `App.identifier` + `App.name` (Netflix, YouTube, the TV app, Music, …).
+- `Playing.media_type` → `Music | TV | Video | Unknown`.
+- For shows: `Playing.series_name`, `season_number`, `episode_number`, `genre`, `title`,
+  `content_identifier`. **So "Jeopardy → scene" is a match on `series_name`, not ML.**
+
+### Feature ideas
+1. **Media-type routing.** `Music` → today's album-art palette mode. `TV`/`Video` →
+   **bias-lighting mode**: a calm, dim, desaturated wash (or a poster-derived tone) instead
+   of a dancing palette — easier on the eyes for a 2-hour movie.
+2. **Per-show / per-app scene bindings.** A rules table mapping a match → a scene or profile:
+   - `series_name == "Jeopardy!"` → the blue "Jeopardy" scene.
+   - `series_name == "The Big Bang Theory"` → warm sitcom wash.
+   - `app.name == "Netflix"` → default bias-light; `app.name == "Music"` → art palette.
+   - `genre == "Horror"` → deep red, low, slow.
+   Precedence: explicit title/series binding > app default > media-type default > art palette.
+3. **Sports mode.** Team detection from title/metadata → team colors (stretch; metadata is
+   inconsistent across apps).
+4. **Auto-scene via the AI seam.** For anything without an explicit binding, let the local
+   model read the show title / poster art and *invent* a fitting scene — "auto-scene for
+   everything," reusing the Ollama `PaletteEnhancer` above.
+5. **Rules UI.** Author bindings from the phone app; store alongside scenes. Live-reload like
+   SPECTRUM's scenes file so edits land without a restart.
+
+### The honest boundary: metadata scenes vs. true ambilight
+- **Metadata-driven scenes (easy, do this):** everything above keys off pyatv metadata
+  (app / media_type / series_name / poster art). Fully in reach with the current stack.
+- **Per-frame "ambilight" (hard, different project):** matching the *live* on-screen colors
+  frame-by-frame needs the actual video buffer, which pyatv does **not** provide. That
+  requires HDMI capture hardware (Philips Hue Sync-box style) or screen-mirror capture — out
+  of scope for the LAN/metadata approach. Poster/artwork tone is the closest metadata-only
+  approximation.
