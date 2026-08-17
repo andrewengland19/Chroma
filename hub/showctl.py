@@ -18,7 +18,9 @@ import time
 
 HUB_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_PY = os.path.join(HUB_DIR, ".venv", "bin", "python")
-ENGINE = os.path.join(HUB_DIR, "engine.py")
+# Launch the control-plane server (Pass 3), which embeds the engine and serves
+# the HTTP/WebSocket API. engine.py stays runnable standalone for headless debug.
+ENGINE = os.path.join(HUB_DIR, "server.py")
 
 CHROMA_DIR = os.path.expanduser("~/.chroma")
 PID_FILE = os.path.join(CHROMA_DIR, "hub.pid")
