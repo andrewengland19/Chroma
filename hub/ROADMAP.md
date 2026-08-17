@@ -23,12 +23,32 @@ bulbs from the album art.
 
 ## Planned
 
-- **Pass 3.5 — Ollama palette enhancement.** `PaletteEnhancer` seam (see below); local model
-  refines the album-art palette; off-hot-path timeout + fallback + per-album cache; toggles
-  surfaced by the Pass 3 API.
-- **Pass 4 — iPhone app controller (name TBD, "Vibrant"-something).** Client over the Pass 3
+- **Pass 3.5 — spatial "paint the room" + Ollama palette enhancement.** Two composable parts:
+  - **Spatial layout (deterministic):** `~/.chroma/layout.json` maps each bulb (by label) to a
+    normalized `x` (and optional `y`) on the album-art canvas; a new `spatial` mode crops the
+    art per bulb position so the artwork projects left→right across the room. `GET/POST /layout`.
+  - **AI enhancement (`PaletteEnhancer` seam):** local vision model on the PC refines per-region
+    colors (accuracy + mood, dodges the white/logo problem). **Model-agnostic**; default
+    `gemma3:4b` over **LAN direct** (`OLLAMA_HOST=0.0.0.0` on the PC → `http://<pc-ip>:11434`).
+    Strict timeout → **fallback to deterministic**; **cache per album**. Key separation: the
+    model returns hues/RGB (cached); our pipeline applies brightness/HSBK from live config, so
+    the brightness slider stays instant and never re-runs the model.
+    - *Model note:* Microsoft Phi-3.5-Vision fits VRAM easily but lacks clean Ollama support;
+      `llava-phi3` is the supported Phi-family option. Default `gemma3:4b`; `qwen2.5-vl:7b` is
+      the quality A/B (latency-tolerant since cached). Swapping is one config line.
+- **Pass 4 — iPhone app controller (name contains "Vibrant", V logo).** Client over the Pass 3
   API — now-playing card, palette, live tuning sliders, transport. Start from the React
   renderer (`../chroma/src`) re-pointed at the WS/REST API; PWA first, native later.
+  **pyatv features worth surfacing** (genuinely-useful, not flash):
+  - Phone-as-remote (`RemoteControl` d-pad/select/menu/home/play_pause) — replaces the
+    always-lost Siri remote (primary justification).
+  - Keyboard text entry (`Keyboard.text_set`; `text_focus_state` to auto-pop the keyboard on
+    an on-screen search field) — kills painful remote typing.
+  - Volume (`Audio.set_volume`/`volume_up`/`down`) — quick mute/adjust.
+  - **Room+screen macros — the real differentiator** (only this app controls both): "Movie
+    Night" = `Power.turn_on` + `Apps.launch_app` + lights→bias scene; "Goodnight" = ATV off +
+    lights off. Ties into content-aware scenes.
+  - `Features.get_feature` to gray out controls a device lacks.
 - **Pass 5 — first-run config + packaging.** Light discovery/selection + ATV pairing wizard;
   venv/PyInstaller bundle; launchd agent (replaces the placeholder plist); one-command
   install; survives reboot.
