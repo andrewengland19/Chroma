@@ -83,6 +83,23 @@ async def post_enabled(body: dict):
     return await engine.set_enabled(on)
 
 
+@app.get("/layout")
+async def get_layout():
+    return engine.layout.to_dict()
+
+
+@app.post("/layout")
+async def post_layout(partial: dict):
+    if not isinstance(partial, dict):
+        return JSONResponse({"error": "expected a JSON object"}, status_code=400)
+    return await engine.set_layout(partial)
+
+
+@app.get("/enhancer")
+async def get_enhancer():
+    return engine.snapshot()["ai"]
+
+
 @app.post("/stop")
 async def post_stop():
     engine.stop()
