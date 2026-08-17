@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Python
+**/__pycache__/
+*.py[cod]
+
+# Hub virtualenv (machine-specific; recreate via requirements.txt)
+hub/.venv/
