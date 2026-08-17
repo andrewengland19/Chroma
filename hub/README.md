@@ -71,6 +71,8 @@ launchd, Pass 5) shuts it down cleanly.
 | `config.py` | `Config` — persisted tunables (`~/.chroma/config.json`) |
 | `engine.py` | **headless daily-driver engine** — connect → react → paint → write contracts |
 | `server.py` | **Pass 3 control plane** — FastAPI + WebSocket embedding the engine |
+| `layout.py` | **Pass 3.5** — bulb `(x,y)` positions + region cropping |
+| `enhancers.py` | **Pass 3.5** — `PaletteEnhancer` seam (`NullEnhancer`, `OllamaEnhancer`) |
 | `showctl.py` | background start/stop (`lite show …`), now launches `server.py` |
 | `spike.py` | Pass 1 proof (one-shot; superseded by `engine.py`) |
 
@@ -90,6 +92,34 @@ websocat ws://localhost:8765/ws                       # live track_change/colors
 
 Run the engine **without** the API (headless debug): `./.venv/bin/python engine.py`.
 
+## 5. Spatial "paint the room" + AI enhancement (Pass 3.5)
+
+Two composable upgrades to how the room is painted:
+
+**Spatial mode** projects the album art across the room. Each bulb has an `(x, y)` position
+on the art canvas (`~/.chroma/layout.json`, auto-seeded from bulb labels, editable live);
+in `spatial` mode each bulb is colored from the art region at its position.
+
+```bash
+curl -X POST localhost:8765/config -d '{"mode":"spatial"}'   # project art across the room
+curl -X POST localhost:8765/config -d '{"mode":"classic"}'   # back to single/palette
+curl -s localhost:8765/layout | jq                            # bulb positions (0..1)
+curl -X POST localhost:8765/layout -d '{"lights":{"TV Left":{"x":0.2,"y":0.3}}}'
+```
+
+**AI enhancement** (optional) refines the per-region colors with a local Ollama vision model
+over the LAN. The model returns hues (cached per album); brightness/HSBK still come from live
+config, and any timeout/error falls back to the deterministic palette — so a track never
+waits on the model and it all works with the PC off.
+
+```bash
+# On the PC:  set OLLAMA_HOST=0.0.0.0 and `ollama pull gemma3:4b`
+curl -X POST localhost:8765/config -d '{"ai_enhance":true,"ollama_url":"http://<pc-ip>:11434"}'
+curl -s localhost:8765/enhancer | jq     # model, reachable, last reasoning
+```
+
+`ollama_model` is config — swap to `llava-phi3`, `qwen2.5-vl:7b`, etc. without code changes.
+
 ## Progress Ledger
 
 Updated at each pass boundary so the next pass resumes with no re-derivation.
@@ -104,7 +134,13 @@ Updated at each pass boundary so the next pass resumes with no re-derivation.
   play/pause toggles the Apple TV (reflected live in `/state`), `/enabled` pauses painting,
   `/ws` streams events, status page + `/artwork.jpg` reachable from the phone at
   `http://192.168.0.150:8765/`. `lite show start` now boots the server.
-- **Pass 3.5 — NEXT.** Ollama palette enhancement (`PaletteEnhancer` seam). Then Pass 4:
-  the "Vibrant" iPhone app controller over this API.
+- **Pass 3.5 — ✅ DONE (verified live, uncommitted pending review).** Spatial "paint the
+  room" (2-D `(x,y)` layout, `spatial` mode paints each bulb from its art region) +
+  `PaletteEnhancer` seam (Ollama, model-agnostic, timeout→fallback→per-album cache).
+  Verified: spatial paints 5 distinct per-bulb colors mapped to position; `/layout` seeds +
+  edits live; dead-Ollama fallback is fast and safe. AI idle until `ollama_url` is set.
+  Survived a real sleep/wake cycle (auto-reconnect held).
+- **Pass 4 — NEXT.** The "Vibrant" iPhone app controller over this API (now-playing, palette,
+  live tuning, transport + pyatv remote/keyboard/volume/room-screen macros).
 - **Pass 4 —** iPhone control PWA (re-point `../chroma/src` at the WS API).
 - **Pass 5 —** First-run config + packaging + launchd.

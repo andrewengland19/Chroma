@@ -21,21 +21,23 @@ bulbs from the album art.
   LAN-bound, no auth. `lite show start` now boots this. `EventBus` + `snapshot()` +
   `set_config`/`transport`/`set_enabled` on the engine.
 
+- **Pass 3.5 — spatial "paint the room" + Ollama palette enhancement.** Delivered:
+  - **Spatial layout:** `~/.chroma/layout.json` maps each bulb (by label) to normalized
+    `(x, y)` on the album-art canvas; `spatial` mode crops the art per bulb position so the
+    artwork projects across the room. Auto-seeded from labels; `GET/POST /layout`. Files:
+    `layout.py`, `region_colors()` in `color_pipeline.py`, `_spatial_hsbk()` in `engine.py`.
+  - **AI enhancement (`PaletteEnhancer` seam):** `enhancers.py` — `NullEnhancer` +
+    `OllamaEnhancer` (aiohttp). **Model-agnostic**; default `gemma3:4b` over **LAN direct**
+    (`OLLAMA_HOST=0.0.0.0` on the PC → `http://<pc-ip>:11434`). Strict timeout →
+    **fallback to deterministic**; **cache per album+layout**. Key separation: the model
+    returns hues/RGB (cached); the pipeline applies brightness/HSBK from live config, so the
+    brightness slider stays instant and never re-runs the model. `/enhancer` reports status.
+    - *Model note:* Phi-3.5-Vision fits VRAM easily but lacks clean Ollama support;
+      `llava-phi3` is the supported Phi option. `qwen2.5-vl:7b` is the quality A/B. One config
+      line to swap.
+
 ## Planned
 
-- **Pass 3.5 — spatial "paint the room" + Ollama palette enhancement.** Two composable parts:
-  - **Spatial layout (deterministic):** `~/.chroma/layout.json` maps each bulb (by label) to a
-    normalized `x` (and optional `y`) on the album-art canvas; a new `spatial` mode crops the
-    art per bulb position so the artwork projects left→right across the room. `GET/POST /layout`.
-  - **AI enhancement (`PaletteEnhancer` seam):** local vision model on the PC refines per-region
-    colors (accuracy + mood, dodges the white/logo problem). **Model-agnostic**; default
-    `gemma3:4b` over **LAN direct** (`OLLAMA_HOST=0.0.0.0` on the PC → `http://<pc-ip>:11434`).
-    Strict timeout → **fallback to deterministic**; **cache per album**. Key separation: the
-    model returns hues/RGB (cached); our pipeline applies brightness/HSBK from live config, so
-    the brightness slider stays instant and never re-runs the model.
-    - *Model note:* Microsoft Phi-3.5-Vision fits VRAM easily but lacks clean Ollama support;
-      `llava-phi3` is the supported Phi-family option. Default `gemma3:4b`; `qwen2.5-vl:7b` is
-      the quality A/B (latency-tolerant since cached). Swapping is one config line.
 - **Pass 4 — iPhone app controller (name contains "Vibrant", V logo).** Client over the Pass 3
   API — now-playing card, palette, live tuning sliders, transport. Start from the React
   renderer (`../chroma/src`) re-pointed at the WS/REST API; PWA first, native later.
