@@ -32,6 +32,7 @@ from color_pipeline import (artwork_to_hsbk, region_colors,
 from config import Config
 from layout import Layout
 from enhancers import build_enhancer
+from scenes import SceneStore
 from distribute import round_robin, idw_blend, hex_to_rgb, rgb_to_hex
 
 
@@ -189,7 +190,8 @@ class Engine(DeviceListener, PushListener):
         # Pass 3.5: spatial layout + AI palette enhancement
         self.layout = Layout.load()
         self.enhancer = build_enhancer(self.cfg)
-        self._ai_cache: dict = {}  # (album_key, layout_fingerprint) → list[RGB]
+        self.scenes = SceneStore.load()   # persistent per-album scenes
+        self._scene_active = False
 
         self._stop = asyncio.Event()       # process shutdown
         self._disconnected = asyncio.Event()  # ATV dropped → reconnect
@@ -275,10 +277,16 @@ class Engine(DeviceListener, PushListener):
             return
 
         mode = self.cfg.mode
-        if mode == "paint" and self.cfg.paint_colors:
+        key = self._scene_key(np)
+        self._scene_active = False
+        rgb = self._scene_rgb(self.scenes.get(key), coords)   # saved album scene?
+        if rgb is not None:
+            self._scene_active = True
+        elif mode == "paint" and self.cfg.paint_colors:
             rgb = self._paint_rgb(coords)
         elif art is not None:
-            rgb = await self._spatial_rgb(np, art, coords, params, use_ai=(mode == "ai"))
+            rgb = await self._spatial_rgb(np, art, coords, params,
+                                          use_ai=(mode == "ai"), scene_key=key)
         else:
             self._write_state()   # paint with no colors + no art yet → nothing to paint
             return
@@ -307,39 +315,67 @@ class Engine(DeviceListener, PushListener):
         write_colors_file(track, hsbk)
         self._write_state()
         self.bus.publish("colors_pushed", track=track, colors=_hsbk_dicts(hsbk),
-                         per_light=self._last_per_light, enabled=self.enabled, mode=mode)
+                         per_light=self._last_per_light, enabled=self.enabled, mode=mode,
+                         scene_active=self._scene_active)
 
-    def _paint_rgb(self, coords: list) -> list:
+    def _paint_rgb(self, coords: list, picks=None, distribution=None) -> list:
         """User focus colors → one RGB per light, via round-robin or spatial IDW."""
-        picks = self.cfg.paint_colors
-        if self.cfg.paint_distribution == "spatial":
+        picks = self.cfg.paint_colors if picks is None else picks
+        distribution = self.cfg.paint_distribution if distribution is None else distribution
+        if distribution == "spatial":
             anchors = [(hex_to_rgb(c["hex"]), (float(c.get("x", 0.5)), float(c.get("y", 0.5))))
                        for c in picks]
             return idw_blend(coords, anchors)
         return round_robin(coords, [hex_to_rgb(c["hex"]) for c in picks])
 
-    async def _spatial_rgb(self, np, art, coords, params, use_ai: bool) -> list:
-        """Per-region album-art color per bulb, optionally AI-refined (cached)."""
+    # ---- per-album scenes (Pass 4.5) ---------------------------------------
+    def _scene_key(self, np):
+        if not np or not np.has_track():
+            return None
+        if np.album:
+            return f"{np.artist}|||{np.album}".strip("| ")
+        return np.track_id()
+
+    def _scene_rgb(self, scene, coords):
+        """Per-light RGB for a saved scene, or None if not usable now."""
+        if not scene:
+            return None
+        if scene.get("type") == "paint" and scene.get("colors"):
+            return self._paint_rgb(coords, scene["colors"], scene.get("distribution"))
+        if (scene.get("type") == "ai" and scene.get("rgb")
+                and scene.get("layout_fp") == self.layout.fingerprint()
+                and len(scene["rgb"]) == len(coords)):
+            self.bus.publish("ai_reasoning", model=self.cfg.ollama_model, ok=True,
+                             mood=scene.get("mood", ""), palette=scene.get("palette", []),
+                             reasoning=scene.get("reasoning", ""), error="", cached=True)
+            return [tuple(c) for c in scene["rgb"]]
+        return None
+
+    async def _spatial_rgb(self, np, art, coords, params, use_ai: bool, scene_key=None) -> list:
+        """Per-region album-art color per bulb, optionally AI-refined then saved
+        as this album's scene so it is reused without re-running the model."""
         base_rgb = await self.loop.run_in_executor(
             None, region_colors, art, coords, self.layout, params)
         rgb = base_rgb
         if use_ai and self.cfg.ollama_url:
-            album_key = (np.album or np.track_id()) if np else "unknown"
-            key = f"{album_key}|{self.layout.fingerprint()}"
-            if key in self._ai_cache:
-                rgb = self._ai_cache[key]
-            else:
-                enhanced = await self.enhancer.enhance(
-                    art, {"track": np.label() if np else ""}, coords, base_rgb)
-                self.bus.publish("ai_reasoning", model=self.cfg.ollama_model,
-                                 ok=bool(enhanced), mood=self.enhancer.last_mood,
-                                 palette=self.enhancer.last_palette,
-                                 reasoning=self.enhancer.last_reasoning,
-                                 error=self.enhancer.last_error)
-                if enhanced:
-                    self._ai_cache[key] = enhanced
-                    rgb = enhanced
-                    log.info(f"   → AI palette ({self.cfg.ollama_model})")
+            enhanced = await self.enhancer.enhance(
+                art, {"track": np.label() if np else ""}, coords, base_rgb)
+            self.bus.publish("ai_reasoning", model=self.cfg.ollama_model,
+                             ok=bool(enhanced), mood=self.enhancer.last_mood,
+                             palette=self.enhancer.last_palette,
+                             reasoning=self.enhancer.last_reasoning,
+                             error=self.enhancer.last_error, cached=False)
+            if enhanced:
+                rgb = enhanced
+                log.info(f"   → AI palette ({self.cfg.ollama_model}) — scene saved")
+                if scene_key:
+                    self.scenes.set(scene_key, {
+                        "type": "ai", "rgb": [list(c) for c in enhanced],
+                        "layout_fp": self.layout.fingerprint(),
+                        "mood": self.enhancer.last_mood,
+                        "palette": self.enhancer.last_palette,
+                        "reasoning": self.enhancer.last_reasoning,
+                    })
         return rgb
 
     def _sync_enhancer(self) -> None:
@@ -349,7 +385,6 @@ class Engine(DeviceListener, PushListener):
                self.cfg.ollama_model, self.cfg.ai_timeout_ms)
         if sig != getattr(self, "_enh_sig", None):
             self.enhancer = build_enhancer(self.cfg)
-            self._ai_cache.clear()
             self._enh_sig = sig
 
     # ---- state snapshot (GET /state) ---------------------------------------
@@ -380,6 +415,11 @@ class Engine(DeviceListener, PushListener):
                 "palette": getattr(self.enhancer, "last_palette", []),
                 "reasoning": getattr(self.enhancer, "last_reasoning", ""),
                 "error": getattr(self.enhancer, "last_error", ""),
+            },
+            "scene": {
+                "saved": self.scenes.has(self._scene_key(self._last_np)),
+                "active": self._scene_active,
+                "type": (self.scenes.get(self._scene_key(self._last_np)) or {}).get("type"),
             },
         }
 
@@ -414,6 +454,11 @@ class Engine(DeviceListener, PushListener):
         self.cfg.mode = "paint"
         self.cfg.ai_enhance = False
         self.cfg.save()
+        key = self._scene_key(self._last_np)
+        if key and self.cfg.paint_colors:
+            self.scenes.set(key, {"type": "paint",
+                                  "distribution": self.cfg.paint_distribution,
+                                  "colors": self.cfg.paint_colors})
         await self._repaint("paint")
         return self.snapshot()
 
@@ -421,6 +466,12 @@ class Engine(DeviceListener, PushListener):
         self.cfg.paint_colors = []
         self.cfg.save()
         await self._repaint("paint_clear")
+        return self.snapshot()
+
+    async def scene_clear(self) -> dict:
+        """Forget the current album's saved scene → it reverts to the global mode."""
+        self.scenes.clear(self._scene_key(self._last_np))
+        await self._repaint("scene_clear")
         return self.snapshot()
 
     async def move_light(self, label: str, x: float, y: float) -> dict:
@@ -443,7 +494,6 @@ class Engine(DeviceListener, PushListener):
                 cur["y"] = float(pos["y"])
             self.layout.positions[label] = cur
         self.layout.save()
-        self._ai_cache.clear()
         async with self._apply_lock:
             if self._last_np and self._last_art:
                 await self._render(self._last_np, self._last_art, "layout")
