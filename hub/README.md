@@ -73,8 +73,21 @@ launchd, Pass 5) shuts it down cleanly.
 | `server.py` | **Pass 3 control plane** — FastAPI + WebSocket embedding the engine |
 | `layout.py` | **Pass 3.5** — bulb `(x,y)` positions + region cropping |
 | `enhancers.py` | **Pass 3.5** — `PaletteEnhancer` seam (`NullEnhancer`, `OllamaEnhancer`) |
+| `distribute.py` | **Pass 4** — round-robin + OKLab IDW colour distribution |
+| `web/` | **Pass 4** — the web GUI (`index.html`, `app.js`, `style.css`) |
 | `showctl.py` | background start/stop (`lite show …`), now launches `server.py` |
 | `spike.py` | Pass 1 proof (one-shot; superseded by `engine.py`) |
+
+## 6. Web GUI (Pass 4)
+
+`lite show start` serves a full control GUI at `http://<mac-ip>:8765/` (open it on desktop
+or phone). One **bidirectional** WebSocket carries state + events out and commands in:
+- **Room canvas** — drag each light to its real `(x,y)`; nodes show live per-bulb colour.
+- **Modes** — Deterministic (art per region), Paint, AI (Ollama reasoning shown live).
+- **Paint** — click the album art to sample a colour (press-hold for a magnifier lens);
+  pick 1+ colours; toggle **round-robin** (even split by position) vs **spatial** (OKLab
+  inverse-distance blend across the room).
+- **Tuning** — brightness / dynamic-range / floor / transition sliders (live).
 
 ## 4. Control plane (Pass 3)
 
@@ -140,7 +153,13 @@ Updated at each pass boundary so the next pass resumes with no re-derivation.
   Verified: spatial paints 5 distinct per-bulb colors mapped to position; `/layout` seeds +
   edits live; dead-Ollama fallback is fast and safe. AI idle until `ollama_url` is set.
   Survived a real sleep/wake cycle (auto-reconnect held).
-- **Pass 4 — NEXT.** The "Vibrant" iPhone app controller over this API (now-playing, palette,
-  live tuning, transport + pyatv remote/keyboard/volume/room-screen macros).
+- **Pass 4 — ✅ DONE (verified live, uncommitted pending review).** Hub-served web GUI
+  (`hub/web/`, vanilla JS + Canvas) over a now-**bidirectional** `/ws`. Room canvas with
+  draggable lights (live per-bulb colors), album-art paint picker (click-to-sample +
+  press-hold magnifier), 3 modes (deterministic/paint/ai), AI reasoning panel. New
+  `hub/distribute.py` (round-robin + OKLab IDW). Engine `mode` refactored to
+  {deterministic,paint,ai} with migration. Verified: GUI renders + mode switch + room canvas;
+  paint round-robin splits bulbs by position, spatial blends L→R; per-bulb `colors_pushed`.
+  Scope pivoted from the standalone iPhone/Expo app (browser is reachable from the phone).
 - **Pass 4 —** iPhone control PWA (re-point `../chroma/src` at the WS API).
 - **Pass 5 —** First-run config + packaging + launchd.

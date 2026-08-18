@@ -36,21 +36,16 @@ bulbs from the album art.
       `llava-phi3` is the supported Phi option. `qwen2.5-vl:7b` is the quality A/B. One config
       line to swap.
 
+- **Pass 4 — hub-served web GUI (scope pivoted from the standalone iPhone/Expo app).**
+  `hub/web/` (vanilla JS + Canvas) over a **bidirectional** `/ws`: room-layout canvas with
+  draggable lights (live per-bulb colour), album-art paint picker (click-to-sample +
+  press-hold magnifier), three modes (deterministic/paint/ai), live AI reasoning stream.
+  `hub/distribute.py` = round-robin + OKLab inverse-distance blend. Engine `mode` refactored
+  to {deterministic,paint,ai} (migrated from `spatial`+`ai_enhance`). Reachable from the phone
+  browser on the LAN, so no native app needed for MVP.
+
 ## Planned
 
-- **Pass 4 — iPhone app controller (name contains "Vibrant", V logo).** Client over the Pass 3
-  API — now-playing card, palette, live tuning sliders, transport. Start from the React
-  renderer (`../chroma/src`) re-pointed at the WS/REST API; PWA first, native later.
-  **pyatv features worth surfacing** (genuinely-useful, not flash):
-  - Phone-as-remote (`RemoteControl` d-pad/select/menu/home/play_pause) — replaces the
-    always-lost Siri remote (primary justification).
-  - Keyboard text entry (`Keyboard.text_set`; `text_focus_state` to auto-pop the keyboard on
-    an on-screen search field) — kills painful remote typing.
-  - Volume (`Audio.set_volume`/`volume_up`/`down`) — quick mute/adjust.
-  - **Room+screen macros — the real differentiator** (only this app controls both): "Movie
-    Night" = `Power.turn_on` + `Apps.launch_app` + lights→bias scene; "Goodnight" = ATV off +
-    lights off. Ties into content-aware scenes.
-  - `Features.get_feature` to gray out controls a device lacks.
 - **Pass 5 — first-run config + packaging.** Light discovery/selection + ATV pairing wizard;
   venv/PyInstaller bundle; launchd agent (replaces the placeholder plist); one-command
   install; survives reboot.
