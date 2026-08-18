@@ -32,6 +32,7 @@ from color_pipeline import (artwork_to_hsbk, region_colors,
 from config import Config
 from layout import Layout
 from enhancers import build_enhancer
+from distribute import round_robin, idw_blend, hex_to_rgb, rgb_to_hex
 
 
 def _hsbk_dicts(hsbk: list) -> list:
@@ -198,6 +199,7 @@ class Engine(DeviceListener, PushListener):
         self._last_np: Optional[NowPlaying] = None
         self._last_art: Optional[bytes] = None
         self._last_hsbk: list = []
+        self._last_per_light: list = []  # [{label,x,y,hex}] for the room canvas
 
     # ---- pyatv DeviceListener (connection lifecycle) -----------------------
     def connection_lost(self, exception) -> None:
@@ -254,65 +256,91 @@ class Engine(DeviceListener, PushListener):
         self._last_art = art
         await self._render(np, art, source)
 
-    async def _render(self, np: NowPlaying, art: bytes, source: str) -> None:
-        """Artwork → palette → (optionally) bulbs → contract files → events.
-        Shared by new-track paints and live config re-paints (cached artwork)."""
+    async def _render(self, np: Optional[NowPlaying], art: Optional[bytes], source: str) -> None:
+        """Per-bulb color for the active mode → bulbs → contract files → events.
+        Modes: deterministic (art region per bulb), paint (user focus colors),
+        ai (art region + Ollama). Paint doesn't need artwork."""
+        # Mode is authoritative; it drives whether AI runs.
+        self.cfg.ai_enhance = (self.cfg.mode == "ai")
         self._sync_enhancer()
         params = self.cfg.pipeline_params()
-        spatial = self.cfg.mode == "spatial" and self.lifx.count > 0
 
-        if spatial:
-            hsbk = await self._spatial_hsbk(np, art, params)
-        else:
-            count = self.cfg.color_count(self.lifx.count)
-            hsbk = await self.loop.run_in_executor(None, artwork_to_hsbk, art, count, params)
-
-        if not hsbk:
-            log.info("   → majority-white artwork; skipping (last palette kept)")
-            self.bus.publish("status", message="majority-white artwork; palette kept")
-            return
-        self._last_hsbk = hsbk
-
-        if self.enabled and self.lifx.count:
-            pusher = self.lifx.push_aligned if spatial else self.lifx.push
-            await self.loop.run_in_executor(None, pusher, hsbk, self.cfg.transition_ms)
-            log.info(f"   → {len(hsbk)} color(s) → {self.lifx.count} light(s)  🎨 ({self.cfg.mode})")
-        elif not self.enabled:
-            log.info(f"   → painting off; computed {len(hsbk)} color(s) ({source})")
-
-        write_colors_file(np.label(), hsbk)
-        self._write_state()
-        self.bus.publish("colors_pushed", track=np.label(),
-                         colors=_hsbk_dicts(hsbk), enabled=self.enabled, mode=self.cfg.mode)
-
-    async def _spatial_hsbk(self, np: NowPlaying, art: bytes, params) -> list:
-        """One color per bulb, mapped from its (x,y) position on the artwork, then
-        optionally refined by the AI enhancer (cached per album+layout), then
-        brightness-scaled from live config."""
         labels = self.lifx.labels()
-        if self.layout.ensure_labels(labels):
+        if labels and self.layout.ensure_labels(labels):
             self.layout.save()
         coords = [self.layout.pos_for(lbl) for lbl in labels]
 
+        if self.lifx.count == 0:
+            self._write_state()
+            return
+
+        mode = self.cfg.mode
+        if mode == "paint" and self.cfg.paint_colors:
+            rgb = self._paint_rgb(coords)
+        elif art is not None:
+            rgb = await self._spatial_rgb(np, art, coords, params, use_ai=(mode == "ai"))
+        else:
+            self._write_state()   # paint with no colors + no art yet → nothing to paint
+            return
+
+        if not rgb:
+            log.info("   → no colors; keeping last palette")
+            self.bus.publish("status", message="no colors for this frame")
+            return
+
+        scales = compute_brightness_scales(rgb, params)
+        hsbk = [rgb_to_hsbk(r, g, b, s, params) for (r, g, b), s in zip(rgb, scales)]
+        self._last_hsbk = hsbk
+        self._last_per_light = [
+            {"label": l, "x": round(c[0], 3), "y": round(c[1], 3), "hex": rgb_to_hex(rr)}
+            for l, c, rr in zip(labels, coords, rgb)
+        ]
+
+        if self.enabled and self.lifx.count:
+            await self.loop.run_in_executor(
+                None, self.lifx.push_aligned, hsbk, self.cfg.transition_ms)
+            log.info(f"   → {len(hsbk)} color(s) → {self.lifx.count} light(s)  🎨 ({mode})")
+        elif not self.enabled:
+            log.info(f"   → painting off; computed {len(hsbk)} color(s) ({source})")
+
+        track = np.label() if np else "paint"
+        write_colors_file(track, hsbk)
+        self._write_state()
+        self.bus.publish("colors_pushed", track=track, colors=_hsbk_dicts(hsbk),
+                         per_light=self._last_per_light, enabled=self.enabled, mode=mode)
+
+    def _paint_rgb(self, coords: list) -> list:
+        """User focus colors → one RGB per light, via round-robin or spatial IDW."""
+        picks = self.cfg.paint_colors
+        if self.cfg.paint_distribution == "spatial":
+            anchors = [(hex_to_rgb(c["hex"]), (float(c.get("x", 0.5)), float(c.get("y", 0.5))))
+                       for c in picks]
+            return idw_blend(coords, anchors)
+        return round_robin(coords, [hex_to_rgb(c["hex"]) for c in picks])
+
+    async def _spatial_rgb(self, np, art, coords, params, use_ai: bool) -> list:
+        """Per-region album-art color per bulb, optionally AI-refined (cached)."""
         base_rgb = await self.loop.run_in_executor(
             None, region_colors, art, coords, self.layout, params)
-
         rgb = base_rgb
-        if self.cfg.ai_enhance and self.cfg.ollama_url:
-            album_key = np.album or np.track_id()
+        if use_ai and self.cfg.ollama_url:
+            album_key = (np.album or np.track_id()) if np else "unknown"
             key = f"{album_key}|{self.layout.fingerprint()}"
             if key in self._ai_cache:
                 rgb = self._ai_cache[key]
             else:
                 enhanced = await self.enhancer.enhance(
-                    art, {"track": np.label()}, coords, base_rgb)
+                    art, {"track": np.label() if np else ""}, coords, base_rgb)
+                self.bus.publish("ai_reasoning", model=self.cfg.ollama_model,
+                                 ok=bool(enhanced), mood=self.enhancer.last_mood,
+                                 palette=self.enhancer.last_palette,
+                                 reasoning=self.enhancer.last_reasoning,
+                                 error=self.enhancer.last_error)
                 if enhanced:
                     self._ai_cache[key] = enhanced
                     rgb = enhanced
                     log.info(f"   → AI palette ({self.cfg.ollama_model})")
-
-        scales = compute_brightness_scales(rgb, params)
-        return [rgb_to_hsbk(r, g, b, s, params) for (r, g, b), s in zip(rgb, scales)]
+        return rgb
 
     def _sync_enhancer(self) -> None:
         """Rebuild the enhancer + clear the AI cache when ai-config changes (via API
@@ -340,13 +368,16 @@ class Engine(DeviceListener, PushListener):
             "enabled": self.enabled,
             "mode": self.cfg.mode,
             "colors": _hsbk_dicts(self._last_hsbk),
+            "per_light": self._last_per_light,
             "config": asdict(self.cfg),
             "layout": self.layout.to_dict(),
             "ai": {
-                "enabled": bool(self.cfg.ai_enhance and self.cfg.ollama_url),
+                "enabled": bool(self.cfg.mode == "ai" and self.cfg.ollama_url),
                 "model": self.cfg.ollama_model,
                 "url": self.cfg.ollama_url,
                 "last_ok": getattr(self.enhancer, "last_ok", None),
+                "mood": getattr(self.enhancer, "last_mood", ""),
+                "palette": getattr(self.enhancer, "last_palette", []),
                 "reasoning": getattr(self.enhancer, "last_reasoning", ""),
                 "error": getattr(self.enhancer, "last_error", ""),
             },
@@ -354,6 +385,47 @@ class Engine(DeviceListener, PushListener):
 
     def _write_state(self) -> None:
         write_state_file(self.snapshot())
+
+    async def _repaint(self, source: str) -> None:
+        """Re-render from cached state (used by mode/paint/layout/config edits)."""
+        async with self._apply_lock:
+            if self._last_np and self._last_art:
+                await self._render(self._last_np, self._last_art, source)
+            elif self.cfg.mode == "paint" and self.cfg.paint_colors:
+                await self._render(None, None, source)   # paint needs no artwork
+            else:
+                self._write_state()
+
+    # ---- Pass 4 mode/paint commands ----------------------------------------
+    async def set_mode(self, mode: str) -> dict:
+        if mode not in ("deterministic", "paint", "ai"):
+            return self.snapshot()
+        self.cfg.mode = mode
+        self.cfg.ai_enhance = (mode == "ai")
+        self.cfg.save()
+        await self._repaint("mode")
+        return self.snapshot()
+
+    async def set_focus(self, distribution: Optional[str], colors: list) -> dict:
+        """Set paint focus colors ([{hex,x,y}]) and switch to paint mode."""
+        if distribution in ("round_robin", "spatial"):
+            self.cfg.paint_distribution = distribution
+        self.cfg.paint_colors = colors or []
+        self.cfg.mode = "paint"
+        self.cfg.ai_enhance = False
+        self.cfg.save()
+        await self._repaint("paint")
+        return self.snapshot()
+
+    async def paint_clear(self) -> dict:
+        self.cfg.paint_colors = []
+        self.cfg.save()
+        await self._repaint("paint_clear")
+        return self.snapshot()
+
+    async def move_light(self, label: str, x: float, y: float) -> dict:
+        await self.set_layout({"lights": {label: {"x": x, "y": y}}})
+        return self.snapshot()
 
     # ---- layout (GET/POST /layout) -----------------------------------------
     async def set_layout(self, partial: dict) -> dict:
@@ -387,15 +459,13 @@ class Engine(DeviceListener, PushListener):
         updates = {k: v for k, v in partial.items() if k in known}
         for k, v in updates.items():
             setattr(self.cfg, k, v)
+        if "mode" in updates:
+            self.cfg.ai_enhance = (self.cfg.mode == "ai")   # mode stays authoritative
         self.cfg.save()
         self.lifx.cfg = self.cfg
         if "enabled" in updates:
             self.enabled = bool(updates["enabled"])
-        async with self._apply_lock:
-            if self._last_np and self._last_art:
-                await self._render(self._last_np, self._last_art, "config")
-            else:
-                self._write_state()
+        await self._repaint("config")
         return asdict(self.cfg)
 
     async def set_enabled(self, on: bool) -> dict:

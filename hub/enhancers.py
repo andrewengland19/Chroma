@@ -31,6 +31,8 @@ class NullEnhancer:
     last_ok = None
     last_reasoning = ""
     last_error = ""
+    last_mood = ""
+    last_palette: list = []
 
     async def enhance(self, artwork, meta, coords, base_rgb):
         return None
@@ -53,6 +55,8 @@ def _rgb_to_hex(c) -> str:
 _SCHEMA = {
     "type": "object",
     "properties": {
+        "mood": {"type": "string"},
+        "palette": {"type": "array", "items": {"type": "string"}},
         "colors": {
             "type": "array",
             "items": {
@@ -77,6 +81,8 @@ class OllamaEnhancer:
         self.last_ok: Optional[bool] = None
         self.last_reasoning = ""
         self.last_error = ""
+        self.last_mood = ""
+        self.last_palette: list = []
 
     def _prompt(self, meta: dict, coords: list, base_rgb: list) -> str:
         lines = []
@@ -92,7 +98,10 @@ class OllamaEnhancer:
             "borders, and text/logos. Keep each region's color faithful to that part of the art.\n"
             f"Now playing: {track}\n"
             f"Regions ({len(coords)}):\n" + "\n".join(lines) + "\n"
-            "Respond as JSON: {\"colors\":[{\"region\":<int>,\"hex\":\"#rrggbb\"}...],\"reasoning\":\"<short>\"}"
+            "Also give the overall mood (2-4 words), an ordered palette (dominant→least, hex), "
+            "and one or two sentences of reasoning. Respond as JSON: "
+            "{\"mood\":\"<words>\",\"palette\":[\"#rrggbb\"...],"
+            "\"colors\":[{\"region\":<int>,\"hex\":\"#rrggbb\"}...],\"reasoning\":\"<short>\"}"
         )
 
     async def enhance(self, artwork, meta, coords, base_rgb):
@@ -107,7 +116,9 @@ class OllamaEnhancer:
             "messages": [{"role": "user", "content": self._prompt(meta, coords, base_rgb),
                           "images": [b64]}],
         }
-        timeout = aiohttp.ClientTimeout(total=self.timeout_ms / 1000)
+        # Fast-fail if the host is unreachable (Meshnet/PC down) so the room isn't
+        # blank for the full inference budget; still allow the full budget to run.
+        timeout = aiohttp.ClientTimeout(total=self.timeout_ms / 1000, sock_connect=3)
         try:
             async with aiohttp.ClientSession(timeout=timeout) as sess:
                 async with sess.post(f"{self.url}/api/chat", json=payload) as r:
@@ -119,6 +130,9 @@ class OllamaEnhancer:
             out = [by_region.get(i) or base_rgb[i] for i in range(len(coords))]
             self.last_ok = True
             self.last_reasoning = str(parsed.get("reasoning", ""))[:300]
+            self.last_mood = str(parsed.get("mood", ""))[:60]
+            pal = parsed.get("palette", []) or []
+            self.last_palette = [h for h in pal if _hex_to_rgb(h)][:8]
             self.last_error = ""
             return out
         except Exception as e:

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, asdict, fields
+from dataclasses import dataclass, asdict, field, fields
 
 from color_pipeline import PipelineParams
 
@@ -23,12 +23,15 @@ class Config:
     use_group: bool = False          # False = every LIFX bulb on the LAN
     group_name: str = "Living Room"  # used only when use_group is True
 
-    # Color mode
-    # "classic" → single_color/num_colors as before; "spatial" → project the
-    # album art across the room using the per-bulb layout (~/.chroma/layout.json).
-    mode: str = "classic"
-    single_color: bool = False
+    # Color mode (Pass 4): "deterministic" (per-region album art per bulb),
+    # "paint" (user focus colors via paint_distribution), "ai" (region + Ollama).
+    mode: str = "deterministic"
+    single_color: bool = False   # legacy; retained for back-compat
     num_colors: int = 3
+
+    # Paint mode
+    paint_distribution: str = "round_robin"   # "round_robin" | "spatial"
+    paint_colors: list = field(default_factory=list)  # [{"hex","x","y"}]
 
     # AI palette enhancement (Pass 3.5) — local Ollama vision model over the LAN.
     # Disabled unless ai_enhance is on AND ollama_url is set. Model returns hues;
@@ -90,7 +93,16 @@ class Config:
                 with open(CONFIG_PATH) as f:
                     data = json.load(f)
                 known = {f.name for f in fields(cls)}
-                return cls(**{k: v for k, v in data.items() if k in known})
+                cfg = cls(**{k: v for k, v in data.items() if k in known})
+                cfg._migrate_mode()
+                return cfg
             except Exception:
                 pass
         return cls()
+
+    def _migrate_mode(self) -> None:
+        """Map pre-Pass-4 mode values onto {deterministic, paint, ai}."""
+        if self.mode == "spatial":
+            self.mode = "ai" if self.ai_enhance else "deterministic"
+        elif self.mode in ("classic", "single", "palette"):
+            self.mode = "deterministic"
