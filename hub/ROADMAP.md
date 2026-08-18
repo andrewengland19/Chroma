@@ -43,6 +43,11 @@ bulbs from the album art.
   `hub/distribute.py` = round-robin + OKLab inverse-distance blend. Engine `mode` refactored
   to {deterministic,paint,ai} (migrated from `spatial`+`ai_enhance`). Reachable from the phone
   browser on the LAN, so no native app needed for MVP.
+- **Pass 4.5 — per-album scenes.** `scenes.py` persists an album's lighting to
+  `~/.chroma/scenes.json` (keyed by `artist|||album`). An AI-enhanced result or a custom
+  paint scene is saved and auto-recalled whenever that album returns — **overriding the
+  global mode** — so Ollama never re-runs for a known album. GUI shows a saved-scene bar +
+  Forget button. Deterministic output is not cached.
 
 ## Planned
 

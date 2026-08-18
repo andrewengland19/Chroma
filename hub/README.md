@@ -74,6 +74,7 @@ launchd, Pass 5) shuts it down cleanly.
 | `layout.py` | **Pass 3.5** — bulb `(x,y)` positions + region cropping |
 | `enhancers.py` | **Pass 3.5** — `PaletteEnhancer` seam (`NullEnhancer`, `OllamaEnhancer`) |
 | `distribute.py` | **Pass 4** — round-robin + OKLab IDW colour distribution |
+| `scenes.py` | **Pass 4.5** — persistent per-album scenes (`~/.chroma/scenes.json`) |
 | `web/` | **Pass 4** — the web GUI (`index.html`, `app.js`, `style.css`) |
 | `showctl.py` | background start/stop (`lite show …`), now launches `server.py` |
 | `spike.py` | Pass 1 proof (one-shot; superseded by `engine.py`) |
@@ -88,6 +89,19 @@ or phone). One **bidirectional** WebSocket carries state + events out and comman
   pick 1+ colours; toggle **round-robin** (even split by position) vs **spatial** (OKLab
   inverse-distance blend across the room).
 - **Tuning** — brightness / dynamic-range / floor / transition sliders (live).
+
+## 7. Per-album scenes (Pass 4.5)
+
+The hub remembers the *exact* lighting for an album and reproduces it automatically whenever
+that album plays again — persisted to `~/.chroma/scenes.json`, keyed by `artist|||album`.
+Only meaningful work is saved (deterministic output is cheap and isn't):
+- **AI** — the first time an album is AI-enhanced, its result (colours + reasoning) is saved;
+  later plays reuse it with **no model call**.
+- **Paint** — making a custom paint scene while an album plays saves it for that album.
+
+A saved scene **overrides the global mode** for its album, so you can sit in AI mode generally
+but pin a hand-painted look to specific albums. The GUI shows a "★ saved scene" bar with a
+**Forget** button (`scene_clear`) to revert an album to the global mode.
 
 ## 4. Control plane (Pass 3)
 
@@ -153,7 +167,10 @@ Updated at each pass boundary so the next pass resumes with no re-derivation.
   Verified: spatial paints 5 distinct per-bulb colors mapped to position; `/layout` seeds +
   edits live; dead-Ollama fallback is fast and safe. AI idle until `ollama_url` is set.
   Survived a real sleep/wake cycle (auto-reconnect held).
-- **Pass 4 — ✅ DONE (verified live, uncommitted pending review).** Hub-served web GUI
+- **Pass 4.5 — ✅ DONE.** Persistent per-album scenes (`scenes.py`): AI results + custom paint
+  scenes saved per album and auto-recalled (overriding the global mode); "Forget" reverts.
+  Verified live: paint scene saved to disk, recalled over a deterministic global mode, cleared.
+- **Pass 4 — ✅ DONE (verified live).** Hub-served web GUI
   (`hub/web/`, vanilla JS + Canvas) over a now-**bidirectional** `/ws`. Room canvas with
   draggable lights (live per-bulb colors), album-art paint picker (click-to-sample +
   press-hold magnifier), 3 modes (deterministic/paint/ai), AI reasoning panel. New
