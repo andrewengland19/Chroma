@@ -45,6 +45,7 @@ function applyState(s) {
   document.querySelectorAll(".mode").forEach(b =>
     b.classList.toggle("active", b.dataset.mode === s.mode));
   showPanel(s.mode);
+  renderScene(s.scene);
   // sliders (don't fight an active drag)
   const c = s.config || {};
   ["brightness", "brightness_dynamic_range", "brightness_floor", "transition_ms"].forEach(id => {
@@ -245,5 +246,15 @@ let sliderTimer = null;
     }, 120);
   });
 });
+
+function renderScene(sc) {
+  const bar = document.getElementById("sceneBar");
+  if (!sc || !sc.saved) { bar.hidden = true; return; }
+  bar.hidden = false;
+  const kind = sc.type === "ai" ? "AI" : "paint";
+  document.getElementById("sceneLabel").textContent =
+    (sc.active ? "★ playing this album's saved " : "★ saved ") + kind + " scene for this album";
+}
+document.getElementById("forgetScene").onclick = () => send({ cmd: "scene_clear" });
 
 connect();

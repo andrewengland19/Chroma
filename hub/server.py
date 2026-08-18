@@ -102,6 +102,11 @@ async def post_paint_clear():
     return await engine.paint_clear()
 
 
+@app.post("/scene/clear")
+async def post_scene_clear():
+    return await engine.scene_clear()
+
+
 @app.get("/layout")
 async def get_layout():
     return engine.layout.to_dict()
@@ -156,6 +161,8 @@ async def _dispatch(cmd: dict) -> None:
         await engine.set_focus(cmd.get("distribution"), cmd.get("colors") or [])
     elif c == "paint_clear":
         await engine.paint_clear()
+    elif c == "scene_clear":
+        await engine.scene_clear()
     # After any mutating command, push fresh state to every client.
     if c and c != "resync":
         engine.bus.publish("state", **engine.snapshot())

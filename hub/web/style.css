@@ -75,3 +75,8 @@ input[type=range]{flex:1; accent-color:var(--accent); max-width:60%}
 @media (max-width:520px){
   #track,#sub{max-width:40vw}
 }
+
+#sceneBar{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#241a33; border:1px solid #3a2b52; border-radius:12px; padding:9px 14px;
+  margin:-4px 0 14px; font-size:13px; color:#d9c6ff}
+#sceneBar button{padding:6px 12px; font-size:12px}
