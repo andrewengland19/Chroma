@@ -16,10 +16,13 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from config import Config
 from engine import Engine, ARTWORK_FILE
+
+WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 
 engine: Engine | None = None
 _engine_task: asyncio.Task | None = None
@@ -83,6 +86,22 @@ async def post_enabled(body: dict):
     return await engine.set_enabled(on)
 
 
+@app.post("/mode")
+async def post_mode(body: dict):
+    return await engine.set_mode((body or {}).get("mode", ""))
+
+
+@app.post("/paint")
+async def post_paint(body: dict):
+    body = body or {}
+    return await engine.set_focus(body.get("distribution"), body.get("colors") or [])
+
+
+@app.post("/paint/clear")
+async def post_paint_clear():
+    return await engine.paint_clear()
+
+
 @app.get("/layout")
 async def get_layout():
     return engine.layout.to_dict()
@@ -115,70 +134,63 @@ async def get_artwork():
 
 
 # =============================================================================
-# WebSocket — snapshot on connect, then live events
+# WebSocket — bidirectional: streams events out, accepts command frames in
 # =============================================================================
+
+async def _dispatch(cmd: dict) -> None:
+    c = cmd.get("cmd")
+    if c == "set_mode":
+        await engine.set_mode(cmd.get("mode", ""))
+    elif c == "set_config":
+        await engine.set_config(cmd.get("patch") or {})
+    elif c == "set_enabled":
+        await engine.set_enabled(bool(cmd.get("on", True)))
+    elif c == "transport":
+        await engine.transport(cmd.get("action", ""))
+    elif c == "move_light":
+        await engine.move_light(cmd.get("label", ""),
+                                float(cmd.get("x", 0.5)), float(cmd.get("y", 0.5)))
+    elif c == "set_layout":
+        await engine.set_layout({k: cmd[k] for k in ("lights", "region_w", "region_h") if k in cmd})
+    elif c == "paint_set":
+        await engine.set_focus(cmd.get("distribution"), cmd.get("colors") or [])
+    elif c == "paint_clear":
+        await engine.paint_clear()
+    # After any mutating command, push fresh state to every client.
+    if c and c != "resync":
+        engine.bus.publish("state", **engine.snapshot())
+    elif c == "resync":
+        engine.bus.publish("state", **engine.snapshot())
+
 
 @app.websocket("/ws")
 async def ws(sock: WebSocket):
     await sock.accept()
     await sock.send_json({"event": "state", **engine.snapshot()})
     q = engine.bus.subscribe()
-    try:
+
+    async def pump():          # engine events → client
         while True:
             await sock.send_json(await q.get())
-    except WebSocketDisconnect:
-        pass
-    except Exception:
+
+    async def recv():          # client commands → engine
+        while True:
+            await _dispatch(await sock.receive_json())
+
+    try:
+        await asyncio.gather(pump(), recv())
+    except (WebSocketDisconnect, Exception):
         pass
     finally:
         engine.bus.unsubscribe(q)
 
 
 # =============================================================================
-# Tiny built-in status page (sanity check from a phone browser; real UI = Pass 4)
+# Web GUI — served from hub/web/ (index.html at /). Mounted LAST so the API
+# routes above take precedence.
 # =============================================================================
 
-_PAGE = """<!doctype html><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<title>CHROMA hub</title>
-<style>
-  :root{color-scheme:dark}
-  body{margin:0;font:16px -apple-system,system-ui,sans-serif;background:#0e0e0e;color:#eee;
-       display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px}
-  #art{width:min(70vw,320px);aspect-ratio:1;border-radius:16px;background:#1a1a1a #222;
-       object-fit:cover;box-shadow:0 8px 40px #0008}
-  #track{font-size:18px;font-weight:600;text-align:center;min-height:1.4em}
-  #sub{color:#999;text-align:center;margin-top:-8px}
-  #pal{display:flex;gap:8px}
-  .sw{width:44px;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px #fff2}
-  #st{color:#777;font-size:13px}
-</style>
-<img id=art alt="album art">
-<div id=track>—</div>
-<div id=sub></div>
-<div id=pal></div>
-<div id=st>connecting…</div>
-<script>
-const hsl=c=>`hsl(${c.h/65535*360} ${c.s/65535*100}% ${Math.max(20,c.b/65535*60)}%)`;
-function render(s){
-  document.getElementById('track').textContent=s.track||'Nothing playing';
-  document.getElementById('sub').textContent=(s.device?('📺 '+s.device):'')+(s.album?('  ·  '+s.album):'');
-  const pal=document.getElementById('pal');pal.innerHTML='';
-  (s.colors||[]).forEach(c=>{const d=document.createElement('div');d.className='sw';d.style.background=hsl(c);pal.appendChild(d);});
-  document.getElementById('st').textContent=(s.connected?'● connected':'○ disconnected')+' · '+(s.lights||0)+' lights'+(s.enabled?'':' · paused');
-  if(s.track)document.getElementById('art').src='/artwork.jpg?'+Date.now();
-}
-fetch('/state').then(r=>r.json()).then(render);
-const proto=location.protocol==='https:'?'wss':'ws';
-const w=new WebSocket(proto+'://'+location.host+'/ws');
-w.onmessage=e=>{const m=JSON.parse(e.data);if(m.event==='state')render(m);else fetch('/state').then(r=>r.json()).then(render);};
-w.onclose=()=>document.getElementById('st').textContent='○ socket closed';
-</script>"""
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    return _PAGE
+app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
 
 
 if __name__ == "__main__":

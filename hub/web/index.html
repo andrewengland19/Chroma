@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>CHROMA hub</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="np">
+    <img id="art" alt="album art" src="/artwork.jpg">
+    <div class="npmeta">
+      <div id="track">Nothing playing</div>
+      <div id="sub"></div>
+      <div id="status"><span id="dot" class="dot"></span><span id="statustext">connecting…</span></div>
+    </div>
+  </div>
+  <div class="transport">
+    <button data-action="previous" title="Previous">⏮</button>
+    <button data-action="play_pause" title="Play / Pause">⏯</button>
+    <button data-action="next" title="Next">⏭</button>
+    <button id="power" title="Pause / resume painting">◐</button>
+  </div>
+</header>
+
+<nav id="modes">
+  <button data-mode="deterministic" class="mode">Deterministic</button>
+  <button data-mode="paint" class="mode">Paint</button>
+  <button data-mode="ai" class="mode">AI</button>
+</nav>
+
+<main>
+  <section class="card">
+    <h2>Room <small>drag lights to match your space</small></h2>
+    <canvas id="room" width="640" height="380"></canvas>
+  </section>
+
+  <section class="card" id="paintPanel" hidden>
+    <h2>Paint <small>click the art to sample · press-hold to zoom</small></h2>
+    <div class="artwrap">
+      <img id="paintArt" alt="album art to sample" src="/artwork.jpg">
+      <canvas id="lens" width="140" height="140" hidden></canvas>
+    </div>
+    <div class="row">
+      <div id="swatches" class="swatches"></div>
+    </div>
+    <div class="row">
+      <div class="seg small" id="distrib">
+        <button data-dist="round_robin">Round-robin</button>
+        <button data-dist="spatial">Spatial</button>
+      </div>
+      <button id="clearPaint" class="ghost">Clear</button>
+    </div>
+  </section>
+
+  <section class="card" id="aiPanel" hidden>
+    <h2>AI reasoning <small id="aiModel"></small></h2>
+    <div id="aiMood" class="mood"></div>
+    <div id="aiPalette" class="swatches"></div>
+    <p id="aiReasoning" class="reasoning">Waiting for the next track…</p>
+    <p id="aiError" class="err"></p>
+  </section>
+
+  <section class="card">
+    <h2>Tuning</h2>
+    <label>Brightness <input type="range" id="brightness" min="0.05" max="1" step="0.01"></label>
+    <label>Dynamic range <input type="range" id="brightness_dynamic_range" min="0" max="2" step="0.05"></label>
+    <label>Floor <input type="range" id="brightness_floor" min="0" max="1" step="0.01"></label>
+    <label>Transition (ms) <input type="range" id="transition_ms" min="150" max="4000" step="50"></label>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
