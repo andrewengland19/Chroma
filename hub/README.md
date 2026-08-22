@@ -72,11 +72,16 @@ launchd, Pass 5) shuts it down cleanly.
 | `engine.py` | **headless daily-driver engine** — connect → react → paint → write contracts |
 | `server.py` | **Pass 3 control plane** — FastAPI + WebSocket embedding the engine |
 | `layout.py` | **Pass 3.5** — bulb `(x,y)` positions + region cropping |
-| `enhancers.py` | **Pass 3.5** — `PaletteEnhancer` seam (`NullEnhancer`, `OllamaEnhancer`) |
+| `enhancers.py` | **Pass 3.5/4.6** — `PaletteEnhancer` seam (`NullEnhancer`, `OllamaEnhancer`, `ClaudeEnhancer`) |
+| `keystore.py` | **Pass 4.6** — Anthropic API key from env / macOS Keychain |
 | `distribute.py` | **Pass 4** — round-robin + OKLab IDW colour distribution |
 | `scenes.py` | **Pass 4.5** — persistent per-album scenes (`~/.chroma/scenes.json`) |
 | `web/` | **Pass 4** — the web GUI (`index.html`, `app.js`, `style.css`) |
 | `showctl.py` | background start/stop (`lite show …`), now launches `server.py` |
+| `tv_cmd.py` | **`tv` CLI** — rapid-fire Apple TV remote from any terminal |
+| `tv` | shell wrapper — `exec .venv/bin/python tv_cmd.py "$@"` |
+| `tv_hotkey.py` | global hotkey daemon — `Ctrl+Shift+Enter` → `tv ok` (select) |
+| `com.chroma.tv-hotkey.plist` | LaunchAgent to run `tv_hotkey.py` at login |
 | `spike.py` | Pass 1 proof (one-shot; superseded by `engine.py`) |
 
 ## 6. Web GUI (Pass 4)
@@ -102,6 +107,26 @@ Only meaningful work is saved (deterministic output is cheap and isn't):
 A saved scene **overrides the global mode** for its album, so you can sit in AI mode generally
 but pin a hand-painted look to specific albums. The GUI shows a "★ saved scene" bar with a
 **Forget** button (`scene_clear`) to revert an album to the global mode.
+
+## 8. AI backends: Ollama (auto) + Claude fallback (Pass 4.6)
+
+The AI enhancer has two backends. **Ollama (local) is preferred and automatic:** a health
+monitor pings it, and when it's reachable the hub auto-enables AI mode. When Ollama is
+unreachable (Meshnet/PC down), the hub **flags it on the web homescreen, falls back to
+deterministic (the room keeps painting), and never auto-switches to Claude** — Claude is a
+manual, opt-in override (it costs money and is remote).
+
+- **Store the key once** (macOS login Keychain; never in git/config):
+
+```bash
+lite show setkey            # prompts, input hidden
+```
+
+- The GUI shows an **offline banner** with a **Use Claude** button (enabled only when a key is
+  stored). Or drive it directly: `curl -X POST localhost:8765/backend -d '{"backend":"claude"}'`.
+- Model: `claude-opus-5` (config `claude_model`). Because Pass 4.5 caches each album's result,
+  Claude runs at most once per new album — pennies per album.
+- Key resolution: `ANTHROPIC_API_KEY` env first, else the Keychain item `chroma-hub/anthropic`.
 
 ## 4. Control plane (Pass 3)
 
@@ -147,6 +172,64 @@ curl -s localhost:8765/enhancer | jq     # model, reachable, last reasoning
 
 `ollama_model` is config — swap to `llava-phi3`, `qwen2.5-vl:7b`, etc. without code changes.
 
+## 9. `tv` — rapid-fire Apple TV CLI
+
+Control the Apple TV from any terminal without touching the remote:
+
+```bash
+# Install once
+ln -sf /Users/andy/Code/Chroma/hub/tv /usr/local/bin/tv
+
+tv now                  # ▶ Artist — Title [Album]
+tv pause / play / stop  # transport
+tv toggle               # play-pause toggle
+tv next / prev          # track navigation
+tv vol up 3             # volume up 3 notches
+tv vol down             # volume down 1 notch
+tv skip 30              # skip forward 30 s
+tv back 10              # skip back 10 s
+tv up/down/left/right   # d-pad navigation
+tv select / ok          # select button
+tv menu / home / top    # menu, home, top-menu
+tv wake / sleep         # power on / off
+tv apps                 # list launchable apps
+tv launch music         # launch app by partial name
+```
+
+## 10. Global hotkey: `Ctrl+Shift+Enter` → `tv ok`
+
+A background daemon (`tv_hotkey.py`) registers **⌃⇧↵** system-wide and fires
+`tv ok` (the select button) — handy for skipping theme songs from the couch.
+
+### Install (one time)
+
+**1. Grant Accessibility access** — macOS requires it for global hotkeys:
+
+> System Settings → Privacy & Security → Accessibility  
+> Click **+** and add: `/Users/andy/Code/Chroma/hub/.venv/bin/python3`
+
+**2. Load the LaunchAgent** (starts now and at every login):
+
+```bash
+ln -sf /Users/andy/Code/Chroma/hub/com.chroma.tv-hotkey.plist \
+       ~/Library/LaunchAgents/com.chroma.tv-hotkey.plist
+launchctl load ~/Library/LaunchAgents/com.chroma.tv-hotkey.plist
+```
+
+Check it's running:
+
+```bash
+launchctl list | grep chroma
+tail -f /tmp/tv-hotkey.log
+```
+
+Stop / restart:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.chroma.tv-hotkey.plist
+launchctl load   ~/Library/LaunchAgents/com.chroma.tv-hotkey.plist
+```
+
 ## Progress Ledger
 
 Updated at each pass boundary so the next pass resumes with no re-derivation.
@@ -167,6 +250,11 @@ Updated at each pass boundary so the next pass resumes with no re-derivation.
   Verified: spatial paints 5 distinct per-bulb colors mapped to position; `/layout` seeds +
   edits live; dead-Ollama fallback is fast and safe. AI idle until `ollama_url` is set.
   Survived a real sleep/wake cycle (auto-reconnect held).
+- **Pass 4.6 — ✅ DONE (verified live).** Claude/Anthropic fallback: `ClaudeEnhancer`
+  (`claude-opus-5`, vision + json_schema), `keystore.py`, `lite show setkey`. Ollama health
+  monitor auto-enables AI when reachable and flags offline + falls to deterministic when not —
+  Claude stays manual. Verified: offline banner + disabled Use-Claude (no key) in the browser;
+  graceful no-key degrade. Scenes now carry a `source` field for future training data.
 - **Pass 4.5 — ✅ DONE.** Persistent per-album scenes (`scenes.py`): AI results + custom paint
   scenes saved per album and auto-recalled (overriding the global mode); "Forget" reverts.
   Verified live: paint scene saved to disk, recalled over a deterministic global mode, cleared.

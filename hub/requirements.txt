@@ -11,3 +11,7 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 # aiohttp is already pulled in by pyatv; listed for the Ollama enhancer (Pass 3.5)
 aiohttp>=3.9
+# anthropic: Claude API fallback for the enhancer (Pass 4.6)
+anthropic>=0.40
+# pynput: global hotkey daemon (tv_hotkey.py — Ctrl+Shift+Enter → tv ok)
+pynput>=1.7

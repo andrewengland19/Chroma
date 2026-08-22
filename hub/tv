@@ -1,0 +1,5 @@
+#!/bin/zsh
+# Shell wrapper for the tv Apple TV CLI.
+# Install: ln -sf /Users/andy/Code/Chroma/hub/tv /usr/local/bin/tv
+cd /Users/andy/Code/Chroma/hub
+exec .venv/bin/python tv_cmd.py "$@"
