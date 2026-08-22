@@ -32,6 +32,7 @@ from color_pipeline import (artwork_to_hsbk, region_colors,
 from config import Config
 from layout import Layout
 from enhancers import build_enhancer
+from keystore import has_anthropic_key
 from scenes import SceneStore
 from distribute import round_robin, idw_blend, hex_to_rgb, rgb_to_hex
 
@@ -192,6 +193,10 @@ class Engine(DeviceListener, PushListener):
         self.enhancer = build_enhancer(self.cfg)
         self.scenes = SceneStore.load()   # persistent per-album scenes
         self._scene_active = False
+        # Pass 4.6: Ollama reachability + Claude fallback
+        self.ollama_reachable: Optional[bool] = None
+        self.ai_offline = False        # banner flag: local AI down while AI was wanted
+        self._health_task = None
 
         self._stop = asyncio.Event()       # process shutdown
         self._disconnected = asyncio.Event()  # ATV dropped → reconnect
@@ -357,32 +362,38 @@ class Engine(DeviceListener, PushListener):
         base_rgb = await self.loop.run_in_executor(
             None, region_colors, art, coords, self.layout, params)
         rgb = base_rgb
-        if use_ai and self.cfg.ollama_url:
+        if use_ai and self.enhancer.active:
+            model = self._active_model()
             enhanced = await self.enhancer.enhance(
                 art, {"track": np.label() if np else ""}, coords, base_rgb)
-            self.bus.publish("ai_reasoning", model=self.cfg.ollama_model,
+            self.bus.publish("ai_reasoning", model=model, backend=self.cfg.ai_backend,
                              ok=bool(enhanced), mood=self.enhancer.last_mood,
                              palette=self.enhancer.last_palette,
                              reasoning=self.enhancer.last_reasoning,
                              error=self.enhancer.last_error, cached=False)
             if enhanced:
                 rgb = enhanced
-                log.info(f"   → AI palette ({self.cfg.ollama_model}) — scene saved")
+                log.info(f"   → AI palette ({model}) — scene saved")
                 if scene_key:
                     self.scenes.set(scene_key, {
                         "type": "ai", "rgb": [list(c) for c in enhanced],
                         "layout_fp": self.layout.fingerprint(),
+                        "source": f"ai_{self.cfg.ai_backend}",
                         "mood": self.enhancer.last_mood,
                         "palette": self.enhancer.last_palette,
                         "reasoning": self.enhancer.last_reasoning,
                     })
         return rgb
 
+    def _active_model(self) -> str:
+        return self.cfg.claude_model if self.cfg.ai_backend == "claude" else self.cfg.ollama_model
+
     def _sync_enhancer(self) -> None:
         """Rebuild the enhancer + clear the AI cache when ai-config changes (via API
         or a config-file edit picked up on the next track)."""
-        sig = (self.cfg.ai_enhance, self.cfg.ollama_url,
-               self.cfg.ollama_model, self.cfg.ai_timeout_ms)
+        sig = (self.cfg.ai_enhance, self.cfg.ai_backend, self.cfg.ollama_url,
+               self.cfg.ollama_model, self.cfg.claude_model, self.cfg.ai_timeout_ms,
+               has_anthropic_key())
         if sig != getattr(self, "_enh_sig", None):
             self.enhancer = build_enhancer(self.cfg)
             self._enh_sig = sig
@@ -407,9 +418,14 @@ class Engine(DeviceListener, PushListener):
             "config": asdict(self.cfg),
             "layout": self.layout.to_dict(),
             "ai": {
-                "enabled": bool(self.cfg.mode == "ai" and self.cfg.ollama_url),
-                "model": self.cfg.ollama_model,
+                "enabled": bool(self.cfg.mode == "ai"),
+                "backend": self.cfg.ai_backend,
+                "model": self._active_model(),
                 "url": self.cfg.ollama_url,
+                "auto": self.cfg.ai_auto,
+                "ollama_reachable": self.ollama_reachable,
+                "claude_available": has_anthropic_key(),
+                "offline": self.ai_offline,
                 "last_ok": getattr(self.enhancer, "last_ok", None),
                 "mood": getattr(self.enhancer, "last_mood", ""),
                 "palette": getattr(self.enhancer, "last_palette", []),
@@ -446,6 +462,20 @@ class Engine(DeviceListener, PushListener):
         await self._repaint("mode")
         return self.snapshot()
 
+    async def set_backend(self, backend: str) -> dict:
+        """Manual backend switch (the 'Use Claude' trigger). Selecting claude also
+        turns AI mode on; ollama is only useful when reachable."""
+        if backend not in ("ollama", "claude"):
+            return self.snapshot()
+        self.cfg.ai_backend = backend
+        if backend == "claude":
+            self.cfg.mode = "ai"
+            self.cfg.ai_enhance = True
+            self.ai_offline = False
+        self.cfg.save()
+        await self._repaint("backend")
+        return self.snapshot()
+
     async def set_focus(self, distribution: Optional[str], colors: list) -> dict:
         """Set paint focus colors ([{hex,x,y}]) and switch to paint mode."""
         if distribution in ("round_robin", "spatial"):
@@ -458,7 +488,8 @@ class Engine(DeviceListener, PushListener):
         if key and self.cfg.paint_colors:
             self.scenes.set(key, {"type": "paint",
                                   "distribution": self.cfg.paint_distribution,
-                                  "colors": self.cfg.paint_colors})
+                                  "colors": self.cfg.paint_colors,
+                                  "source": "user_paint"})
         await self._repaint("paint")
         return self.snapshot()
 
@@ -545,10 +576,67 @@ class Engine(DeviceListener, PushListener):
     def stop(self) -> None:
         self._stop.set()
 
+    # ---- Pass 4.6: Ollama reachability → auto AI / manual Claude ------------
+    async def _ping_ollama(self) -> bool:
+        url = self.cfg.ollama_url
+        if not url:
+            return False
+        try:
+            import aiohttp
+            timeout = aiohttp.ClientTimeout(total=3, sock_connect=3)
+            async with aiohttp.ClientSession(timeout=timeout) as sess:
+                async with sess.get(f"{url.rstrip('/')}/api/tags") as r:
+                    return r.status == 200
+        except Exception:
+            return False
+
+    async def _health_monitor(self) -> None:
+        """Poll Ollama; auto-enable AI when it comes online, flag + fall back when
+        it goes offline. Claude is never auto-selected."""
+        while not self._stop.is_set():
+            reachable = await self._ping_ollama()
+            prev = self.ollama_reachable
+            self.ollama_reachable = reachable
+            if prev is None or prev != reachable:
+                await self._on_ollama_transition(reachable)
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=20)
+            except asyncio.TimeoutError:
+                pass
+
+    async def _on_ollama_transition(self, reachable: bool) -> None:
+        if reachable:
+            self.ai_offline = False
+            if self.cfg.ai_auto and not (self.cfg.mode == "ai" and self.cfg.ai_backend == "ollama"):
+                self.cfg.ai_backend = "ollama"
+                self.cfg.mode = "ai"
+                self.cfg.ai_enhance = True
+                self.cfg.save()
+                log.info("  ● Local AI (Ollama) online — AI mode enabled")
+                self.bus.publish("status", message="Local AI online — AI mode enabled")
+                await self._repaint("ollama-online")
+            else:
+                self.bus.publish("status", message="Local AI online")
+        else:
+            if self.cfg.mode == "ai" and self.cfg.ai_backend == "ollama":
+                self.cfg.mode = "deterministic"
+                self.cfg.ai_enhance = False
+                self.cfg.save()
+                self.ai_offline = True
+                log.warning("  ○ Local AI (Ollama) offline — deterministic (use Claude to override)")
+                self.bus.publish("status", message="Local AI (Ollama) offline — deterministic")
+                await self._repaint("ollama-offline")
+            else:
+                self.ai_offline = True
+                self.bus.publish("status", message="Local AI (Ollama) offline")
+        # push fresh state so the GUI banner/backend chip updates
+        self.bus.publish("state", **self.snapshot())
+
     # ---- supervisor: connect, run, reconnect -------------------------------
     async def run(self) -> None:
         log.info("CHROMA hub starting — headless Apple TV → LIFX")
         self._install_signals()
+        self._health_task = self.loop.create_task(self._health_monitor())
         attempt = 0
         while not self._stop.is_set():
             try:
@@ -590,6 +678,8 @@ class Engine(DeviceListener, PushListener):
                 pass
             self.provider = None
 
+        if self._health_task:
+            self._health_task.cancel()
         log.info("CHROMA hub stopped.")
 
     async def _serve_until_disconnect(self) -> None:

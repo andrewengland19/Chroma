@@ -37,8 +37,11 @@ class Config:
     # Disabled unless ai_enhance is on AND ollama_url is set. Model returns hues;
     # brightness/HSBK still applied from this config, so sliders stay instant.
     ai_enhance: bool = False
+    ai_backend: str = "ollama"      # "ollama" | "claude"
+    ai_auto: bool = True            # auto-enable AI mode when Ollama comes online
     ollama_url: str = ""            # e.g. "http://192.168.0.42:11434"
     ollama_model: str = "gemma3:4b"
+    claude_model: str = "claude-opus-5"
     ai_timeout_ms: int = 6000
 
     # Brightness

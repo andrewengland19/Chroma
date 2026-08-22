@@ -107,6 +107,17 @@ async def post_scene_clear():
     return await engine.scene_clear()
 
 
+@app.post("/backend")
+async def post_backend(body: dict):
+    return await engine.set_backend((body or {}).get("backend", ""))
+
+
+@app.get("/keystatus")
+async def get_keystatus():
+    from keystore import has_anthropic_key
+    return {"claude_available": has_anthropic_key()}
+
+
 @app.get("/layout")
 async def get_layout():
     return engine.layout.to_dict()
@@ -163,6 +174,8 @@ async def _dispatch(cmd: dict) -> None:
         await engine.paint_clear()
     elif c == "scene_clear":
         await engine.scene_clear()
+    elif c == "set_backend":
+        await engine.set_backend(cmd.get("backend", ""))
     # After any mutating command, push fresh state to every client.
     if c and c != "resync":
         engine.bus.publish("state", **engine.snapshot())

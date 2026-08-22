@@ -80,3 +80,9 @@ input[type=range]{flex:1; accent-color:var(--accent); max-width:60%}
   background:#241a33; border:1px solid #3a2b52; border-radius:12px; padding:9px 14px;
   margin:-4px 0 14px; font-size:13px; color:#d9c6ff}
 #sceneBar button{padding:6px 12px; font-size:12px}
+
+#aiBanner{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#332017; border:1px solid #5a3a24; border-radius:12px; padding:9px 14px;
+  margin:-4px 0 14px; font-size:13px; color:#f0c9a8}
+#aiBanner button{padding:6px 12px; font-size:12px}
+#aiBanner button:disabled{opacity:.4; cursor:default}

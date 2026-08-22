@@ -46,6 +46,7 @@ function applyState(s) {
     b.classList.toggle("active", b.dataset.mode === s.mode));
   showPanel(s.mode);
   renderScene(s.scene);
+  renderAIStatus(s.ai);
   // sliders (don't fight an active drag)
   const c = s.config || {};
   ["brightness", "brightness_dynamic_range", "brightness_floor", "transition_ms"].forEach(id => {
@@ -256,5 +257,24 @@ function renderScene(sc) {
     (sc.active ? "★ playing this album's saved " : "★ saved ") + kind + " scene for this album";
 }
 document.getElementById("forgetScene").onclick = () => send({ cmd: "scene_clear" });
+
+function renderAIStatus(ai) {
+  const bar = document.getElementById("aiBanner");
+  if (!ai) { bar.hidden = true; return; }
+  // Show the offline banner when the local model is unreachable and we're not
+  // already on Claude. "Use Claude" is enabled only if a key is configured.
+  const showBanner = ai.ollama_reachable === false && ai.backend !== "claude";
+  bar.hidden = !showBanner;
+  if (showBanner) {
+    const btn = document.getElementById("useClaude");
+    btn.disabled = !ai.claude_available;
+    btn.title = ai.claude_available ? "" : "Run: lite show setkey";
+    document.getElementById("aiBannerText").textContent =
+      "Local AI (Ollama) offline" + (ai.claude_available ? "" : " · no Claude key");
+  }
+  const chip = document.getElementById("aiModel");
+  if (chip) chip.textContent = (ai.model || "") + (ai.backend === "claude" ? " · Claude" : " · local");
+}
+document.getElementById("useClaude").onclick = () => send({ cmd: "set_backend", backend: "claude" });
 
 connect();

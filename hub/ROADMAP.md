@@ -49,6 +49,13 @@ bulbs from the album art.
   global mode** — so Ollama never re-runs for a known album. GUI shows a saved-scene bar +
   Forget button. Deterministic output is not cached.
 
+- **Pass 4.6 — Claude/Anthropic fallback.** Second enhancer backend (`ClaudeEnhancer`,
+  `claude-opus-5`, vision + strict json_schema via the `anthropic` SDK). Policy: Ollama
+  reachable → **auto** AI (ollama); Ollama down → **flag on the homescreen + manual Use Claude**
+  (never auto). Key in macOS Keychain (`lite show setkey`) / `ANTHROPIC_API_KEY`. Cheap because
+  Pass 4.5 caches each album. Scenes gained a `source` field (`user_paint`/`ai_ollama`/`ai_claude`)
+  — labeled training data for a future personalized style predictor.
+
 ## Planned
 
 - **Pass 5 — first-run config + packaging.** Light discovery/selection + ATV pairing wizard;
