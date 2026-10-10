@@ -1,0 +1,454 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1520 1761" width="1520" height="1761">
+
+<rect x="0.0" y="0.0" width="1520.0" height="1761.0" rx="0" fill="#fafaf7" stroke="none" stroke-width="0"/>
+<text x="60.0" y="52.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="28" font-weight="700" text-anchor="start" fill="#1d1d1b">CHROMA lighting board — proposal v0.1</text>
+<text x="60.0" y="78.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#6b6b66">Front panel, top view · 560 × 300 mm · 8 group faders + master · wifi → hub :8765 · every part is reassignable in software</text>
+<rect x="60.0" y="135.0" width="1344.0" height="720.0" rx="14" fill="#ecece6" stroke="#3a3a36" stroke-width="3"/>
+<circle cx="79.2" cy="154.2" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="76.2" y1="154.2" x2="82.2" y2="154.2" stroke="#3a3a36" stroke-width="1"/>
+<circle cx="1384.8" cy="154.2" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="1381.8" y1="154.2" x2="1387.8" y2="154.2" stroke="#3a3a36" stroke-width="1"/>
+<circle cx="79.2" cy="835.8" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="76.2" y1="835.8" x2="82.2" y2="835.8" stroke="#3a3a36" stroke-width="1"/>
+<circle cx="1384.8" cy="835.8" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="1381.8" y1="835.8" x2="1387.8" y2="835.8" stroke="#3a3a36" stroke-width="1"/>
+<rect x="79.2" y="154.2" width="1305.6" height="139.2" rx="8" fill="none" stroke="#b9b9b0" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="89.2" y="169.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#6b6b66">STATUS / MODE</text>
+<rect x="79.2" y="303.0" width="345.6" height="532.8" rx="8" fill="none" stroke="#b9b9b0" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="89.2" y="318.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#6b6b66">COLOR</text>
+<rect x="439.2" y="303.0" width="638.4" height="532.8" rx="8" fill="none" stroke="#b9b9b0" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="449.2" y="318.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#6b6b66">GROUP CHANNELS  (bank A / B / C)</text>
+<rect x="1092.0" y="303.0" width="292.8" height="532.8" rx="8" fill="none" stroke="#b9b9b0" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="1102.0" y="318.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#6b6b66">MASTER · CUES · TRANSPORT</text>
+<rect x="98.4" y="173.4" width="153.6" height="81.6" rx="3" fill="#0b0b0a" stroke="#3a3a36" stroke-width="2"/>
+<text x="175.2" y="207.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="middle" fill="#9fe0b0">♪ Sasha Alex Sloan</text>
+<text x="175.2" y="223.8" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#9fe0b0">Older · 128bpm</text>
+<text x="175.2" y="240.6" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="middle" fill="#6bb585">MODE:AI  BANK:A</text>
+<circle cx="175.2" cy="274.2" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="175.2" y="278.7" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">1</text>
+<circle cx="300.0" cy="197.4" r="6.0" fill="#2f8f4e" stroke="none" stroke-width="1.5"/>
+<text x="300.0" y="226.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">WIFI</text>
+<circle cx="348.0" cy="197.4" r="6.0" fill="#2f8f4e" stroke="none" stroke-width="1.5"/>
+<text x="348.0" y="226.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">HUB</text>
+<circle cx="396.0" cy="197.4" r="6.0" fill="#e6a817" stroke="none" stroke-width="1.5"/>
+<text x="396.0" y="226.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">SYNC</text>
+<circle cx="444.0" cy="197.4" r="6.0" fill="#d0392b" stroke="none" stroke-width="1.5"/>
+<text x="444.0" y="226.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">REC</text>
+<circle cx="285.6" cy="175.8" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="285.6" y="180.3" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">2</text>
+<rect x="660.0" y="187.8" width="129.6" height="28.8" rx="6" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="681.6" y="235.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">DET</text>
+<circle cx="681.6" cy="202.2" r="4.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="724.8" y="235.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">PAINT</text>
+<circle cx="724.8" cy="202.2" r="4.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="768.0" y="235.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">AI</text>
+<circle cx="768.0" cy="202.2" r="4.0" fill="#1d1d1b" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="724.8" y="175.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">ART MODE</text>
+<circle cx="645.6" cy="175.8" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="645.6" y="180.3" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">3</text>
+<rect x="876.0" y="187.8" width="86.4" height="28.8" rx="6" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="897.6" y="235.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">AUTO</text>
+<circle cx="897.6" cy="202.2" r="4.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="940.8" y="235.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">BOARD</text>
+<circle cx="940.8" cy="202.2" r="4.0" fill="#1d1d1b" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="919.2" y="175.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">WHO DRIVES</text>
+<circle cx="861.6" cy="175.8" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="861.6" y="180.3" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">4</text>
+<text x="1332.0" y="216.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="22" font-weight="700" text-anchor="end" fill="#1d1d1b">CHROMA</text>
+<text x="1332.0" y="245.4" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#6b6b66">lighting board</text>
+<circle cx="165.6" cy="370.2" r="33.6" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<circle cx="165.6" cy="370.2" r="24.0" fill="none" stroke="#b9b9b0" stroke-width="1.5"/>
+<line x1="165.6" y1="370.2" x2="165.6" y2="341.4" stroke="#3a3a36" stroke-width="3"/>
+<text x="165.6" y="420.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">HUE</text>
+<circle cx="338.4" cy="370.2" r="33.6" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<circle cx="338.4" cy="370.2" r="24.0" fill="none" stroke="#b9b9b0" stroke-width="1.5"/>
+<line x1="338.4" y1="370.2" x2="338.4" y2="341.4" stroke="#3a3a36" stroke-width="3"/>
+<text x="338.4" y="420.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">SAT</text>
+<circle cx="117.6" cy="341.4" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="117.6" y="345.9" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">5</text>
+<rect x="108.0" y="456.6" width="48.0" height="48.0" rx="4" fill="#e63946" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="175.2" y="456.6" width="48.0" height="48.0" rx="4" fill="#f4a261" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="242.4" y="456.6" width="48.0" height="48.0" rx="4" fill="#f2d14b" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="309.6" y="456.6" width="48.0" height="48.0" rx="4" fill="#5fcf84" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="108.0" y="523.8" width="48.0" height="48.0" rx="4" fill="#2ec4b6" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="175.2" y="523.8" width="48.0" height="48.0" rx="4" fill="#3a86ff" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="242.4" y="523.8" width="48.0" height="48.0" rx="4" fill="#9b5de5" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="309.6" y="523.8" width="48.0" height="48.0" rx="4" fill="#ff7eb6" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="252.0" y="449.4" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">PALETTE (backlit RGB · hold = store)</text>
+<circle cx="93.6" cy="449.4" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="93.6" y="453.9" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">6</text>
+<rect x="122.4" y="624.6" width="240.0" height="28.8" rx="6" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="170.4" y="672.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">LEVEL</text>
+<circle cx="170.4" cy="639.0" r="4.0" fill="#1d1d1b" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="242.4" y="672.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">HUE</text>
+<circle cx="242.4" cy="639.0" r="4.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="314.4" y="672.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">SAT</text>
+<circle cx="314.4" cy="639.0" r="4.0" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="242.4" y="612.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">FADER FUNCTION</text>
+<circle cx="103.2" cy="612.6" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="103.2" y="617.1" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">7</text>
+<rect x="132.0" y="715.8" width="48.0" height="48.0" rx="4" fill="#1d1d1b" stroke="#3a3a36" stroke-width="2"/>
+<text x="156.0" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#fafaf7">A</text>
+<rect x="213.6" y="715.8" width="48.0" height="48.0" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="237.6" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">B</text>
+<rect x="295.2" y="715.8" width="48.0" height="48.0" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="319.2" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">C</text>
+<text x="252.0" y="708.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">BANK</text>
+<circle cx="103.2" cy="708.6" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="103.2" y="713.1" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">8</text>
+<rect x="343.2" y="775.8" width="48.0" height="48.0" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="367.2" y="803.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">TAP</text>
+<circle cx="324.0" cy="783.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="324.0" y="787.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">18</text>
+<rect x="451.2" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="482.4" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">LR ALL</text>
+<circle cx="482.4" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="479.4" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="468.4" y1="423.0" x2="474.4" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="447.0" x2="474.4" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="471.0" x2="474.4" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="495.0" x2="474.4" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="519.0" x2="474.4" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="543.0" x2="474.4" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="567.0" x2="474.4" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="591.0" x2="474.4" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="615.0" x2="474.4" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="639.0" x2="474.4" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="468.4" y1="663.0" x2="474.4" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="470.4" y="449.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="470.4" y1="471.0" x2="494.4" y2="471.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="482.4" cy="739.8" r="28.8" fill="#e63946" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="482.4" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="482.4" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">1</text>
+<rect x="528.0" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="559.2" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">BED</text>
+<circle cx="559.2" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="556.2" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="545.2" y1="423.0" x2="551.2" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="447.0" x2="551.2" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="471.0" x2="551.2" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="495.0" x2="551.2" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="519.0" x2="551.2" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="543.0" x2="551.2" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="567.0" x2="551.2" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="591.0" x2="551.2" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="615.0" x2="551.2" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="639.0" x2="551.2" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="545.2" y1="663.0" x2="551.2" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="547.2" y="449.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="547.2" y1="471.0" x2="571.2" y2="471.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="559.2" cy="739.8" r="28.8" fill="#f4a261" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="559.2" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="559.2" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">2</text>
+<rect x="604.8" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="636.0" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">COUNTER</text>
+<circle cx="636.0" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="633.0" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="622.0" y1="423.0" x2="628.0" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="447.0" x2="628.0" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="471.0" x2="628.0" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="495.0" x2="628.0" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="519.0" x2="628.0" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="543.0" x2="628.0" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="567.0" x2="628.0" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="591.0" x2="628.0" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="615.0" x2="628.0" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="639.0" x2="628.0" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="622.0" y1="663.0" x2="628.0" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="624.0" y="449.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="624.0" y1="471.0" x2="648.0" y2="471.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="636.0" cy="739.8" r="28.8" fill="#f2d14b" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="636.0" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="636.0" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">3</text>
+<rect x="681.6" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="712.8" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">PLAYBILL</text>
+<circle cx="712.8" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="709.8" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="698.8" y1="423.0" x2="704.8" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="447.0" x2="704.8" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="471.0" x2="704.8" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="495.0" x2="704.8" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="519.0" x2="704.8" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="543.0" x2="704.8" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="567.0" x2="704.8" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="591.0" x2="704.8" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="615.0" x2="704.8" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="639.0" x2="704.8" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="698.8" y1="663.0" x2="704.8" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="700.8" y="449.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="700.8" y1="471.0" x2="724.8" y2="471.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="712.8" cy="739.8" r="28.8" fill="#5fcf84" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="712.8" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="712.8" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">4</text>
+<rect x="758.4" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="789.6" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">LR L</text>
+<circle cx="789.6" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="786.6" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="775.6" y1="423.0" x2="781.6" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="447.0" x2="781.6" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="471.0" x2="781.6" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="495.0" x2="781.6" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="519.0" x2="781.6" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="543.0" x2="781.6" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="567.0" x2="781.6" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="591.0" x2="781.6" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="615.0" x2="781.6" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="639.0" x2="781.6" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="775.6" y1="663.0" x2="781.6" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="777.6" y="557.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="777.6" y1="579.0" x2="801.6" y2="579.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="789.6" cy="739.8" r="28.8" fill="#2ec4b6" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="789.6" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="789.6" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">5</text>
+<rect x="835.2" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="866.4" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">LR R</text>
+<circle cx="866.4" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="863.4" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="852.4" y1="423.0" x2="858.4" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="447.0" x2="858.4" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="471.0" x2="858.4" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="495.0" x2="858.4" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="519.0" x2="858.4" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="543.0" x2="858.4" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="567.0" x2="858.4" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="591.0" x2="858.4" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="615.0" x2="858.4" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="639.0" x2="858.4" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="852.4" y1="663.0" x2="858.4" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="854.4" y="557.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="854.4" y1="579.0" x2="878.4" y2="579.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="866.4" cy="739.8" r="28.8" fill="#3a86ff" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="866.4" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="866.4" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">6</text>
+<rect x="912.0" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="943.2" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">ACCENT</text>
+<circle cx="943.2" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="940.2" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="929.2" y1="423.0" x2="935.2" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="447.0" x2="935.2" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="471.0" x2="935.2" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="495.0" x2="935.2" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="519.0" x2="935.2" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="543.0" x2="935.2" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="567.0" x2="935.2" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="591.0" x2="935.2" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="615.0" x2="935.2" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="639.0" x2="935.2" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="929.2" y1="663.0" x2="935.2" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="931.2" y="557.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="931.2" y1="579.0" x2="955.2" y2="579.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="943.2" cy="739.8" r="28.8" fill="#9b5de5" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="943.2" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="943.2" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">7</text>
+<rect x="988.8" y="324.6" width="62.4" height="33.6" rx="2" fill="#0b0b0a" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="1020.0" y="344.9" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="middle" fill="#9fe0b0">FX</text>
+<circle cx="1020.0" cy="389.4" r="12.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="1017.0" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="1006.0" y1="423.0" x2="1012.0" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="447.0" x2="1012.0" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="471.0" x2="1012.0" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="495.0" x2="1012.0" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="519.0" x2="1012.0" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="543.0" x2="1012.0" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="567.0" x2="1012.0" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="591.0" x2="1012.0" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="615.0" x2="1012.0" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="639.0" x2="1012.0" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1006.0" y1="663.0" x2="1012.0" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="1008.0" y="557.4" width="24.0" height="43.2" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="1008.0" y1="579.0" x2="1032.0" y2="579.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="1020.0" cy="739.8" r="28.8" fill="#ff7eb6" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="1020.0" y="743.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH</text>
+<text x="1020.0" y="814.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#6b6b66">8</text>
+<circle cx="444.0" cy="341.4" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="444.0" y="345.9" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">9</text>
+<circle cx="444.0" cy="389.4" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="444.0" y="393.9" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">10</text>
+<circle cx="444.0" cy="471.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="444.0" y="475.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">11</text>
+<circle cx="444.0" cy="739.8" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="444.0" y="744.3" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">12</text>
+<rect x="1141.8" y="423.0" width="6.0" height="240.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<line x1="1130.8" y1="423.0" x2="1136.8" y2="423.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="447.0" x2="1136.8" y2="447.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="471.0" x2="1136.8" y2="471.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="495.0" x2="1136.8" y2="495.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="519.0" x2="1136.8" y2="519.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="543.0" x2="1136.8" y2="543.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="567.0" x2="1136.8" y2="567.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="591.0" x2="1136.8" y2="591.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="615.0" x2="1136.8" y2="615.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="639.0" x2="1136.8" y2="639.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1130.8" y1="663.0" x2="1136.8" y2="663.0" stroke="#6b6b66" stroke-width="1"/>
+<rect x="1130.4" y="435.0" width="28.8" height="48.0" rx="3" fill="#ecece6" stroke="#3a3a36" stroke-width="3"/>
+<text x="1144.8" y="701.4" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">MASTER</text>
+<circle cx="1120.8" cy="403.8" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="1120.8" y="408.3" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">13</text>
+<circle cx="1144.8" cy="763.8" r="31.2" fill="#d0392b" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="1144.8" y="767.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="8" font-weight="700" text-anchor="middle" fill="#fff">BLACKOUT</text>
+<circle cx="1101.6" cy="725.4" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="1101.6" y="729.9" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">14</text>
+<rect x="1204.8" y="353.4" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1231.2" y="383.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C1</text>
+<rect x="1276.8" y="353.4" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1303.2" y="383.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C2</text>
+<rect x="1204.8" y="415.8" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1231.2" y="446.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C3</text>
+<rect x="1276.8" y="415.8" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1303.2" y="446.2" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C4</text>
+<rect x="1204.8" y="478.2" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1231.2" y="508.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C5</text>
+<rect x="1276.8" y="478.2" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1303.2" y="508.6" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C6</text>
+<rect x="1204.8" y="540.6" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1231.2" y="571.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C7</text>
+<rect x="1276.8" y="540.6" width="52.8" height="52.8" rx="4" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1303.2" y="571.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">C8</text>
+<text x="1269.6" y="341.4" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">SCENE / CUE</text>
+<circle cx="1178.4" cy="341.4" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="1178.4" y="345.9" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">15</text>
+<rect x="1185.6" y="624.6" width="52.8" height="52.8" rx="4" fill="none" stroke="#d0392b" stroke-width="3"/>
+<text x="1212.0" y="655.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#d0392b">REC</text>
+<rect x="1252.8" y="624.6" width="52.8" height="52.8" rx="4" fill="none" stroke="#2f8f4e" stroke-width="3"/>
+<text x="1279.2" y="655.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#2f8f4e">PLAY</text>
+<rect x="1320.0" y="624.6" width="52.8" height="52.8" rx="4" fill="none" stroke="#1d1d1b" stroke-width="3"/>
+<text x="1346.4" y="655.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#1d1d1b">STOP</text>
+<text x="1279.2" y="607.8" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b66">TRANSPORT</text>
+<circle cx="1188.0" cy="607.8" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="1188.0" y="612.3" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">16</text>
+<circle cx="1279.2" cy="763.8" r="33.6" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="1279.2" y1="763.8" x2="1279.2" y2="735.0" stroke="#3a3a36" stroke-width="3"/>
+<text x="1279.2" y="821.4" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#6b6b66">SYNC NUDGE ±ms</text>
+<circle cx="1226.4" cy="735.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="1226.4" y="739.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">17</text>
+<line x1="60.0" y1="117.0" x2="1404.0" y2="117.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="60.0" y1="112.0" x2="60.0" y2="122.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1404.0" y1="112.0" x2="1404.0" y2="122.0" stroke="#6b6b66" stroke-width="1"/>
+<text x="732.0" y="109.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="middle" fill="#6b6b66">560 mm</text>
+<line x1="42.0" y1="135.0" x2="42.0" y2="855.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="37.0" y1="135.0" x2="47.0" y2="135.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="37.0" y1="855.0" x2="47.0" y2="855.0" stroke="#6b6b66" stroke-width="1"/>
+<text transform="translate(34.0,495.0) rotate(-90)" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#6b6b66">300 mm</text>
+<text x="60.0" y="895.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="start" fill="#1d1d1b">KEY</text>
+<circle cx="69.0" cy="919.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="923.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">1</text>
+<text x="86.0" y="923.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Main display — 2.42" OLED: track, BPM, mode, bank (read from hub /state)</text>
+<circle cx="69.0" cy="945.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="949.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">2</text>
+<text x="86.0" y="949.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Status LEDs — wifi, hub link, clock-sync, recording</text>
+<circle cx="69.0" cy="971.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="975.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">3</text>
+<text x="86.0" y="975.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Art mode switch — deterministic / paint / AI (sets hub mode)</text>
+<circle cx="69.0" cy="997.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="1001.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">4</text>
+<text x="86.0" y="1001.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Who drives — AUTO = hub paints album art; BOARD = you do (pauses auto-paint)</text>
+<circle cx="69.0" cy="1023.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="1027.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">5</text>
+<text x="86.0" y="1027.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Hue + saturation encoders (push = reset) — act on the last-touched channel</text>
+<circle cx="69.0" cy="1049.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="1053.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">6</text>
+<text x="86.0" y="1053.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Palette keys — RGB backlit; tap = apply, hold = store current color</text>
+<circle cx="69.0" cy="1075.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="1079.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">7</text>
+<text x="86.0" y="1079.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Fader function — faders control level, hue or saturation</text>
+<circle cx="69.0" cy="1101.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="1105.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">8</text>
+<text x="86.0" y="1105.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Banks A/B/C — 3 × 8 = 24 groups across LIFX, WLED strips and Playbill nodes</text>
+<circle cx="69.0" cy="1127.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="69.0" y="1131.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">9</text>
+<text x="86.0" y="1131.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Scribble strips — tiny OLEDs showing each channel's group name</text>
+<circle cx="789.0" cy="919.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="923.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">10</text>
+<text x="806.0" y="923.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">ASSIGN — hold + tap a light/group in the GUI or press a cue to remap that fader</text>
+<circle cx="789.0" cy="945.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="949.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">11</text>
+<text x="806.0" y="949.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">100 mm faders — smooth intensity, like a real desk</text>
+<circle cx="789.0" cy="971.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="975.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">12</text>
+<text x="806.0" y="975.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH — momentary full-level bump while held (strobe fixtures use WLED, not LIFX)</text>
+<circle cx="789.0" cy="997.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="1001.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">13</text>
+<text x="806.0" y="1001.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Master fader</text>
+<circle cx="789.0" cy="1023.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="1027.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">14</text>
+<text x="806.0" y="1027.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">BLACKOUT — all fixtures dark instantly, press again to restore</text>
+<circle cx="789.0" cy="1049.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="1053.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">15</text>
+<text x="806.0" y="1053.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Cue buttons — recall a scene/look; shift+tap stores one</text>
+<circle cx="789.0" cy="1075.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="1079.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">16</text>
+<text x="806.0" y="1079.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Transport — REC arms and records everything you move against the song position</text>
+<circle cx="789.0" cy="1101.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="1105.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">17</text>
+<text x="806.0" y="1105.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Sync nudge encoder — trim recorded-light offset vs audio, in ms</text>
+<circle cx="789.0" cy="1127.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text x="789.0" y="1131.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">18</text>
+<text x="806.0" y="1131.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Tap tempo — sets beat grid for chases when no audio tap is available</text>
+<text x="60.0" y="1207.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="start" fill="#1d1d1b">ELECTRONICS (one controller board behind the panel)</text>
+<rect x="60.0" y="1229.0" width="230.0" height="74.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="175.0" y="1253.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">9 faders</text>
+<text x="175.0" y="1273.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">10 kΩ linear, 100 mm</text>
+<text x="175.0" y="1289.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">(8 channels + master)</text>
+<rect x="60.0" y="1329.0" width="230.0" height="74.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="175.0" y="1353.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">~40 buttons</text>
+<text x="175.0" y="1373.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">arcade + tactile keys,</text>
+<text x="175.0" y="1389.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">RGB backlights (SK6812 chain)</text>
+<rect x="60.0" y="1429.0" width="230.0" height="74.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="175.0" y="1453.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">2 encoders + jog</text>
+<text x="175.0" y="1473.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ 3 toggle switches</text>
+<rect x="370.0" y="1229.0" width="250.0" height="74.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="495.0" y="1253.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">ESP32-S3 ADC1</text>
+<text x="495.0" y="1273.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">9 ch on the wifi-safe ADC1</text>
+<text x="495.0" y="1289.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">(MCP3208 fallback if noisy)</text>
+<rect x="370.0" y="1329.0" width="250.0" height="74.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="495.0" y="1353.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">3 × MCP23017</text>
+<text x="495.0" y="1373.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">I²C GPIO expanders</text>
+<text x="495.0" y="1389.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">button/encoder/switch scan</text>
+<rect x="370.0" y="1429.0" width="250.0" height="74.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="495.0" y="1453.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">TCA9548A + OLEDs</text>
+<text x="495.0" y="1473.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">I²C mux → 8 scribble strips</text>
+<text x="495.0" y="1489.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ 1 main display</text>
+<rect x="710.0" y="1314.0" width="220.0" height="104.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text x="820.0" y="1338.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">ESP32-S3</text>
+<text x="820.0" y="1358.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">wifi, USB-C power/flash</text>
+<text x="820.0" y="1374.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">fader smoothing + 60 Hz send</text>
+<text x="820.0" y="1390.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">button debounce</text>
+<rect x="1030.0" y="1314.0" width="220.0" height="104.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text x="1140.0" y="1338.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">CHROMA hub :8765</text>
+<text x="1140.0" y="1358.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">WebSocket in, record/replay,</text>
+<text x="1140.0" y="1374.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">fixture + group map</text>
+<rect x="1030.0" y="1454.0" width="100.0" height="70.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1080.0" y="1478.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">LIFX</text>
+<text x="1080.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">slow washes</text>
+<rect x="1150.0" y="1454.0" width="100.0" height="70.0" rx="8" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<text x="1200.0" y="1478.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">WLED</text>
+<text x="1200.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">fast FX</text>
+<line x1="290.0" y1="1266.0" x2="370.0" y2="1266.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="370.0,1266.0 361.7,1269.5 361.7,1262.5" fill="#3a3a36"/>
+<line x1="290.0" y1="1366.0" x2="370.0" y2="1366.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="370.0,1366.0 361.7,1369.5 361.7,1362.5" fill="#3a3a36"/>
+<line x1="290.0" y1="1466.0" x2="370.0" y2="1466.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="370.0,1466.0 361.7,1469.5 361.7,1462.5" fill="#3a3a36"/>
+<line x1="620.0" y1="1266.0" x2="710.0" y2="1339.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="710.0,1339.0 701.4,1336.5 705.8,1331.1" fill="#3a3a36"/>
+<text x="665.0" y="1295.5" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">ADC</text>
+<line x1="620.0" y1="1366.0" x2="710.0" y2="1366.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="710.0,1366.0 701.7,1369.5 701.7,1362.5" fill="#3a3a36"/>
+<text x="665.0" y="1359.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">I²C</text>
+<line x1="620.0" y1="1466.0" x2="710.0" y2="1394.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="710.0,1394.0 705.7,1401.9 701.3,1396.4" fill="#3a3a36"/>
+<text x="665.0" y="1423.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">I²C</text>
+<line x1="930.0" y1="1366.0" x2="1030.0" y2="1366.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="1030.0,1366.0 1021.7,1369.5 1021.7,1362.5" fill="#3a3a36"/>
+<text x="980.0" y="1359.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">wifi</text>
+<line x1="1100.0" y1="1418.0" x2="1080.0" y2="1454.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="1080.0,1454.0 1081.0,1445.1 1087.1,1448.5" fill="#3a3a36"/>
+<line x1="1180.0" y1="1418.0" x2="1200.0" y2="1454.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="1200.0,1454.0 1192.9,1448.5 1199.0,1445.1" fill="#3a3a36"/>
+<text x="710.0" y="1559.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Power: 5 V USB-C (~1.5 A max with all backlights). Mains-powered, so no battery limits.</text>
+<text x="60.0" y="1587.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="start" fill="#1d1d1b">SIDE PROFILE (suggested enclosure)</text>
+<polygon points="60,1701.0 620,1701.0 620,1631.0 60,1677.0" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="340.0" y="1683.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="middle" fill="#6b6b66">front panel sloped ~10° toward you · 30 mm front, 70 mm rear</text>
+<text x="60.0" y="1725.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Face plate: 3 mm aluminum or acrylic, laser-cut/CNC. Case: plywood, or printed in sections (560 mm exceeds most beds).</text>
+<text x="700.0" y="1661.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Rear: USB-C power · reset/boot · spare Ethernet-to-wifi bridge option</text>
+</svg>

@@ -1,0 +1,442 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 3520" width="1600" height="3520"><rect width="1600" height="3520" fill="#fafaf7"/><text x="60.0" y="56.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="30" font-weight="700" text-anchor="start" fill="#1d1d1b">CHROMA lighting board — one-channel prototype (P0)</text>
+<text x="60.0" y="84.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#6b6b66">Blueprint + build spec · doc CHROMA-BRD-P0 · rev A · DRAFT for review · 2026-10-09</text>
+<text x="60.0" y="106.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#6b6b66">Goal: prove one fader, one flash button and one encoder can drive a real light with no perceptible lag — before any PCB or panel is built.</text>
+<rect x="60.0" y="128.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="150.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">1  OBJECTIVE, STAGES, PASS CRITERIA</text>
+<text x="60.0" y="194.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 is a single channel strip: 1 slide pot, 1 FLASH button, 1 ASSIGN button, 1 encoder, 1 backlight pixel.</text>
+<text x="60.0" y="214.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">It is built on a breadboard and a laser-cut test plate that is the same width as the final channel module.</text>
+<text x="60.0" y="234.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">Everything learned here (ADC noise, wifi latency, feel) is frozen into the final spec before ordering PCBs.</text>
+<rect x="60.0" y="270.0" width="190.0" height="82.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text x="155.0" y="292.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">Controls</text>
+<text x="155.0" y="311.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">fader · FLASH · ASSIGN</text>
+<text x="155.0" y="326.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">encoder · backlight px</text>
+<rect x="310.0" y="270.0" width="190.0" height="82.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text x="405.0" y="292.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">ESP32-S3 (board)</text>
+<text x="405.0" y="311.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">reads inputs @ 1 kHz</text>
+<text x="405.0" y="326.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">sends ≤60 Hz over wifi</text>
+<line x1="250.0" y1="311.0" x2="310.0" y2="311.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="310.0,311.0 300.8,314.9 300.8,307.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<rect x="560.0" y="246.0" width="520.0" height="124.0" rx="8" fill="none" stroke="#d0392b" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="572.0" y="264.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#d0392b">STAGE A — fast path, no hub (UDP/DDP)</text>
+<rect x="580.0" y="278.0" width="210.0" height="82.0" rx="8" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="685.0" y="300.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">WLED node (ESP32-C3)</text>
+<text x="685.0" y="319.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">UDP realtime in</text>
+<text x="685.0" y="334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">7-px SK6812 test bar</text>
+<text x="805.0" y="322.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="start" fill="#d0392b">target ≤ 50 ms</text>
+<line x1="500.0" y1="311.0" x2="580.0" y2="311.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="580.0,311.0 570.8,314.9 570.8,307.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text x="540.0" y="304.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">wifi</text>
+<rect x="560.0" y="388.0" width="520.0" height="100.0" rx="8" fill="none" stroke="#2c5fb3" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="572.0" y="406.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#2c5fb3">STAGE B — through the hub (WebSocket → existing hub endpoints)</text>
+<rect x="580.0" y="416.0" width="210.0" height="62.0" rx="8" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="685.0" y="438.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">CHROMA hub :8765</text>
+<rect x="840.0" y="416.0" width="210.0" height="62.0" rx="8" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="945.0" y="438.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">LIFX bulb</text>
+<line x1="790.0" y1="447.0" x2="840.0" y2="447.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="840.0,447.0 830.8,450.9 830.8,443.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<line x1="500.0" y1="332.0" x2="580.0" y2="447.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="580.0,447.0 571.5,441.7 577.9,437.2" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text x="805.0" y="502.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">expect ~100–250 ms — measure, don't assume</text>
+<text x="1120.0" y="264.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#6b6b66">WHY TWO STAGES</text>
+<text x="1120.0" y="284.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">A isolates input hardware and wifi</text>
+<text x="1120.0" y="301.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">from everything else. If A is slow,</text>
+<text x="1120.0" y="318.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">the board is the problem.</text>
+<text x="1120.0" y="335.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">B is what the final system uses</text>
+<text x="1120.0" y="352.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">for LIFX; its latency decides which</text>
+<text x="1120.0" y="369.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">fixtures count as 'fast' vs 'slow'.</text>
+<rect x="60.0" y="530.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="552.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">2  WIRING SCHEMATIC  (net labels with the same name are connected)</text>
+<rect x="80.0" y="592.0" width="210.0" height="680.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2.5"/>
+<text x="185.0" y="614.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">ESP32-S3-DevKitC-1</text>
+<text x="278.0" y="646.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">3V3</text>
+<text x="92.0" y="646.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">3V3</text>
+<line x1="290.0" y1="642.0" x2="320.0" y2="642.0" stroke="#d0392b" stroke-width="2"/>
+<text x="278.0" y="696.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO1</text>
+<text x="92.0" y="696.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">ADC1_CH0 · fader</text>
+<line x1="290.0" y1="692.0" x2="320.0" y2="692.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="746.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GND</text>
+<text x="92.0" y="746.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">GND</text>
+<line x1="290.0" y1="742.0" x2="320.0" y2="742.0" stroke="#3a3a36" stroke-width="2"/>
+<text x="278.0" y="796.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO11</text>
+<text x="92.0" y="796.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">FLASH sw</text>
+<line x1="290.0" y1="792.0" x2="320.0" y2="792.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="846.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO16</text>
+<text x="92.0" y="846.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">ASSIGN sw</text>
+<line x1="290.0" y1="842.0" x2="320.0" y2="842.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="896.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO39</text>
+<text x="92.0" y="896.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">ENC_A</text>
+<line x1="290.0" y1="892.0" x2="320.0" y2="892.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="946.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO40</text>
+<text x="92.0" y="946.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">ENC_B</text>
+<line x1="290.0" y1="942.0" x2="320.0" y2="942.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="996.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO41</text>
+<text x="92.0" y="996.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">ENC_SW</text>
+<line x1="290.0" y1="992.0" x2="320.0" y2="992.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="1046.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO14</text>
+<text x="92.0" y="1046.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">PIXEL_DIN</text>
+<line x1="290.0" y1="1042.0" x2="320.0" y2="1042.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="1096.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO17</text>
+<text x="92.0" y="1096.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">I²C SDA</text>
+<line x1="290.0" y1="1092.0" x2="320.0" y2="1092.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="1146.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO18</text>
+<text x="92.0" y="1146.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">I²C SCL</text>
+<line x1="290.0" y1="1142.0" x2="320.0" y2="1142.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="1196.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">GPIO15</text>
+<text x="92.0" y="1196.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">SYNC → scope</text>
+<line x1="290.0" y1="1192.0" x2="320.0" y2="1192.0" stroke="#1d1d1b" stroke-width="2"/>
+<text x="278.0" y="1246.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700" text-anchor="end" fill="#1d1d1b">5V</text>
+<text x="92.0" y="1246.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">VBUS</text>
+<line x1="290.0" y1="1242.0" x2="320.0" y2="1242.0" stroke="#d0392b" stroke-width="2"/>
+<rect x="520.0" y="620.0" width="130.0" height="144.0" rx="6" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="585.0" y="641.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">FADER  10 kΩ lin</text>
+<text x="528.0" y="656.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">end A</text>
+<text x="528.0" y="696.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">wiper</text>
+<text x="528.0" y="746.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">end B</text>
+<line x1="320.0" y1="642.0" x2="520.0" y2="642.0" stroke="#d0392b" stroke-width="2"/>
+<line x1="320.0" y1="742.0" x2="520.0" y2="742.0" stroke="#3a3a36" stroke-width="2"/>
+<text x="326.0" y="634.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#d0392b">3V3 (+10 µF at fader)</text>
+<line x1="320.0" y1="692.0" x2="360.0" y2="692.0" stroke="#2c5fb3" stroke-width="2"/>
+<rect x="360.0" y="684.0" width="46.0" height="16.0" rx="0" fill="#fff" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="383.0" y="679.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="middle" fill="#1d1d1b">R1 1 kΩ</text>
+<line x1="406.0" y1="692.0" x2="520.0" y2="692.0" stroke="#2c5fb3" stroke-width="2"/>
+<circle cx="450.0" cy="692.0" r="3.2" fill="#3a3a36" stroke="none" stroke-width="1.5"/>
+<line x1="450.0" y1="692.0" x2="450.0" y2="730.0" stroke="#2c5fb3" stroke-width="1.5"/>
+<line x1="438.0" y1="730.0" x2="462.0" y2="730.0" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="438.0" y1="736.0" x2="462.0" y2="736.0" stroke="#3a3a36" stroke-width="2.5"/>
+<circle cx="450.0" cy="742.0" r="3.2" fill="#3a3a36" stroke="none" stroke-width="1.5"/>
+<text x="440.0" y="724.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="end" fill="#1d1d1b">C1 100 nF</text>
+<text x="310.0" y="766.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">R1·C1 corner ≈ 1.6 kHz (τ = 100 µs)</text>
+<line x1="320.0" y1="792.0" x2="520.0" y2="792.0" stroke="#2c5fb3" stroke-width="2"/>
+<rect x="520.0" y="772.0" width="130.0" height="40.0" rx="6" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="585.0" y="788.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">FLASH sw</text>
+<text x="585.0" y="804.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">24 mm arcade, NO</text>
+<line x1="650.0" y1="792.0" x2="760.0" y2="792.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="760.0" cy="792.0" r="3.2" fill="#3a3a36" stroke="none" stroke-width="1.5"/>
+<line x1="320.0" y1="842.0" x2="520.0" y2="842.0" stroke="#2c5fb3" stroke-width="2"/>
+<rect x="520.0" y="822.0" width="130.0" height="40.0" rx="6" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="585.0" y="838.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">ASSIGN sw</text>
+<text x="585.0" y="854.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">12 mm momentary</text>
+<line x1="650.0" y1="842.0" x2="760.0" y2="842.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="760.0" cy="842.0" r="3.2" fill="#3a3a36" stroke="none" stroke-width="1.5"/>
+<rect x="520.0" y="870.0" width="130.0" height="144.0" rx="6" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="585.0" y="892.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">EC11 ENCODER</text>
+<line x1="320.0" y1="892.0" x2="520.0" y2="892.0" stroke="#2c5fb3" stroke-width="2"/>
+<text x="532.0" y="914.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">A</text>
+<line x1="320.0" y1="942.0" x2="520.0" y2="942.0" stroke="#2c5fb3" stroke-width="2"/>
+<text x="532.0" y="956.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">B</text>
+<line x1="320.0" y1="992.0" x2="520.0" y2="992.0" stroke="#2c5fb3" stroke-width="2"/>
+<text x="532.0" y="1006.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">SW</text>
+<line x1="650.0" y1="942.0" x2="760.0" y2="942.0" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="760.0" cy="942.0" r="3.2" fill="#3a3a36" stroke="none" stroke-width="1.5"/>
+<line x1="760.0" y1="792.0" x2="760.0" y2="942.0" stroke="#3a3a36" stroke-width="2"/>
+<line x1="750.0" y1="964.0" x2="770.0" y2="964.0" stroke="#3a3a36" stroke-width="2.5"/>
+<line x1="754.0" y1="970.0" x2="766.0" y2="970.0" stroke="#3a3a36" stroke-width="2"/>
+<line x1="760.0" y1="942.0" x2="760.0" y2="964.0" stroke="#3a3a36" stroke-width="2"/>
+<text x="774.0" y="782.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#3a3a36">GND</text>
+<text x="774.0" y="986.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">internal pull-ups; 5 ms debounce</text>
+<line x1="320.0" y1="1042.0" x2="520.0" y2="1042.0" stroke="#2c5fb3" stroke-width="2"/>
+<rect x="520.0" y="1020.0" width="130.0" height="44.0" rx="6" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="585.0" y="1038.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">74AHCT125</text>
+<text x="585.0" y="1054.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">3.3 V → 5 V level shift</text>
+<line x1="650.0" y1="1042.0" x2="740.0" y2="1042.0" stroke="#2c5fb3" stroke-width="2"/>
+<rect x="740.0" y="1034.0" width="46.0" height="16.0" rx="0" fill="#fff" stroke="#3a3a36" stroke-width="1.5"/>
+<text x="763.0" y="1029.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="middle" fill="#1d1d1b">330 Ω</text>
+<line x1="786.0" y1="1042.0" x2="880.0" y2="1042.0" stroke="#2c5fb3" stroke-width="2"/>
+<rect x="880.0" y="1020.0" width="130.0" height="44.0" rx="6" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="945.0" y="1038.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">SK6812 mini-e</text>
+<text x="945.0" y="1054.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">button backlight px</text>
+<text x="660.0" y="1068.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#d0392b">VCC=+5V · OE low · 100 nF</text>
+<text x="880.0" y="1080.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#d0392b">VDD=+5V · 100 nF at VDD</text>
+<rect x="520.0" y="1072.0" width="130.0" height="90.0" rx="6" fill="none" stroke="#3a3a36" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="585.0" y="1090.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">OLED 0x3C</text>
+<text x="585.0" y="1106.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" font-weight="400" text-anchor="middle" fill="#6b6b66">optional</text>
+<line x1="320.0" y1="1092.0" x2="520.0" y2="1092.0" stroke="#2c5fb3" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="320.0" y1="1142.0" x2="520.0" y2="1142.0" stroke="#2c5fb3" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="665.0" y="1096.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">4.7 kΩ pull-ups to 3V3 on SDA/SCL</text>
+<line x1="320.0" y1="1192.0" x2="520.0" y2="1192.0" stroke="#2c5fb3" stroke-width="2" stroke-dasharray="5 4"/>
+<rect x="520.0" y="1178.0" width="130.0" height="28.0" rx="6" fill="none" stroke="#3a3a36" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="585.0" y="1196.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#1d1d1b">scope CH1</text>
+<text x="665.0" y="1196.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">toggled when a packet is sent (t = 0 for latency tests)</text>
+<line x1="320.0" y1="1242.0" x2="520.0" y2="1242.0" stroke="#d0392b" stroke-width="2"/>
+<text x="528.0" y="1246.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#d0392b">+5V net → 74AHCT125, SK6812</text>
+<rect x="1040.0" y="592.0" width="500.0" height="680.0" rx="8" fill="none" stroke="#d0392b" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="1054.0" y="614.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#d0392b">STAGE A OUTPUT — WLED node + test bar (bench supply)</text>
+<rect x="1060.0" y="642.0" width="200.0" height="90.0" rx="8" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="1160.0" y="664.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">ESP32-C3 + WLED</text>
+<text x="1160.0" y="683.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">LED data pin: set in WLED</text>
+<text x="1160.0" y="698.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">UDP realtime ON · wifi sleep OFF</text>
+<text x="1160.0" y="713.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">static IP / DHCP reservation</text>
+<rect x="1310.0" y="642.0" width="200.0" height="90.0" rx="8" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="1410.0" y="664.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">74AHCT125</text>
+<text x="1410.0" y="683.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">level shift, 5 V Vcc</text>
+<text x="1410.0" y="698.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">(short wires, &lt;15 cm)</text>
+<line x1="1260.0" y1="687.0" x2="1310.0" y2="687.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="1310.0,687.0 1300.8,690.9 1300.8,683.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text x="1285.0" y="680.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">3V3</text>
+<rect x="1310.0" y="782.0" width="200.0" height="110.0" rx="8" fill="#f1f1ec" stroke="#3a3a36" stroke-width="2"/>
+<text x="1410.0" y="804.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">7-px SK6812 RGBW bar</text>
+<text x="1410.0" y="823.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">10×7 mm aluminum channel</text>
+<text x="1410.0" y="838.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">opal diffuser · 60 px/m</text>
+<text x="1410.0" y="853.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">≈120 mm, mimics Playbill bar</text>
+<line x1="1410.0" y1="732.0" x2="1410.0" y2="782.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="1410.0,782.0 1406.1,772.8 1413.9,772.8" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text x="1410.0" y="749.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">330 Ω → DIN</text>
+<rect x="1060.0" y="952.0" width="200.0" height="100.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text x="1160.0" y="974.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">5 V 3 A supply</text>
+<text x="1160.0" y="993.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">listed Class 2 / LPS</text>
+<text x="1160.0" y="1008.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">2 A fast-blow fuse inline</text>
+<text x="1160.0" y="1023.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">1000 µF across bar power</text>
+<line x1="1260.0" y1="1002.0" x2="1410.0" y2="1002.0" stroke="#d0392b" stroke-width="2.5"/>
+<line x1="1410.0" y1="1002.0" x2="1410.0" y2="892.0" stroke="#d0392b" stroke-width="2"/>
+<polygon points="1410.0,892.0 1413.9,901.2 1406.1,901.2" fill="#d0392b" stroke="#d0392b" stroke-width="1"/>
+<text x="1410.0" y="939.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">+5V / GND</text>
+<text x="1054.0" y="1076.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#d0392b">WLED current limit: set to 150 mA for the 7-px bar (≈ 0.1 A/bar in the final system).</text>
+<text x="1054.0" y="1093.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#d0392b">Bar must never be mounted against the plate or any wood/paper test piece.</text>
+<rect x="60.0" y="1320.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="1342.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">3  CHANNEL TEST PLATE — mechanical blueprint  (1 mm = 3 px)</text>
+<rect x="140.0" y="1422.0" width="216.0" height="690.0" rx="6" fill="#ecece6" stroke="#3a3a36" stroke-width="3"/>
+<circle cx="158.0" cy="1440.0" r="4.8" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="154.0" y1="1440.0" x2="162.0" y2="1440.0" stroke="#3a3a36" stroke-width="1"/>
+<line x1="158.0" y1="1436.0" x2="158.0" y2="1444.0" stroke="#3a3a36" stroke-width="1"/>
+<circle cx="338.0" cy="1440.0" r="4.8" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="334.0" y1="1440.0" x2="342.0" y2="1440.0" stroke="#3a3a36" stroke-width="1"/>
+<line x1="338.0" y1="1436.0" x2="338.0" y2="1444.0" stroke="#3a3a36" stroke-width="1"/>
+<circle cx="158.0" cy="2094.0" r="4.8" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="154.0" y1="2094.0" x2="162.0" y2="2094.0" stroke="#3a3a36" stroke-width="1"/>
+<line x1="158.0" y1="2090.0" x2="158.0" y2="2098.0" stroke="#3a3a36" stroke-width="1"/>
+<circle cx="338.0" cy="2094.0" r="4.8" fill="none" stroke="#3a3a36" stroke-width="1.5"/>
+<line x1="334.0" y1="2094.0" x2="342.0" y2="2094.0" stroke="#3a3a36" stroke-width="1"/>
+<line x1="338.0" y1="2090.0" x2="338.0" y2="2098.0" stroke="#3a3a36" stroke-width="1"/>
+<rect x="158.0" y="1458.0" width="78.0" height="42.0" rx="2" fill="none" stroke="#3a3a36" stroke-width="1.5" stroke-dasharray="5 4"/>
+<circle cx="197.0" cy="1542.0" r="18.0" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<rect x="191.8" y="1590.0" width="10.5" height="312.0" rx="3" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<rect x="173.0" y="1566.0" width="48.0" height="360.0" rx="0" fill="none" stroke="#6b6b66" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="224.0" y="1926.0" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="start" fill="#6b6b66">fader footprint</text>
+<text x="224.0" y="1938.0" font-family="ui-monospace,Menlo,monospace" font-size="9" font-weight="400" text-anchor="start" fill="#6b6b66">per datasheet</text>
+<line x1="176.0" y1="1596.0" x2="185.0" y2="1596.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1626.0" x2="185.0" y2="1626.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1656.0" x2="185.0" y2="1656.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1686.0" x2="185.0" y2="1686.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1716.0" x2="185.0" y2="1716.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1746.0" x2="185.0" y2="1746.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1776.0" x2="185.0" y2="1776.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1806.0" x2="185.0" y2="1806.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1836.0" x2="185.0" y2="1836.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1866.0" x2="185.0" y2="1866.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="176.0" y1="1896.0" x2="185.0" y2="1896.0" stroke="#6b6b66" stroke-width="1"/>
+<circle cx="197.0" cy="2010.0" r="36.0" fill="none" stroke="#3a3a36" stroke-width="2.5"/>
+<circle cx="197.0" cy="2010.0" r="3.0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="302.0" cy="1590.0" r="10.5" fill="none" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="302.0" cy="1590.0" r="42.0" fill="none" stroke="#6b6b66" stroke-width="1.2" stroke-dasharray="4 4"/>
+<line x1="140.0" y1="1400.0" x2="356.0" y2="1400.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="140.0" y1="1395.0" x2="140.0" y2="1405.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="356.0" y1="1395.0" x2="356.0" y2="1405.0" stroke="#6b6b66" stroke-width="1"/>
+<text x="248.0" y="1394.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">72 mm</text>
+<line x1="116.0" y1="1422.0" x2="116.0" y2="2112.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="111.0" y1="1422.0" x2="121.0" y2="1422.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="111.0" y1="2112.0" x2="121.0" y2="2112.0" stroke="#6b6b66" stroke-width="1"/>
+<text transform="translate(110.0,1767.0) rotate(-90)" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#6b6b66">230 mm</text>
+<line x1="140.0" y1="2132.0" x2="236.0" y2="2132.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="140.0" y1="2127.0" x2="140.0" y2="2137.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="236.0" y1="2127.0" x2="236.0" y2="2137.0" stroke="#6b6b66" stroke-width="1"/>
+<text x="188.0" y="2126.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">32 mm channel pitch</text>
+<line x1="88.0" y1="1590.0" x2="88.0" y2="1902.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="83.0" y1="1590.0" x2="93.0" y2="1590.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="83.0" y1="1902.0" x2="93.0" y2="1902.0" stroke="#6b6b66" stroke-width="1"/>
+<text transform="translate(82.0,1746.0) rotate(-90)" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#6b6b66">104 mm slot</text>
+<text x="480.0" y="1412.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">CUTOUT SCHEDULE (mm, origin = plate top-left)</text>
+<rect x="480.0" y="1422.0" width="1030.0" height="28.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="488.0" y="1442.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Ref</text>
+<text x="548.0" y="1442.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Feature</text>
+<text x="818.0" y="1442.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Position (x,y)</text>
+<text x="968.0" y="1442.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Size</text>
+<text x="1158.0" y="1442.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Note</text>
+<rect x="480.0" y="1450.0" width="1030.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="488.0" y="1470.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">H1–4</text>
+<text x="548.0" y="1470.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">M3 mounting holes</text>
+<text x="818.0" y="1470.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">corners, 6 mm inset</text>
+<text x="968.0" y="1470.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø3.2</text>
+<text x="1158.0" y="1470.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">countersink if flush bezel</text>
+<text x="488.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">W1</text>
+<text x="548.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">scribble window (optional)</text>
+<text x="818.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">(19,19)</text>
+<text x="968.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">26 × 14 rect</text>
+<text x="1158.0" y="1498.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">label tape in P0; OLED later</text>
+<rect x="480.0" y="1506.0" width="1030.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="488.0" y="1526.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">B1</text>
+<text x="548.0" y="1526.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ASSIGN pushbutton</text>
+<text x="818.0" y="1526.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">(19,40)</text>
+<text x="968.0" y="1526.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø12</text>
+<text x="1158.0" y="1526.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">verify mounting Ø vs part</text>
+<text x="488.0" y="1554.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">F1</text>
+<text x="548.0" y="1554.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">fader slot</text>
+<text x="818.0" y="1554.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">(19,56→160)</text>
+<text x="968.0" y="1554.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3.5 × 104 slot</text>
+<text x="1158.0" y="1554.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">slot length = travel + clearance</text>
+<rect x="480.0" y="1562.0" width="1030.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="488.0" y="1582.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">F2</text>
+<text x="548.0" y="1582.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">fader mount holes</text>
+<text x="818.0" y="1582.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">per datasheet</text>
+<text x="968.0" y="1582.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">M3 / M2.5</text>
+<text x="1158.0" y="1582.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">measure the part before cutting</text>
+<text x="488.0" y="1610.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">B2</text>
+<text x="548.0" y="1610.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH arcade button</text>
+<text x="818.0" y="1610.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">(19,196)</text>
+<text x="968.0" y="1610.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø24</text>
+<text x="1158.0" y="1610.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">standard 24 mm arcade mount</text>
+<rect x="480.0" y="1618.0" width="1030.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="488.0" y="1638.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">E1</text>
+<text x="548.0" y="1638.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">encoder shaft</text>
+<text x="818.0" y="1638.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">(54,56)</text>
+<text x="968.0" y="1638.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø7</text>
+<text x="1158.0" y="1638.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">EC11, 6 mm D-shaft; 28 mm knob</text>
+<rect x="480.0" y="1422.0" width="1030.0" height="224.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text x="480.0" y="1676.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Material: 3 mm matte-black cast acrylic, laser-cut (or 3 mm aluminum on the CNC).</text>
+<text x="480.0" y="1694.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Sanity-check every hole on a cardboard cutout of the real parts first. Datasheet</text>
+<text x="480.0" y="1712.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">dimensions for slide pots and arcade buttons vary by manufacturer; do not trust</text>
+<text x="480.0" y="1730.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">this table for a part you have not measured.</text>
+<text x="480.0" y="1748.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Plate is the same 32 mm channel width as the final module, so ergonomics carry over.</text>
+<rect x="60.0" y="2160.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="2182.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">4  BILL OF MATERIALS  (prices are rough; confirm parts before ordering)</text>
+<rect x="60.0" y="2212.0" width="1240.0" height="26.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2230.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Qty</text>
+<text x="118.0" y="2230.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Part</text>
+<text x="448.0" y="2230.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Spec / notes</text>
+<text x="1208.0" y="2230.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">≈ USD</text>
+<rect x="60.0" y="2238.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2256.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2256.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ESP32-S3-DevKitC-1 (or equiv.)</text>
+<text x="448.0" y="2256.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Prefer a module without octal PSRAM (that reserves GPIO35–37); USB-C</text>
+<text x="1208.0" y="2256.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12</text>
+<text x="68.0" y="2282.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2282.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ESP32-C3 dev board</text>
+<text x="448.0" y="2282.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">WLED node; flash WLED from install.wled.me</text>
+<text x="1208.0" y="2282.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">6</text>
+<rect x="60.0" y="2290.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2308.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2308.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Slide pot, 100 mm, 10 kΩ linear</text>
+<text x="448.0" y="2308.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Mono, B10K taper; buy two if a 60 mm option is wanted for comparison</text>
+<text x="1208.0" y="2308.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text x="68.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Arcade button 24 mm</text>
+<text x="448.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">With microswitch; translucent cap preferred (backlight)</text>
+<text x="1208.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<rect x="60.0" y="2342.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Panel pushbutton 12 mm</text>
+<text x="448.0" y="2360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ASSIGN; momentary, NO</text>
+<text x="1208.0" y="2360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<text x="68.0" y="2386.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2386.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Rotary encoder EC11 + knob</text>
+<text x="448.0" y="2386.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">With push switch, 20 detents</text>
+<text x="1208.0" y="2386.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<rect x="60.0" y="2394.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2412.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2412.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 mini-e (or breakout)</text>
+<text x="448.0" y="2412.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">RGB backlight pixel; 5 V</text>
+<text x="1208.0" y="2412.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="68.0" y="2438.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<text x="118.0" y="2438.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">74AHCT125 (breakout/DIP)</text>
+<text x="448.0" y="2438.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Level shifter, one per board/node</text>
+<text x="1208.0" y="2438.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<rect x="60.0" y="2446.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2464.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2464.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 RGBW strip, 60 px/m, 5 V</text>
+<text x="448.0" y="2464.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Cut 7 pixels (≈120 mm) for the test bar</text>
+<text x="1208.0" y="2464.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<text x="68.0" y="2490.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2490.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Aluminum channel 10×7 mm + opal diffuser</text>
+<text x="448.0" y="2490.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">120 mm, mimics the Playbill bar housing</text>
+<text x="1208.0" y="2490.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<rect x="60.0" y="2498.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2516.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2516.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Resistor/capacitor kit</text>
+<text x="448.0" y="2516.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1 kΩ, 330 Ω ×2, 4.7 kΩ ×2, 100 nF ×5, 10 µF, 1000 µF ≥6.3 V</text>
+<text x="1208.0" y="2516.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<text x="68.0" y="2542.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2542.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">5 V 3 A supply (listed Class 2) + 2 A fuse</text>
+<text x="448.0" y="2542.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fast-blow, inline holder; USB for each ESP32</text>
+<text x="1208.0" y="2542.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">10</text>
+<rect x="60.0" y="2550.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2568.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2568.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Breadboard 830-pt + jumpers</text>
+<text x="448.0" y="2568.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text x="1208.0" y="2568.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text x="68.0" y="2594.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2594.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Test plate 72×230×3 mm</text>
+<text x="448.0" y="2594.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Acrylic laser-cut in your lab</text>
+<text x="1208.0" y="2594.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0–10</text>
+<rect x="60.0" y="2602.0" width="1240.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="2620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text x="118.0" y="2620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SSD1306 OLED (optional)</text>
+<text x="448.0" y="2620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0.96" or 1.3", I²C 0x3C</text>
+<text x="1208.0" y="2620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<text x="68.0" y="2646.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">—</text>
+<text x="118.0" y="2646.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Lab: scope, photodiode (BPW34-type)</text>
+<text x="448.0" y="2646.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Photodiode + 10 kΩ to 3.3 V; phone 240 fps video as fallback</text>
+<text x="1208.0" y="2646.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">own</text>
+<rect x="60.0" y="2212.0" width="1240.0" height="442.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text x="60.0" y="2676.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#1d1d1b">Total ≈ $70–80 excluding lab equipment.</text>
+<rect x="60.0" y="2702.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="2724.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">5  BUILD STEPS</text>
+<text x="60.0" y="2770.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">1.  Flash WLED on the C3; set LED type SK6812 RGBW, count 7, current limit 150 mA, enable UDP realtime, disable wifi sleep.</text>
+<text x="60.0" y="2792.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">2.  Wire the bar through the level shifter + 330 Ω; run it from the fused 5 V supply. Verify solid colors from the WLED UI. Check temperature by hand/IR.</text>
+<text x="60.0" y="2814.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">3.  Breadboard the fader (R1 + C1) on the S3. Print raw + filtered ADC values over serial; confirm T1/T2 before adding anything else.</text>
+<text x="60.0" y="2836.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">4.  Add FLASH, ASSIGN, encoder with internal pull-ups; verify clean edges on the scope; add 5 ms debounce.</text>
+<text x="60.0" y="2858.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">5.  Firmware: wifi (power-save OFF) → UDP to WLED. Fader → bar brightness; FLASH → full-white while held; encoder → hue; GPIO15 toggles per packet.</text>
+<text x="60.0" y="2880.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">6.  Run T3/T4 latency with scope + photodiode. Tune oversampling, EMA and deadband; send rate stays ≤ 60 Hz.</text>
+<text x="60.0" y="2902.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">7.  Mount fader/button/encoder in the test plate; repeat T1–T4 to confirm mechanics don't add noise (shielding, wire routing).</text>
+<text x="60.0" y="2924.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">8.  Stage B: send the same events as WebSocket JSON to the hub (stub endpoint or existing /lights/set) → one LIFX bulb. Run T7 and T8.</text>
+<rect x="60.0" y="2944.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="2966.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">6  ACCEPTANCE TESTS</text>
+<rect x="60.0" y="2996.0" width="1480.0" height="28.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="3016.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">ID</text>
+<text x="118.0" y="3016.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Test</text>
+<text x="368.0" y="3016.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Method</text>
+<text x="1018.0" y="3016.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Pass</text>
+<rect x="60.0" y="3024.0" width="1480.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="3044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T1</text>
+<text x="118.0" y="3044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fader noise at rest</text>
+<text x="368.0" y="3044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Hold 60 s; log 12-bit counts after filter</text>
+<text x="1018.0" y="3044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≤ ±2 counts p-p; zero packets while still</text>
+<text x="68.0" y="3072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T2</text>
+<text x="118.0" y="3072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Linearity + endpoints</text>
+<text x="368.0" y="3072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Sweep 0→100→0; endpoint calibration</text>
+<text x="1018.0" y="3072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">monotonic; reaches 0.000 and 1.000</text>
+<rect x="60.0" y="3080.0" width="1480.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="3100.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T3</text>
+<text x="118.0" y="3100.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Latency, fader → WLED pixel (Stage A)</text>
+<text x="368.0" y="3100.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Scope: GPIO15 edge vs photodiode on pixel, 100 moves</text>
+<text x="1018.0" y="3100.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">p95 ≤ 50 ms · max ≤ 80 ms</text>
+<text x="68.0" y="3128.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T4</text>
+<text x="118.0" y="3128.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH press / release</text>
+<text x="368.0" y="3128.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Same rig; press → full white; release → restore</text>
+<text x="1018.0" y="3128.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">p95 ≤ 30 ms; prior level restored</text>
+<rect x="60.0" y="3136.0" width="1480.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="3156.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T5</text>
+<text x="118.0" y="3156.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Wifi soak</text>
+<text x="368.0" y="3156.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">30 min at 60 Hz traffic; bounce the AP once</text>
+<text x="1018.0" y="3156.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">no gap &gt; 200 ms; reconnect ≤ 3 s</text>
+<text x="68.0" y="3184.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T6</text>
+<text x="118.0" y="3184.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Thermal + current (bar)</text>
+<text x="368.0" y="3184.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">IR camera on channel + meter on 5 V line, 1 h at cap</text>
+<text x="1018.0" y="3184.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">rise ≤ 10 °C; current ≤ cap; cap holds at white</text>
+<rect x="60.0" y="3192.0" width="1480.0" height="28.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text x="68.0" y="3212.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T7</text>
+<text x="118.0" y="3212.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Latency via hub → LIFX (Stage B)</text>
+<text x="368.0" y="3212.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Same rig; photodiode on bulb</text>
+<text x="1018.0" y="3212.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">record result (no threshold) — sets fast/slow classes</text>
+<text x="68.0" y="3240.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T8</text>
+<text x="118.0" y="3240.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Hub link recovery</text>
+<text x="368.0" y="3240.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Restart hub with fader mid-travel</text>
+<text x="1018.0" y="3240.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">reconnect ≤ 5 s; nothing stuck on</text>
+<rect x="60.0" y="2996.0" width="1480.0" height="252.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="60.0" y="3266.0" width="1480.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text x="76.0" y="3288.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">7  DECISIONS THIS PROTOTYPE LOCKS FOR THE FINAL BUILD</text>
+<text x="60.0" y="3334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">•  Fader length: 60 mm vs 100 mm, by feel and by how much panel it eats.</text>
+<text x="60.0" y="3355.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">•  ADC: internal ADC1 is enough only if T1 passes; otherwise the final board adds MCP3208 (SPI) chips.</text>
+<text x="60.0" y="3376.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">•  Transport: raw UDP/DDP vs WebSocket for the board, from T3 vs T7.</text>
+<text x="60.0" y="3397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">•  Backlight: whether a level shifter is needed on every chain, and brightness cap for the 40-px backlight.</text>
+<text x="60.0" y="3418.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">•  Bar density: 7 vs ~17 pixels per Playbill bar, judged by eye at 15° aim on real poster paper (cool, low level).</text>
+<text x="60.0" y="3439.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#1d1d1b">•  Go / no-go: if T3 or T4 miss by more than 2×, stop and diagnose before designing PCBs.</text>
+<text x="60.0" y="3490.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Safety: all P0 voltages are ≤ 5 V DC from a listed supply. Keep the test bar away from paper and wood until T6 passes.</text></svg>
