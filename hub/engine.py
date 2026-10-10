@@ -200,8 +200,10 @@ class Engine(DeviceListener, PushListener):
 
         self._stop = asyncio.Event()       # process shutdown
         self._disconnected = asyncio.Event()  # ATV dropped → reconnect
+        self._wake = asyncio.Event()       # `refresh` → cut a reconnect backoff short
         self._apply_lock = asyncio.Lock()
         self._last_track_id: Optional[str] = None
+        self._was_playing: Optional[bool] = None   # last seen play state, for resume detection
         # Cached inputs of the last paint, so live config edits can repaint at once.
         self._last_np: Optional[NowPlaying] = None
         self._last_art: Optional[bytes] = None
@@ -232,16 +234,23 @@ class Engine(DeviceListener, PushListener):
         async with self._apply_lock:
             tid = np.track_id()
             if tid == self._last_track_id:
-                # Same track — but refresh play-state (pause/resume) for the UI,
-                # without repainting the bulbs.
-                if self._last_np is not None and np.playing != self._last_np.playing:
-                    self._last_np = np
+                # Same track. On pause→play, repaint — lights may have drifted or
+                # been changed while idle. Colors are deterministic per album (AI
+                # results are cached as scenes), so this lands on the same look.
+                resumed = np.playing and self._was_playing is False
+                if np.playing != self._was_playing:
+                    self._was_playing = np.playing
+                    if self._last_np is not None:
+                        self._last_np = np
                     self._write_state()
                     self.bus.publish("status",
                                      message="playing" if np.playing else "paused",
                                      playing=np.playing)
+                if resumed:
+                    await self._apply(np, "resume")
                 return
             self._last_track_id = tid
+            self._was_playing = np.playing
             await self._apply(np, source)
 
     async def _apply(self, np: NowPlaying, source: str) -> None:
@@ -573,6 +582,40 @@ class Engine(DeviceListener, PushListener):
         await fn()
         return True
 
+    async def refresh(self) -> dict:
+        """Force a fresh read of what's playing and repaint the lights now,
+        bypassing track-id dedup. Used by `lite show refresh` after idle periods
+        (stale ATV connection, lights that drifted, missed push updates)."""
+        self._wake.set()  # if we're sitting in a reconnect backoff, retry immediately
+        if not self.provider:
+            return {"ok": True, "reconnecting": True,
+                    "message": "Apple TV not connected — reconnecting now"}
+        np = await self.provider.now_playing()
+        if np is None:
+            # now_playing() swallows errors → None means the link is stale. Drop it;
+            # run() reconnects and primes with a forced repaint.
+            self._disconnected.set()
+            return {"ok": True, "reconnecting": True,
+                    "message": "Apple TV connection was stale — reconnecting"}
+        if not np.has_track():
+            return {"ok": False, "message": "nothing playing on the Apple TV"}
+        if self.lifx.count == 0:
+            await self.loop.run_in_executor(None, self.lifx.discover)
+        async with self._apply_lock:
+            self._last_track_id = np.track_id()
+            self._was_playing = np.playing
+            await self._apply(np, "refresh")
+        snap = self.snapshot()
+        got_art = self._last_np is np   # _apply only caches np once artwork was fetched
+        painted = got_art and self.enabled and self.lifx.count > 0
+        ok = got_art and self.lifx.count > 0   # a disabled-painting refresh still succeeded
+        msg = ("no artwork for this track" if not got_art else
+               "no lights found" if self.lifx.count == 0 else
+               "refreshed, but painting is disabled" if not self.enabled else
+               "lights refreshed")
+        return {"ok": ok, "painted": painted, "enabled": self.enabled, "message": msg, "track": np.label(),
+                "album": np.album, "lights": self.lifx.count, "state": snap}
+
     def stop(self) -> None:
         self._stop.set()
 
@@ -704,12 +747,18 @@ class Engine(DeviceListener, PushListener):
                 pass  # e.g. Windows; not our target
 
     async def _sleep_or_stop(self, seconds: float) -> bool:
-        """Sleep, returning True if a stop was requested during the wait."""
+        """Sleep, returning True if a stop was requested during the wait.
+        A `refresh` request ends the wait early (returns False → retry now)."""
+        stop = asyncio.ensure_future(self._stop.wait())
+        wake = asyncio.ensure_future(self._wake.wait())
         try:
-            await asyncio.wait_for(self._stop.wait(), timeout=seconds)
-            return True
-        except asyncio.TimeoutError:
-            return False
+            await asyncio.wait({stop, wake}, timeout=seconds,
+                               return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            stop.cancel()
+            wake.cancel()
+            self._wake.clear()
+        return self._stop.is_set()
 
 
 async def main() -> None:

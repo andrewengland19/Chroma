@@ -2,7 +2,7 @@
 # =============================================================================
 # hub/showctl.py
 # Start / stop / status the headless CHROMA hub engine as a background process.
-# Wired to the `lite` CLI as `lite show start|stop|status|restart`, but also
+# Wired to the `lite` CLI as `lite show start|stop|status|restart|refresh`, but also
 # usable directly:  ./.venv/bin/python showctl.py start
 #
 # PID  → ~/.chroma/hub.pid      LOG → ~/.chroma/hub.log
@@ -15,6 +15,8 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 HUB_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_PY = os.path.join(HUB_DIR, ".venv", "bin", "python")
@@ -118,7 +120,44 @@ def status() -> int:
     return 0
 
 
-USAGE = "usage: showctl.py {start|stop|restart|status}"
+def _api_port() -> int:
+    try:
+        with open(os.path.join(CHROMA_DIR, "config.json")) as f:
+            return int(json.load(f).get("api_port", 8765))
+    except (OSError, ValueError, TypeError):
+        return 8765
+
+
+def refresh() -> int:
+    """Ask the running hub to re-read what's playing (current album art) and
+    repaint the lights now: POST /refresh on the local control plane."""
+    if not _running_pid():
+        print("chroma show: not running — start it with: lite show start", file=sys.stderr)
+        return 1
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{_api_port()}/refresh", data=b"{}", method="POST",
+        headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=45) as r:
+            res = json.load(r)
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        print(f"chroma show: refresh failed — {e}  (see {LOG_FILE})", file=sys.stderr)
+        return 1
+    msg = res.get("message", "done")
+    if res.get("reconnecting"):
+        print(f"chroma show: {msg}; lights update once it's back (tail -f {LOG_FILE})")
+        return 0
+    if res.get("track"):
+        print(f"chroma show: {msg} — {res['track']}  [{res.get('album') or ''}]")
+    else:
+        print(f"chroma show: {msg}")
+    if res.get("ok") and res.get("enabled") is False:
+        print("  painting is off, so the lights weren't touched — turn it on in the GUI "
+              "(or: curl -X POST localhost:%d/enabled -d '{\"on\":true}')" % _api_port())
+    return 0 if res.get("ok") else 1
+
+
+USAGE = "usage: showctl.py {start|stop|restart|status|refresh}"
 
 
 def main() -> None:
@@ -129,6 +168,8 @@ def main() -> None:
         sys.exit(stop())
     if cmd == "status":
         sys.exit(status())
+    if cmd == "refresh":
+        sys.exit(refresh())
     if cmd == "restart":
         stop()
         sys.exit(start())

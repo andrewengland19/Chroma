@@ -107,6 +107,14 @@ async def post_scene_clear():
     return await engine.scene_clear()
 
 
+@app.post("/refresh")
+async def post_refresh():
+    result = await engine.refresh()
+    engine.bus.publish("state", **engine.snapshot())
+    result.pop("state", None)
+    return result
+
+
 @app.post("/backend")
 async def post_backend(body: dict):
     return await engine.set_backend((body or {}).get("backend", ""))

@@ -77,7 +77,7 @@ launchd, Pass 5) shuts it down cleanly.
 | `distribute.py` | **Pass 4** — round-robin + OKLab IDW colour distribution |
 | `scenes.py` | **Pass 4.5** — persistent per-album scenes (`~/.chroma/scenes.json`) |
 | `web/` | **Pass 4** — the web GUI (`index.html`, `app.js`, `style.css`) |
-| `showctl.py` | background start/stop (`lite show …`), now launches `server.py` |
+| `showctl.py` | background start/stop/refresh (`lite show …`), now launches `server.py` |
 | `tv_cmd.py` | **`tv` CLI** — rapid-fire Apple TV remote from any terminal |
 | `tv` | shell wrapper — `exec .venv/bin/python tv_cmd.py "$@"` |
 | `tv_hotkey.py` | global hotkey daemon — `Ctrl+Shift+Enter` → `tv ok` (select) |
@@ -138,6 +138,7 @@ live status page, or drive it directly:
 curl -s localhost:8765/state | jq                     # full snapshot incl. config
 curl -X POST localhost:8765/config -d '{"brightness":0.6}'   # repaints live
 curl -X POST localhost:8765/transport -d '{"action":"next"}' # Apple TV transport
+curl -X POST localhost:8765/refresh                          # re-read art + repaint now (= `lite show refresh`)
 curl -X POST localhost:8765/enabled -d '{"on":false}'        # pause painting, stay connected
 websocat ws://localhost:8765/ws                       # live track_change/colors_pushed/status
 ```
