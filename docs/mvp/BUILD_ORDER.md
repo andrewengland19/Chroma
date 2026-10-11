@@ -9,12 +9,6 @@ Mockups: [Console](gui-1-console.png) · [Takes](gui-2-takes.png) · [Setup](gui
 Hardware context (physical board, Playbill bars) lives in `assets/lighting-board-*.svg` and
 `docs/lighting-board-build-steps.md`; this document covers **software only**.
 
-**Prerequisite — unmerged branches this spec relies on** (check `git branch -r`; merge or rebase onto them first):
-- `hub/refresh-on-resume`: adds `Engine.refresh()`, `POST /refresh`, `lite show refresh`, and repaint-on-resume.
-  Nothing below works as written without `Engine.refresh()`.
-- `docs/lighting-board-specs`: the `assets/lighting-board-*.svg` hardware specs and
-  `docs/lighting-board-build-steps.md` referenced above.
-
 ---
 
 ## 0. Rules for the builder
@@ -25,9 +19,10 @@ Hardware context (physical board, Playbill bars) lives in `assets/lighting-board
    (`hub/engine.py`, `hub/server.py`) must keep working until M7 explicitly cuts over.
 3. **The mockups are approved. Match them.** If you need UI that is not in a mockup (e.g. the board pairing
    card in M6), build it minimally and flag it for review. Do not redesign screens.
-4. **The user's working tree may contain uncommitted files** (e.g. `hub/lights_agent.py`,
-   `hub/lights_prompt.py`, `hub/web/lights.html`, `hub/web/remote.html`). Run `git status` first. Treat these
-   as user-owned: do not delete or rewrite them; adapt around them.
+4. **Pass 5 features already exist on `main`** and are the user's: the natural-language light agent
+   (`hub/lights_agent.py`, `hub/lights_prompt.py`, `/agent*`), the Lights tab (`hub/web/lights.html`,
+   `/lights*`, `/scenes*`), the TV Remote tab (`hub/web/remote.html`, `/tv*`) and the Ctrl+Shift+L hotkey.
+   They are **out of MVP scope but must keep working**; do not remove or rewrite them (see M7 and §10).
 5. **Safety rules in §8 are requirements, not suggestions.** They protect people (photosensitivity) and
    property (fixtures near wood and paper).
 6. **No secrets in the repo.** The Anthropic key stays in the macOS Keychain (`hub/keystore.py`). The board
@@ -61,7 +56,7 @@ that exists only on screen or only on the board.
 | UI ↔ engine | **Unix domain socket**, newline-delimited JSON (§5.1). No HTTP/TCP for the UI. The webview never talks to the socket; the Rust shell proxies. |
 | Board ↔ engine | One **UDP** port, LAN, authenticated datagrams, **state-snapshot** protocol (§5.5). |
 | Outputs (MVP) | **LIFX** (existing lifxlan path) and **Virtual** lights (in-app). WLED is phase 2. |
-| Existing web GUI | To be retired in M7 after parity (user approved). Ask before deleting files. |
+| Existing web GUI | The Music page is superseded by the app. **The Lights and Remote pages and their routes are not part of the MVP and must stay working** until the user decides otherwise. Ask before deleting anything. |
 | Platform | macOS first. Linux/Pi is a later target. |
 
 ## 3. Repo map
@@ -74,7 +69,8 @@ hub/providers.py     NowPlaying, AppleTVProvider (NowPlayingProvider seam)
 hub/color_pipeline.py, hub/distribute.py, hub/enhancers.py   album art -> colors, AI palette
 hub/scenes.py (SceneStore), hub/layout.py (Layout, per-bulb x,y)  per-album scenes, room positions
 hub/config.py        Config (~/.chroma/config.json)
-hub/server.py        FastAPI + WS + hub/web/*  (kept until M7)
+hub/server.py        FastAPI + WS + hub/web/*  (kept; includes /agent, /lights, /scenes, /tv for Pass 5)
+hub/lights_agent.py, hub/lights_prompt.py, hub/web/lights.html, hub/web/remote.html   Pass 5 (user-owned, keep working)
 hub/showctl.py       background process control (lite show ...)
 hub/keystore.py      Keychain access for the Anthropic key
 chroma/              older Electron menu-bar app; React components worth porting; delete only in M7 with approval
@@ -369,8 +365,12 @@ are ignored; offline after 3 s releases flashes; bank switch exercises pickup co
 Tasks: bundle `chromad` as a Tauri sidecar (PyInstaller or embedded venv; document the choice) ; tray menu
 item to install/remove a **LaunchAgent** so the engine runs headless at login and the app attaches; make
 `lite show start|stop|status|restart|refresh` delegate to chromad (keep the CLI names and output style);
-update READMEs. Then, **with the user's explicit approval:** remove the hub web GUI (`hub/web/`, static mount
-and now-unused routes in `hub/server.py`) and the old `chroma/` Electron app.
+update READMEs. Then, **with the user's explicit approval only:** retire the hub Music page (`hub/web/index.html`,
+`app.js`, `style.css` and its routes) and the old `chroma/` Electron app. **Do not remove `hub/web/lights.html`,
+`hub/web/remote.html`, `hub/lights_agent.py` or their routes** (`/agent*`, `/lights*`, `/scenes*`, `/tv*`): that would
+remove the user's Lights agent and TV Remote with no replacement. If `server.py` must stay running for them,
+say so in the report and leave it running alongside chromad (⚠ they both drive LIFX; keep `Engine.enabled`
+semantics consistent so they don't fight).
 AC: fresh login -> engine running with no window open; the app attaches and shows live state; every `lite
 show` subcommand works; `refresh` works through the socket; a clean checkout builds with documented steps.
 Out of scope: notarization/signing (list what would be needed).
@@ -415,4 +415,4 @@ with the date, so the user can overrule it later.
 | Board UDP port / enablement | Port **9876**; listener stays off until `board.pairing` creates a key. |
 | Hardware layout (cues on the right in `assets/lighting-board-proposal.svg`) | Not a software concern; the user will decide separately. Do not edit hardware SVGs. |
 | Real-device checks (Apple TV position spike, real bulbs, real board) | **Do not run them autonomously** (see "Autonomy and hardware" in the kickoff). Build tools and a checklist; mark those AC "pending hardware". |
-| Deleting `hub/web/` and `chroma/` at M7 | **Never delete without explicit user approval.** Stop and ask. |
+| Deleting anything at M7 | **Never delete without explicit user approval.** The Lights/Remote pages and light agent stay regardless. Stop and ask about the Music page and `chroma/`. |
