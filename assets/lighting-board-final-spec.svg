@@ -1,0 +1,1008 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 6910" width="1800" height="6910"><rect width="1800" height="6910" fill="#fafaf7"/><text xml:space="preserve" x="60.0" y="58.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="32" font-weight="700" text-anchor="start" fill="#1d1d1b">CHROMA lighting board — full build spec &amp; technical design</text>
+<text xml:space="preserve" x="60.0" y="86.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#6b6b66">Doc CHROMA-BRD-001 · rev A · DRAFT for engineering review · 2026-10-09 · owner: Andy England</text>
+<text xml:space="preserve" x="60.0" y="112.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#6b6b66">Scope: a wifi-connected physical lighting console (8 group channels + master) that drives LIFX bulbs and WLED pixel fixtures (incl. 12 Playbill bars) through the CHROMA hub,</text>
+<text xml:space="preserve" x="60.0" y="131.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#6b6b66">records performances against song position, and produces the dataset for training an AI to reproduce the operator's style.</text>
+<text xml:space="preserve" x="60.0" y="150.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#6b6b66">Convention: ⚠ marks an assumption that must be verified against a datasheet or on the bench. Nothing here is bench-verified yet — prototype P0 (CHROMA-BRD-P0) gates this document.</text>
+<rect x="60.0" y="168.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="190.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">1  SYSTEM ARCHITECTURE   (solid = exists today · red dashed = new work)</text>
+<rect x="60.0" y="260.0" width="250.0" height="100.0" rx="8" fill="#fbeeea" stroke="#d0392b" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text xml:space="preserve" x="185.0" y="282.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">Lighting board</text>
+<text xml:space="preserve" x="185.0" y="301.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">ESP32-S3 · 9 faders · ~40 keys</text>
+<text xml:space="preserve" x="185.0" y="316.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">3 encoders · OLED · backlights</text>
+<rect x="60.0" y="410.0" width="250.0" height="80.0" rx="8" fill="#fbeeea" stroke="#d0392b" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text xml:space="preserve" x="185.0" y="432.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">Audio tap (phase 2)</text>
+<text xml:space="preserve" x="185.0" y="451.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">Pi Zero 2 W · shairport-sync</text>
+<text xml:space="preserve" x="185.0" y="466.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">FFT → beat/band features</text>
+<rect x="60.0" y="540.0" width="250.0" height="80.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2.2"/>
+<text xml:space="preserve" x="185.0" y="562.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">Apple TV</text>
+<text xml:space="preserve" x="185.0" y="581.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">pyatv push: track, position,</text>
+<text xml:space="preserve" x="185.0" y="596.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">artwork (exists)</text>
+<rect x="470.0" y="340.0" width="330.0" height="220.0" rx="8" fill="#fbeeea" stroke="#d0392b" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text xml:space="preserve" x="635.0" y="362.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">CHROMA hub  (Mac, :8765)</text>
+<text xml:space="preserve" x="635.0" y="381.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">FastAPI + engine (exists)</text>
+<text xml:space="preserve" x="635.0" y="396.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66"> </text>
+<text xml:space="preserve" x="635.0" y="411.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ fixtures.py   fixture/group/bank map</text>
+<text xml:space="preserve" x="635.0" y="426.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ board.py       /ws/board, arbitration</text>
+<text xml:space="preserve" x="635.0" y="441.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ recorder.py    record / replay (JSONL)</text>
+<text xml:space="preserve" x="635.0" y="456.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ outputs/wled.py  DDP backend</text>
+<text xml:space="preserve" x="635.0" y="471.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">+ audio_features.py (phase 2)</text>
+<rect x="960.0" y="260.0" width="300.0" height="90.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2.2"/>
+<text xml:space="preserve" x="1110.0" y="282.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">LIFX bulbs (5 LR + 4 BR)</text>
+<text xml:space="preserve" x="1110.0" y="301.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">LAN UDP · slow class</text>
+<text xml:space="preserve" x="1110.0" y="316.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">washes, color moves (exists)</text>
+<rect x="960.0" y="380.0" width="300.0" height="90.0" rx="8" fill="#fbeeea" stroke="#d0392b" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text xml:space="preserve" x="1110.0" y="402.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">WLED nodes (ESP32)</text>
+<text xml:space="preserve" x="1110.0" y="421.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">DDP/UDP · fast class</text>
+<text xml:space="preserve" x="1110.0" y="436.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">Playbill bars ×12 · counter strip</text>
+<rect x="960.0" y="500.0" width="300.0" height="90.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2.2"/>
+<text xml:space="preserve" x="1110.0" y="522.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">Claude / Ollama</text>
+<text xml:space="preserve" x="1110.0" y="541.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">palette + (later) performance</text>
+<text xml:space="preserve" x="1110.0" y="556.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">exists for palettes; extend</text>
+<rect x="470.0" y="630.0" width="330.0" height="80.0" rx="8" fill="#fbeeea" stroke="#d0392b" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text xml:space="preserve" x="635.0" y="652.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#1d1d1b">Recordings store</text>
+<text xml:space="preserve" x="635.0" y="671.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">~/.chroma/recordings/*.jsonl</text>
+<text xml:space="preserve" x="635.0" y="686.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="middle" fill="#6b6b66">track-keyed, with audio features</text>
+<line x1="310.0" y1="310.0" x2="470.0" y2="400.0" stroke="#d0392b" stroke-width="2"/>
+<polygon points="470.0,400.0 460.1,398.9 463.9,392.1" fill="#d0392b" stroke="#d0392b" stroke-width="1"/>
+<text xml:space="preserve" x="390.0" y="343.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">wifi · WebSocket JSON</text>
+<line x1="310.0" y1="450.0" x2="470.0" y2="480.0" stroke="#d0392b" stroke-width="2"/>
+<polygon points="470.0,480.0 460.2,482.1 461.7,474.5" fill="#d0392b" stroke="#d0392b" stroke-width="1"/>
+<text xml:space="preserve" x="390.0" y="457.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">UDP features</text>
+<line x1="310.0" y1="580.0" x2="470.0" y2="530.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="470.0,530.0 462.4,536.5 460.0,529.0" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text xml:space="preserve" x="390.0" y="549.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">push</text>
+<line x1="800.0" y1="410.0" x2="960.0" y2="305.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="960.0,305.0 954.4,313.3 950.2,306.8" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text xml:space="preserve" x="880.0" y="351.5" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">UDP</text>
+<line x1="800.0" y1="450.0" x2="960.0" y2="425.0" stroke="#d0392b" stroke-width="2"/>
+<polygon points="960.0,425.0 951.5,430.3 950.3,422.6" fill="#d0392b" stroke="#d0392b" stroke-width="1"/>
+<text xml:space="preserve" x="880.0" y="431.5" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">DDP :4048</text>
+<line x1="800.0" y1="510.0" x2="960.0" y2="540.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="960.0,540.0 950.2,542.1 951.7,534.5" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<text xml:space="preserve" x="880.0" y="539.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">HTTPS / LAN</text>
+<line x1="635.0" y1="560.0" x2="635.0" y2="630.0" stroke="#d0392b" stroke-width="2"/>
+<polygon points="635.0,630.0 631.1,620.8 638.9,620.8" fill="#d0392b" stroke="#d0392b" stroke-width="1"/>
+<text xml:space="preserve" x="635.0" y="587.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">append events</text>
+<rect x="60.0" y="728.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="750.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">2  REQUIREMENTS AND BUDGETS</text>
+<rect x="60.0" y="780.0" width="1680.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="797.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">ID</text>
+<text xml:space="preserve" x="128.0" y="797.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Requirement</text>
+<text xml:space="preserve" x="888.0" y="797.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Target</text>
+<text xml:space="preserve" x="1228.0" y="797.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Verified by</text>
+<rect x="60.0" y="805.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="822.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R1</text>
+<text xml:space="preserve" x="128.0" y="822.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fader → fast fixture (WLED) end-to-end latency</text>
+<text xml:space="preserve" x="888.0" y="822.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">p95 ≤ 50 ms, max ≤ 80 ms</text>
+<text xml:space="preserve" x="1228.0" y="822.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 T3, system S1</text>
+<text xml:space="preserve" x="68.0" y="847.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R2</text>
+<text xml:space="preserve" x="128.0" y="847.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH press → full level on fast fixture</text>
+<text xml:space="preserve" x="888.0" y="847.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">p95 ≤ 30 ms</text>
+<text xml:space="preserve" x="1228.0" y="847.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 T4</text>
+<rect x="60.0" y="855.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="872.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R3</text>
+<text xml:space="preserve" x="128.0" y="872.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fader → LIFX latency (informational; sets 'slow' class)</text>
+<text xml:space="preserve" x="888.0" y="872.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">measured, expected 100–250 ms</text>
+<text xml:space="preserve" x="1228.0" y="872.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 T7</text>
+<text xml:space="preserve" x="68.0" y="897.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R4</text>
+<text xml:space="preserve" x="128.0" y="897.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Per-channel send rate (coalesced, newest wins)</text>
+<text xml:space="preserve" x="888.0" y="897.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≤ 60 Hz while moving; 0 at rest</text>
+<text xml:space="preserve" x="1228.0" y="897.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 T1, firmware tests</text>
+<rect x="60.0" y="905.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="922.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R5</text>
+<text xml:space="preserve" x="128.0" y="922.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Recorded-event timing vs song position</text>
+<text xml:space="preserve" x="888.0" y="922.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">±20 ms after sync + nudge</text>
+<text xml:space="preserve" x="1228.0" y="922.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">system S3, S4</text>
+<text xml:space="preserve" x="68.0" y="947.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R6</text>
+<text xml:space="preserve" x="128.0" y="947.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fader resolution / noise</text>
+<text xml:space="preserve" x="888.0" y="947.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12-bit, ≤ ±2 counts at rest</text>
+<text xml:space="preserve" x="1228.0" y="947.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 T1</text>
+<rect x="60.0" y="955.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="972.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R7</text>
+<text xml:space="preserve" x="128.0" y="972.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Reconnect after wifi/hub loss</text>
+<text xml:space="preserve" x="888.0" y="972.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">board ≤ 3 s, hub restart ≤ 5 s</text>
+<text xml:space="preserve" x="1228.0" y="972.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 T5, T8</text>
+<text xml:space="preserve" x="68.0" y="997.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R8</text>
+<text xml:space="preserve" x="128.0" y="997.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Channels / banks / groups</text>
+<text xml:space="preserve" x="888.0" y="997.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8 + master · 3 banks · 24 groups</text>
+<text xml:space="preserve" x="1228.0" y="997.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">design review</text>
+<rect x="60.0" y="1005.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="1022.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R9</text>
+<text xml:space="preserve" x="128.0" y="1022.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fixtures supported (initial → planned)</text>
+<text xml:space="preserve" x="888.0" y="1022.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">5 LIFX + 4 LIFX + strip + 12 bars → 60+</text>
+<text xml:space="preserve" x="1228.0" y="1022.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">load test</text>
+<text xml:space="preserve" x="68.0" y="1047.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R10</text>
+<text xml:space="preserve" x="128.0" y="1047.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Safety: no software state may exceed per-fixture thermal/current limits</text>
+<text xml:space="preserve" x="888.0" y="1047.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">see §9; hardware backstop</text>
+<text xml:space="preserve" x="1228.0" y="1047.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">system S5, S6</text>
+<rect x="60.0" y="1055.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="1072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R11</text>
+<text xml:space="preserve" x="128.0" y="1072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Photosensitivity: no flashing faster than 3 Hz by default</text>
+<text xml:space="preserve" x="888.0" y="1072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">enforced in hub, not UI</text>
+<text xml:space="preserve" x="1228.0" y="1072.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">system S7</text>
+<text xml:space="preserve" x="68.0" y="1097.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">R12</text>
+<text xml:space="preserve" x="128.0" y="1097.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Standalone: board works with hub only (no internet)</text>
+<text xml:space="preserve" x="888.0" y="1097.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">yes; AI features degrade gracefully</text>
+<text xml:space="preserve" x="1228.0" y="1097.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">bench</text>
+<rect x="60.0" y="780.0" width="1680.0" height="325.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="60.0" y="1123.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="1145.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">3  FRONT PANEL — mechanical blueprint   (top view, 1 mm = 2 px, origin top-left)</text>
+<rect x="120.0" y="1225.0" width="1120.0" height="600.0" rx="10" fill="#ecece6" stroke="#3a3a36" stroke-width="3"/>
+<circle cx="136.0" cy="1241.0" r="3.2" fill="none" stroke="#3a3a36" stroke-width="1.2"/>
+<circle cx="1224.0" cy="1241.0" r="3.2" fill="none" stroke="#3a3a36" stroke-width="1.2"/>
+<circle cx="136.0" cy="1809.0" r="3.2" fill="none" stroke="#3a3a36" stroke-width="1.2"/>
+<circle cx="1224.0" cy="1809.0" r="3.2" fill="none" stroke="#3a3a36" stroke-width="1.2"/>
+<circle cx="680.0" cy="1241.0" r="3.2" fill="none" stroke="#3a3a36" stroke-width="1.2"/>
+<circle cx="680.0" cy="1809.0" r="3.2" fill="none" stroke="#3a3a36" stroke-width="1.2"/>
+<rect x="152.0" y="1257.0" width="128.0" height="68.0" rx="0" fill="#111" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="320.0" cy="1277.0" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="360.0" cy="1277.0" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="400.0" cy="1277.0" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="440.0" cy="1277.0" r="5.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="674.0" cy="1281.0" r="6.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="836.0" cy="1281.0" r="6.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="208.0" cy="1421.0" r="7.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="208.0" cy="1421.0" r="28.0" fill="none" stroke="#3a3a36" stroke-width="1" stroke-dasharray="4 3"/>
+<circle cx="352.0" cy="1421.0" r="7.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="352.0" cy="1421.0" r="28.0" fill="none" stroke="#3a3a36" stroke-width="1" stroke-dasharray="4 3"/>
+<rect x="166.0" y="1499.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="222.0" y="1499.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="278.0" y="1499.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="334.0" y="1499.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="166.0" y="1555.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="222.0" y="1555.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="278.0" y="1555.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="334.0" y="1555.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="272.0" cy="1645.0" r="6.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="186.0" y="1715.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="254.0" y="1715.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="322.0" y="1715.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="362.0" y="1765.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="446.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="472.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="468.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="472.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="510.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="536.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="532.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="536.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="574.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="600.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="596.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="600.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="638.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="664.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="660.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="664.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="702.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="728.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="724.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="728.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="766.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="792.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="788.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="792.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="830.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="856.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="852.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="856.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="894.0" y="1383.0" width="52.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6" stroke-dasharray="4 3"/>
+<circle cx="920.0" cy="1437.0" r="12.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="916.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="920.0" cy="1729.0" r="24.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1020.5" y="1465.0" width="7.0" height="208.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="1024.0" cy="1749.0" r="30.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1082.0" y="1415.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1142.0" y="1415.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1082.0" y="1467.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1142.0" y="1467.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1082.0" y="1519.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1142.0" y="1519.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1082.0" y="1571.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1142.0" y="1571.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1066.0" y="1641.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1122.0" y="1641.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<rect x="1178.0" y="1641.0" width="28.0" height="28.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="1136.0" cy="1749.0" r="7.0" fill="none" stroke="#3a3a36" stroke-width="1.6"/>
+<circle cx="1136.0" cy="1749.0" r="28.0" fill="none" stroke="#3a3a36" stroke-width="1" stroke-dasharray="4 3"/>
+<rect x="158.0" y="1337.0" width="82.0" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="162.0" y="1349.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">D1 display</text>
+<rect x="306.0" y="1243.0" width="37.6" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="310.0" y="1255.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">L1–4</text>
+<rect x="610.0" y="1249.0" width="45.0" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="614.0" y="1261.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">T1,T2</text>
+<rect x="146.0" y="1361.0" width="45.0" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="150.0" y="1373.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">E1,E2</text>
+<rect x="146.0" y="1463.0" width="96.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="150.0" y="1475.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">K1–8 palette</text>
+<rect x="146.0" y="1603.0" width="22.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="150.0" y="1615.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">T3</text>
+<rect x="146.0" y="1689.0" width="82.0" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="150.0" y="1701.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">K9–11 bank</text>
+<rect x="328.0" y="1749.0" width="59.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="332.0" y="1761.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">K12 tap</text>
+<rect x="438.0" y="1365.0" width="37.6" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="442.0" y="1377.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">W1–8</text>
+<rect x="438.0" y="1409.0" width="89.4" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="442.0" y="1421.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">B1–8 assign</text>
+<rect x="438.0" y="1465.0" width="37.6" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="442.0" y="1477.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">F1–8</text>
+<rect x="438.0" y="1693.0" width="89.4" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="442.0" y="1705.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">B9–16 flash</text>
+<rect x="990.0" y="1423.0" width="22.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="994.0" y="1435.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">FM</text>
+<rect x="990.0" y="1689.0" width="96.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="994.0" y="1701.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">B17 blackout</text>
+<rect x="1058.0" y="1393.0" width="89.4" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="1062.0" y="1405.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">K13–20 cues</text>
+<rect x="1058.0" y="1619.0" width="96.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="1062.0" y="1631.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">K21–23 xport</text>
+<rect x="1110.0" y="1705.0" width="22.8" height="17.0" rx="3" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="1114.0" y="1717.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="700" text-anchor="start" fill="#fff">E3</text>
+<line x1="120.0" y1="1209.0" x2="1240.0" y2="1209.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="120.0" y1="1204.0" x2="120.0" y2="1214.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="1240.0" y1="1204.0" x2="1240.0" y2="1214.0" stroke="#6b6b66" stroke-width="1"/>
+<text xml:space="preserve" x="680.0" y="1203.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">560 mm</text>
+<line x1="98.0" y1="1225.0" x2="98.0" y2="1825.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="93.0" y1="1225.0" x2="103.0" y2="1225.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="93.0" y1="1825.0" x2="103.0" y2="1825.0" stroke="#6b6b66" stroke-width="1"/>
+<text transform="translate(92.0,1525.0) rotate(-90)" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#6b6b66">300 mm</text>
+<line x1="472.0" y1="1817.0" x2="536.0" y2="1817.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="472.0" y1="1812.0" x2="472.0" y2="1822.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="536.0" y1="1812.0" x2="536.0" y2="1822.0" stroke="#6b6b66" stroke-width="1"/>
+<text xml:space="preserve" x="504.0" y="1811.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">32 mm pitch</text>
+<line x1="472.0" y1="1851.0" x2="920.0" y2="1851.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="472.0" y1="1846.0" x2="472.0" y2="1856.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="920.0" y1="1846.0" x2="920.0" y2="1856.0" stroke="#6b6b66" stroke-width="1"/>
+<text xml:space="preserve" x="696.0" y="1845.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">8 × 32 mm = 224 mm channel field</text>
+<text xml:space="preserve" x="1270.0" y="1235.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#1d1d1b">MATERIAL / FAB</text>
+<text xml:space="preserve" x="1270.0" y="1257.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">Face plate 3 mm aluminum</text>
+<text xml:space="preserve" x="1270.0" y="1273.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">(anodized black) or cast acrylic.</text>
+<text xml:space="preserve" x="1270.0" y="1289.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">Laser/CNC in your lab; chamfer</text>
+<text xml:space="preserve" x="1270.0" y="1305.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">slot edges, deburr.</text>
+<text xml:space="preserve" x="1270.0" y="1321.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66"></text>
+<text xml:space="preserve" x="1270.0" y="1337.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">Case: plywood/hardwood cheeks,</text>
+<text xml:space="preserve" x="1270.0" y="1353.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">~10° slope (30 mm front, 70 mm</text>
+<text xml:space="preserve" x="1270.0" y="1369.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">rear). 560 mm exceeds most</text>
+<text xml:space="preserve" x="1270.0" y="1385.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">printer beds: print only knobs,</text>
+<text xml:space="preserve" x="1270.0" y="1401.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">brackets and small parts.</text>
+<text xml:space="preserve" x="1270.0" y="1417.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66"></text>
+<text xml:space="preserve" x="1270.0" y="1433.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">Check every hole against the</text>
+<text xml:space="preserve" x="1270.0" y="1449.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#6b6b66">real part first (⚠ datasheet).</text>
+<text xml:space="preserve" x="60.0" y="1885.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" fill="#1d1d1b">CUTOUT SCHEDULE</text>
+<rect x="60.0" y="1897.0" width="1670.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="1914.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Ref</text>
+<text xml:space="preserve" x="218.0" y="1914.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Feature</text>
+<text xml:space="preserve" x="688.0" y="1914.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Qty</text>
+<text xml:space="preserve" x="748.0" y="1914.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Cutout (mm)</text>
+<text xml:space="preserve" x="938.0" y="1914.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Notes</text>
+<rect x="60.0" y="1922.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="1939.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">F1–8, FM</text>
+<text xml:space="preserve" x="218.0" y="1939.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">100 mm faders (8 channel + master)</text>
+<text xml:space="preserve" x="688.0" y="1939.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">9</text>
+<text xml:space="preserve" x="748.0" y="1939.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3.5 × 104 slot</text>
+<text xml:space="preserve" x="938.0" y="1939.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">⚠ slot length and mount holes per chosen part; ch pitch 32</text>
+<text xml:space="preserve" x="68.0" y="1964.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">B9–16</text>
+<text xml:space="preserve" x="218.0" y="1964.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH arcade buttons</text>
+<text xml:space="preserve" x="688.0" y="1964.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text xml:space="preserve" x="748.0" y="1964.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø24</text>
+<text xml:space="preserve" x="938.0" y="1964.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">translucent cap, SK6812 behind; momentary NO</text>
+<rect x="60.0" y="1972.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="1989.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">B17</text>
+<text xml:space="preserve" x="218.0" y="1989.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">BLACKOUT arcade button</text>
+<text xml:space="preserve" x="688.0" y="1989.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="748.0" y="1989.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø30</text>
+<text xml:space="preserve" x="938.0" y="1989.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">red; ⚠ confirm 30 mm mount</text>
+<text xml:space="preserve" x="68.0" y="2014.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">B1–8</text>
+<text xml:space="preserve" x="218.0" y="2014.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ASSIGN pushbuttons</text>
+<text xml:space="preserve" x="688.0" y="2014.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text xml:space="preserve" x="748.0" y="2014.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø12</text>
+<text xml:space="preserve" x="938.0" y="2014.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">momentary; ⚠ verify mounting diameter</text>
+<rect x="60.0" y="2022.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="2039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">K1–23</text>
+<text xml:space="preserve" x="218.0" y="2039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MX-style key switches (palette, bank, tap, cues, xport)</text>
+<text xml:space="preserve" x="688.0" y="2039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">23</text>
+<text xml:space="preserve" x="748.0" y="2039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">14 × 14 square</text>
+<text xml:space="preserve" x="938.0" y="2039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">plate-mount; 3 mm plate OK for MX; shine-through caps</text>
+<text xml:space="preserve" x="68.0" y="2064.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">E1–3</text>
+<text xml:space="preserve" x="218.0" y="2064.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Rotary encoders w/ push (hue, sat, nudge)</text>
+<text xml:space="preserve" x="688.0" y="2064.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="748.0" y="2064.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø7</text>
+<text xml:space="preserve" x="938.0" y="2064.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">EC11-class, 6 mm shaft; 28 mm knobs on E1,E2,E3</text>
+<rect x="60.0" y="2072.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="2089.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T1–3</text>
+<text xml:space="preserve" x="218.0" y="2089.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Toggles: art mode, who-drives, fader function</text>
+<text xml:space="preserve" x="688.0" y="2089.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="748.0" y="2089.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø6</text>
+<text xml:space="preserve" x="938.0" y="2089.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">mini toggle; ⚠ confirm on-off-on contact map</text>
+<text xml:space="preserve" x="68.0" y="2114.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">D1</text>
+<text xml:space="preserve" x="218.0" y="2114.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Main display window (2.42" OLED)</text>
+<text xml:space="preserve" x="688.0" y="2114.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="748.0" y="2114.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">64 × 34</text>
+<text xml:space="preserve" x="938.0" y="2114.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">⚠ viewing area vs module outline; bezel recess</text>
+<rect x="60.0" y="2122.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="2139.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">L1–4</text>
+<text xml:space="preserve" x="218.0" y="2139.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Status LEDs (wifi, hub, sync, rec)</text>
+<text xml:space="preserve" x="688.0" y="2139.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<text xml:space="preserve" x="748.0" y="2139.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø5</text>
+<text xml:space="preserve" x="938.0" y="2139.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">bezel or light-pipe; driven from SK6812 chain</text>
+<text xml:space="preserve" x="68.0" y="2164.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">W1–8</text>
+<text xml:space="preserve" x="218.0" y="2164.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Scribble windows (optional)</text>
+<text xml:space="preserve" x="688.0" y="2164.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text xml:space="preserve" x="748.0" y="2164.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">26 × 14</text>
+<text xml:space="preserve" x="938.0" y="2164.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">label tape in v1; OLEDs later</text>
+<rect x="60.0" y="2172.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="2189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">H</text>
+<text xml:space="preserve" x="218.0" y="2189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">M3 mounting holes</text>
+<text xml:space="preserve" x="688.0" y="2189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">6+</text>
+<text xml:space="preserve" x="748.0" y="2189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Ø3.2</text>
+<text xml:space="preserve" x="938.0" y="2189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">countersunk; spaced for case standoffs</text>
+<rect x="60.0" y="1897.0" width="1670.0" height="300.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="60.0" y="2215.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="2237.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">4  CHANNEL MODULE PCB  (×8 identical + 1 master variant)</text>
+<rect x="130.0" y="2317.0" width="96.0" height="672.0" rx="3" fill="#e9efe9" stroke="#2f8f4e" stroke-width="3"/>
+<circle cx="178.0" cy="2407.0" r="18.0" fill="none" stroke="#3a3a36" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text xml:space="preserve" x="240.0" y="2411.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">SW2 ASSIGN pads</text>
+<rect x="157.0" y="2455.0" width="42.0" height="342.0" rx="0" fill="none" stroke="#3a3a36" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text xml:space="preserve" x="240.0" y="2620.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">R1 fader footprint</text>
+<text xml:space="preserve" x="240.0" y="2634.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">(per chosen part)</text>
+<rect x="172.8" y="2485.0" width="10.5" height="312.0" rx="2" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<circle cx="178.0" cy="2887.0" r="18.0" fill="none" stroke="#3a3a36" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text xml:space="preserve" x="240.0" y="2891.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">SW1 FLASH (2-pin PH) + D1 SK6812</text>
+<rect x="168.4" y="2938.0" width="19.2" height="30.0" rx="0" fill="#fff" stroke="#3a3a36" stroke-width="1.5"/>
+<text xml:space="preserve" x="240.0" y="2957.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">J1  2×5 IDC</text>
+<rect x="172.0" y="2349.0" width="12.0" height="8.0" rx="0" fill="#fff" stroke="#3a3a36" stroke-width="1.2"/>
+<text xml:space="preserve" x="240.0" y="2357.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">D2 SK6812 (assign backlight)</text>
+<text xml:space="preserve" x="240.0" y="2373.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">C1 100 nF · C2 10 µF · R2 1k + C3 100 nF</text>
+<line x1="130.0" y1="2303.0" x2="226.0" y2="2303.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="130.0" y1="2298.0" x2="130.0" y2="2308.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="226.0" y1="2298.0" x2="226.0" y2="2308.0" stroke="#6b6b66" stroke-width="1"/>
+<text xml:space="preserve" x="178.0" y="2297.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">32 mm</text>
+<line x1="108.0" y1="2317.0" x2="108.0" y2="2989.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="103.0" y1="2317.0" x2="113.0" y2="2317.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="103.0" y1="2989.0" x2="113.0" y2="2989.0" stroke="#6b6b66" stroke-width="1"/>
+<text transform="translate(102.0,2653.0) rotate(-90)" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#6b6b66">224 mm</text>
+<text xml:space="preserve" x="600.0" y="2309.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">J1 PINOUT  (2×5 shrouded IDC, ribbon ≤ 150 mm to main board)</text>
+<rect x="600.0" y="2317.0" width="800.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="608.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Pin</text>
+<text xml:space="preserve" x="668.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Net</text>
+<text xml:space="preserve" x="798.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Dir</text>
+<text xml:space="preserve" x="888.0" y="2334.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Notes</text>
+<rect x="600.0" y="2342.0" width="800.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="608.0" y="2359.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="668.0" y="2359.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">WIPER</text>
+<text xml:space="preserve" x="798.0" y="2359.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">→ main</text>
+<text xml:space="preserve" x="888.0" y="2359.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">fader wiper; RC filter (R2/C3) at module</text>
+<text xml:space="preserve" x="608.0" y="2384.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<text xml:space="preserve" x="668.0" y="2384.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">AGND</text>
+<text xml:space="preserve" x="798.0" y="2384.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">—</text>
+<text xml:space="preserve" x="888.0" y="2384.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">analog ground, interleaved next to WIPER</text>
+<rect x="600.0" y="2392.0" width="800.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="608.0" y="2409.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="668.0" y="2409.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">+3V3A</text>
+<text xml:space="preserve" x="798.0" y="2409.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">← main</text>
+<text xml:space="preserve" x="888.0" y="2409.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">filtered analog 3.3 V for the fader only</text>
+<text xml:space="preserve" x="608.0" y="2434.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<text xml:space="preserve" x="668.0" y="2434.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">AGND</text>
+<text xml:space="preserve" x="798.0" y="2434.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">—</text>
+<text xml:space="preserve" x="888.0" y="2434.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">second analog ground</text>
+<rect x="600.0" y="2442.0" width="800.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="608.0" y="2459.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">5</text>
+<text xml:space="preserve" x="668.0" y="2459.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH_N</text>
+<text xml:space="preserve" x="798.0" y="2459.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">→ main</text>
+<text xml:space="preserve" x="888.0" y="2459.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">to MCP23017 input; active low, pull-up on main</text>
+<text xml:space="preserve" x="608.0" y="2484.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">6</text>
+<text xml:space="preserve" x="668.0" y="2484.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ASSIGN_N</text>
+<text xml:space="preserve" x="798.0" y="2484.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">→ main</text>
+<text xml:space="preserve" x="888.0" y="2484.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">to MCP23017 input; active low, pull-up on main</text>
+<rect x="600.0" y="2492.0" width="800.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="608.0" y="2509.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">7</text>
+<text xml:space="preserve" x="668.0" y="2509.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">GND</text>
+<text xml:space="preserve" x="798.0" y="2509.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">—</text>
+<text xml:space="preserve" x="888.0" y="2509.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">digital / LED ground</text>
+<text xml:space="preserve" x="608.0" y="2534.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text xml:space="preserve" x="668.0" y="2534.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PX_IN</text>
+<text xml:space="preserve" x="798.0" y="2534.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">← main</text>
+<text xml:space="preserve" x="888.0" y="2534.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 data in (from previous module)</text>
+<rect x="600.0" y="2542.0" width="800.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="608.0" y="2559.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">9</text>
+<text xml:space="preserve" x="668.0" y="2559.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">+5V</text>
+<text xml:space="preserve" x="798.0" y="2559.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">← main</text>
+<text xml:space="preserve" x="888.0" y="2559.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">backlight power; 10 µF + 100 nF at entry</text>
+<text xml:space="preserve" x="608.0" y="2584.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">10</text>
+<text xml:space="preserve" x="668.0" y="2584.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PX_OUT</text>
+<text xml:space="preserve" x="798.0" y="2584.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">→ next</text>
+<text xml:space="preserve" x="888.0" y="2584.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">daisy-chain to next module's PX_IN</text>
+<rect x="600.0" y="2317.0" width="800.0" height="275.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="600.0" y="2620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Master channel = same PCB, no ASSIGN switch, BLACKOUT wired separately.</text>
+<text xml:space="preserve" x="600.0" y="2638.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Analog sections: keep WIPER away from PX data; AGND joins GND at one point on the main board (star).</text>
+<text xml:space="preserve" x="600.0" y="2656.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Order 10 boards (8 + master + spare). 2-layer, 1.6 mm, ENIG optional. Fader mounting holes per ⚠ part.</text>
+<text xml:space="preserve" x="600.0" y="2674.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">D1 sits under the translucent FLASH cap; D2 lights the ASSIGN ring; both on the same SK6812 chain.</text>
+<rect x="60.0" y="3017.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="3039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">5  MAIN BOARD — pin map, expanders, power</text>
+<text xml:space="preserve" x="60.0" y="3083.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#1d1d1b">ESP32-S3 PIN MAP  (⚠ module-dependent: octal-PSRAM variants reserve GPIO35–37; avoid strapping pins 0, 3, 45, 46 and USB 19/20)</text>
+<rect x="60.0" y="3093.0" width="1680.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3110.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Net</text>
+<text xml:space="preserve" x="278.0" y="3110.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">GPIO</text>
+<text xml:space="preserve" x="538.0" y="3110.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Function</text>
+<text xml:space="preserve" x="1058.0" y="3110.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Notes</text>
+<rect x="60.0" y="3118.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3135.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FADER_1…9</text>
+<text xml:space="preserve" x="278.0" y="3135.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1–9  (ADC1_CH0–8)</text>
+<text xml:space="preserve" x="538.0" y="3135.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">9 analog fader inputs</text>
+<text xml:space="preserve" x="1058.0" y="3135.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ADC1 works with wifi; ADC2 does not. Oversample ×16, EMA.</text>
+<text xml:space="preserve" x="68.0" y="3160.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">I2C_SDA / SCL</text>
+<text xml:space="preserve" x="278.0" y="3160.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">17 / 18</text>
+<text xml:space="preserve" x="538.0" y="3160.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">bus to 3× MCP23017 + OLED</text>
+<text xml:space="preserve" x="1058.0" y="3160.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">400 kHz; 4.7 kΩ pull-ups; ⚠ confirm bus load</text>
+<rect x="60.0" y="3168.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3185.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MCP_INT</text>
+<text xml:space="preserve" x="278.0" y="3185.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">16</text>
+<text xml:space="preserve" x="538.0" y="3185.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">wired-OR of INTA/INTB (mirrored)</text>
+<text xml:space="preserve" x="1058.0" y="3185.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">falling edge → read pending inputs</text>
+<text xml:space="preserve" x="68.0" y="3210.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PX_DATA</text>
+<text xml:space="preserve" x="278.0" y="3210.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">14</text>
+<text xml:space="preserve" x="538.0" y="3210.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 chain (≈ 40 px) via 74AHCT125</text>
+<text xml:space="preserve" x="1058.0" y="3210.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">330 Ω series, 1000 µF bulk on +5V</text>
+<rect x="60.0" y="3218.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3235.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ENC1 A/B/SW</text>
+<text xml:space="preserve" x="278.0" y="3235.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">39 / 40 / 41</text>
+<text xml:space="preserve" x="538.0" y="3235.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">HUE encoder</text>
+<text xml:space="preserve" x="1058.0" y="3235.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PCNT unit 0, glitch filter on</text>
+<text xml:space="preserve" x="68.0" y="3260.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ENC2 A/B/SW</text>
+<text xml:space="preserve" x="278.0" y="3260.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">42 / 47 / 21</text>
+<text xml:space="preserve" x="538.0" y="3260.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SAT encoder</text>
+<text xml:space="preserve" x="1058.0" y="3260.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PCNT unit 1</text>
+<rect x="60.0" y="3268.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3285.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ENC3 A/B/SW</text>
+<text xml:space="preserve" x="278.0" y="3285.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">10 / 12 / 13</text>
+<text xml:space="preserve" x="538.0" y="3285.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SYNC NUDGE encoder</text>
+<text xml:space="preserve" x="1058.0" y="3285.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PCNT unit 2</text>
+<text xml:space="preserve" x="68.0" y="3310.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">DEBUG</text>
+<text xml:space="preserve" x="278.0" y="3310.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">15</text>
+<text xml:space="preserve" x="538.0" y="3310.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">scope marker (packet sent)</text>
+<text xml:space="preserve" x="1058.0" y="3310.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">keep in production for latency checks</text>
+<rect x="60.0" y="3318.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3335.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Reserved</text>
+<text xml:space="preserve" x="278.0" y="3335.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">35–37 / 19–20 / 0,3,45,46</text>
+<text xml:space="preserve" x="538.0" y="3335.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PSRAM, USB, straps</text>
+<text xml:space="preserve" x="1058.0" y="3335.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">do not use</text>
+<text xml:space="preserve" x="68.0" y="3360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">(DNP footprint)</text>
+<text xml:space="preserve" x="278.0" y="3360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SPI on spare pins</text>
+<text xml:space="preserve" x="538.0" y="3360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2× MCP3208 ADC fallback</text>
+<text xml:space="preserve" x="1058.0" y="3360.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">populated only if P0 T1 fails; avoids a respin</text>
+<rect x="60.0" y="3093.0" width="1680.0" height="275.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="3402.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#1d1d1b">MCP23017 ALLOCATION  (I²C 0x20–0x22, inputs with pull-ups, interrupt on change)</text>
+<rect x="60.0" y="3414.0" width="1680.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3431.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Chip</text>
+<text xml:space="preserve" x="188.0" y="3431.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Addr</text>
+<text xml:space="preserve" x="278.0" y="3431.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Inputs</text>
+<text xml:space="preserve" x="1278.0" y="3431.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Free</text>
+<rect x="60.0" y="3439.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3456.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MCP#0</text>
+<text xml:space="preserve" x="188.0" y="3456.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0x20</text>
+<text xml:space="preserve" x="278.0" y="3456.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">FLASH 1–8 (B9–16), ASSIGN 1–8 (B1–8)</text>
+<text xml:space="preserve" x="1278.0" y="3456.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0 of 16</text>
+<text xml:space="preserve" x="68.0" y="3481.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MCP#1</text>
+<text xml:space="preserve" x="188.0" y="3481.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0x21</text>
+<text xml:space="preserve" x="278.0" y="3481.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">palette K1–8, cues K13–20</text>
+<text xml:space="preserve" x="1278.0" y="3481.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0 of 16</text>
+<rect x="60.0" y="3489.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3506.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MCP#2</text>
+<text xml:space="preserve" x="188.0" y="3506.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0x22</text>
+<text xml:space="preserve" x="278.0" y="3506.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">bank A/B/C, TAP, REC, PLAY, STOP, BLACKOUT, toggles T1(2) T2(1) T3(2)</text>
+<text xml:space="preserve" x="1278.0" y="3506.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3 of 16</text>
+<rect x="60.0" y="3414.0" width="1680.0" height="100.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="3550.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#1d1d1b">POWER TREE AND BUDGET</text>
+<rect x="60.0" y="3566.0" width="170.0" height="70.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text xml:space="preserve" x="145.0" y="3588.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">USB-C 5 V</text>
+<text xml:space="preserve" x="145.0" y="3607.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">sink only, 5.1 kΩ CC</text>
+<text xml:space="preserve" x="145.0" y="3622.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">listed 5 V 3 A supply</text>
+<line x1="230.0" y1="3601.0" x2="275.0" y2="3601.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="275.0,3601.0 265.8,3604.9 265.8,3597.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<rect x="275.0" y="3566.0" width="170.0" height="70.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text xml:space="preserve" x="360.0" y="3588.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">PTC 3 A + 470 µF</text>
+<text xml:space="preserve" x="360.0" y="3607.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">reverse-polarity / ESD</text>
+<text xml:space="preserve" x="360.0" y="3622.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">TVS on VBUS</text>
+<line x1="445.0" y1="3601.0" x2="490.0" y2="3601.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="490.0,3601.0 480.8,3604.9 480.8,3597.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<rect x="490.0" y="3566.0" width="170.0" height="70.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text xml:space="preserve" x="575.0" y="3588.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">+5V rail</text>
+<text xml:space="preserve" x="575.0" y="3607.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">ESP32 VIN · 74AHCT125</text>
+<text xml:space="preserve" x="575.0" y="3622.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">SK6812 chain · OLED</text>
+<line x1="660.0" y1="3601.0" x2="705.0" y2="3601.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="705.0,3601.0 695.8,3604.9 695.8,3597.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<rect x="705.0" y="3566.0" width="170.0" height="70.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text xml:space="preserve" x="790.0" y="3588.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">3V3 (devkit LDO)</text>
+<text xml:space="preserve" x="790.0" y="3607.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">ESP32 + MCP23017</text>
+<text xml:space="preserve" x="790.0" y="3622.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">⚠ check LDO headroom</text>
+<line x1="875.0" y1="3601.0" x2="920.0" y2="3601.0" stroke="#3a3a36" stroke-width="2"/>
+<polygon points="920.0,3601.0 910.8,3604.9 910.8,3597.1" fill="#3a3a36" stroke="#3a3a36" stroke-width="1"/>
+<rect x="920.0" y="3566.0" width="170.0" height="70.0" rx="8" fill="#ecece6" stroke="#3a3a36" stroke-width="2"/>
+<text xml:space="preserve" x="1005.0" y="3588.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" fill="#1d1d1b">+3V3A (low-noise LDO)</text>
+<text xml:space="preserve" x="1005.0" y="3607.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">ferrite + 10 µF per module</text>
+<text xml:space="preserve" x="1005.0" y="3622.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">faders only</text>
+<rect x="1170.0" y="3556.0" width="500.0" height="24.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="1178.0" y="3572.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#fff">Load</text>
+<text xml:space="preserve" x="1388.0" y="3572.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#fff">Typ A</text>
+<text xml:space="preserve" x="1478.0" y="3572.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#fff">Peak A</text>
+<text xml:space="preserve" x="1568.0" y="3572.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#fff">Note</text>
+<rect x="1170.0" y="3580.0" width="500.0" height="24.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="1178.0" y="3596.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">ESP32-S3</text>
+<text xml:space="preserve" x="1388.0" y="3596.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.15</text>
+<text xml:space="preserve" x="1478.0" y="3596.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.35</text>
+<text xml:space="preserve" x="1568.0" y="3596.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="1178.0" y="3620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">Backlights</text>
+<text xml:space="preserve" x="1388.0" y="3620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.30</text>
+<text xml:space="preserve" x="1478.0" y="3620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.80</text>
+<text xml:space="preserve" x="1568.0" y="3620.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">cap 25%</text>
+<rect x="1170.0" y="3628.0" width="500.0" height="24.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="1178.0" y="3644.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">OLED etc.</text>
+<text xml:space="preserve" x="1388.0" y="3644.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.05</text>
+<text xml:space="preserve" x="1478.0" y="3644.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.08</text>
+<text xml:space="preserve" x="1568.0" y="3644.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="1178.0" y="3668.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">TOTAL</text>
+<text xml:space="preserve" x="1388.0" y="3668.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">0.50</text>
+<text xml:space="preserve" x="1478.0" y="3668.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">1.23</text>
+<text xml:space="preserve" x="1568.0" y="3668.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#1d1d1b">3 A PSU</text>
+<rect x="1170.0" y="3556.0" width="500.0" height="120.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="60.0" y="3694.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="3716.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">6  FIRMWARE DESIGN  (ESP32-S3, Arduino-ESP32 on PlatformIO; ⚠ pin the core version)</text>
+<rect x="60.0" y="3746.0" width="1670.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3763.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Task</text>
+<text xml:space="preserve" x="238.0" y="3763.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Rate / trigger</text>
+<text xml:space="preserve" x="468.0" y="3763.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Responsibility</text>
+<text xml:space="preserve" x="1428.0" y="3763.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Notes</text>
+<rect x="60.0" y="3771.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3788.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">adc_task</text>
+<text xml:space="preserve" x="238.0" y="3788.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">100 Hz scan</text>
+<text xml:space="preserve" x="468.0" y="3788.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">9 ch × 16 samples → mean → EMA (α≈0.35) → 12-bit; deadband ±2 counts; endpoint cal</text>
+<text xml:space="preserve" x="1428.0" y="3788.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">core 1, high prio</text>
+<text xml:space="preserve" x="68.0" y="3813.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">input_task</text>
+<text xml:space="preserve" x="238.0" y="3813.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MCP INT + 1 kHz poll</text>
+<text xml:space="preserve" x="468.0" y="3813.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">debounce 5 ms; long-press 500 ms (store palette, ASSIGN hold); encoder deltas via PCNT</text>
+<text xml:space="preserve" x="1428.0" y="3813.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">events → queue</text>
+<rect x="60.0" y="3821.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3838.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">net_task</text>
+<text xml:space="preserve" x="238.0" y="3838.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">event-driven</text>
+<text xml:space="preserve" x="468.0" y="3838.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">wifi STA, power-save OFF, mDNS finds hub, WebSocket client, reconnect 0.5→5 s backoff</text>
+<text xml:space="preserve" x="1428.0" y="3838.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">newest-wins per control</text>
+<text xml:space="preserve" x="68.0" y="3863.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">tx_coalesce</text>
+<text xml:space="preserve" x="238.0" y="3863.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≤ 60 Hz</text>
+<text xml:space="preserve" x="468.0" y="3863.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">pack changed faders into one frame; button/encoder edges sent immediately</text>
+<text xml:space="preserve" x="1428.0" y="3863.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">see protocol</text>
+<rect x="60.0" y="3871.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3888.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">led_task</text>
+<text xml:space="preserve" x="238.0" y="3888.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">60 fps</text>
+<text xml:space="preserve" x="468.0" y="3888.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">RMT drive of SK6812 chain; global brightness cap; state from hub 'ui' + local feedback</text>
+<text xml:space="preserve" x="1428.0" y="3888.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">cap in config</text>
+<text xml:space="preserve" x="68.0" y="3913.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">display_task</text>
+<text xml:space="preserve" x="238.0" y="3913.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">10 Hz</text>
+<text xml:space="preserve" x="468.0" y="3913.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">OLED: track, BPM, mode, bank, rec/sync state</text>
+<text xml:space="preserve" x="1428.0" y="3913.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">low prio</text>
+<rect x="60.0" y="3921.0" width="1670.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="3938.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">safety</text>
+<text xml:space="preserve" x="238.0" y="3938.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">continuous</text>
+<text xml:space="preserve" x="468.0" y="3938.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">if hub link lost &gt; 10 s: backlights breathe amber; no output is stuck (hub owns state)</text>
+<text xml:space="preserve" x="1428.0" y="3938.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="68.0" y="3963.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ota</text>
+<text xml:space="preserve" x="238.0" y="3963.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">on demand</text>
+<text xml:space="preserve" x="468.0" y="3963.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">HTTP OTA over wifi; version in hello frame</text>
+<text xml:space="preserve" x="1428.0" y="3963.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">signed images ⚠ optional</text>
+<rect x="60.0" y="3746.0" width="1670.0" height="225.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="4005.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">WIRE PROTOCOL  (WebSocket text frames, JSON; binary packing is a later optimization)</text>
+<rect x="60.0" y="4019.0" width="1680.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4036.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Dir</text>
+<text xml:space="preserve" x="138.0" y="4036.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Frame</text>
+<text xml:space="preserve" x="738.0" y="4036.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">When</text>
+<text xml:space="preserve" x="1178.0" y="4036.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Meaning</text>
+<rect x="60.0" y="4044.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4061.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">B→H</text>
+<text xml:space="preserve" x="138.0" y="4061.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"hello","fw":"0.1","ch":8,"id":"&lt;mac&gt;"}</text>
+<text xml:space="preserve" x="738.0" y="4061.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">on connect</text>
+<text xml:space="preserve" x="1178.0" y="4061.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">identify board; hub replies with ui</text>
+<text xml:space="preserve" x="68.0" y="4086.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">B→H</text>
+<text xml:space="preserve" x="138.0" y="4086.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"f","seq":812,"v":[0.73,…9 values],"m":255}</text>
+<text xml:space="preserve" x="738.0" y="4086.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">≤ 60 Hz while moving</text>
+<text xml:space="preserve" x="1178.0" y="4086.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">normalized 0–1; m = changed-mask</text>
+<rect x="60.0" y="4094.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4111.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">B→H</text>
+<text xml:space="preserve" x="138.0" y="4111.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"b","id":"flash3","d":1,"ts":…}</text>
+<text xml:space="preserve" x="738.0" y="4111.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">on edge</text>
+<text xml:space="preserve" x="1178.0" y="4111.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">button down/up with board ms timestamp</text>
+<text xml:space="preserve" x="68.0" y="4136.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">B→H</text>
+<text xml:space="preserve" x="138.0" y="4136.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"e","id":"hue","d":-2}</text>
+<text xml:space="preserve" x="738.0" y="4136.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">per 20 ms batch</text>
+<text xml:space="preserve" x="1178.0" y="4136.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">encoder delta in detents</text>
+<rect x="60.0" y="4144.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4161.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">B→H</text>
+<text xml:space="preserve" x="138.0" y="4161.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"sw","id":"art","v":2}</text>
+<text xml:space="preserve" x="738.0" y="4161.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">on change</text>
+<text xml:space="preserve" x="1178.0" y="4161.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">toggle positions (art / who / fader-fn)</text>
+<text xml:space="preserve" x="68.0" y="4186.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">B↔H</text>
+<text xml:space="preserve" x="138.0" y="4186.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"ping","ts":…}</text>
+<text xml:space="preserve" x="738.0" y="4186.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">1 Hz</text>
+<text xml:space="preserve" x="1178.0" y="4186.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">RTT + clock offset for recording</text>
+<rect x="60.0" y="4194.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4211.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">H→B</text>
+<text xml:space="preserve" x="138.0" y="4211.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"ui","bank":"A","labels":[…8],"colors":[…8],"track":…}</text>
+<text xml:space="preserve" x="738.0" y="4211.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">on change</text>
+<text xml:space="preserve" x="1178.0" y="4211.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">labels, backlight colors, track, BPM, mode</text>
+<text xml:space="preserve" x="68.0" y="4236.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">H→B</text>
+<text xml:space="preserve" x="138.0" y="4236.0" font-family="ui-monospace,Menlo,monospace" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">{"t":"cfg","deadband":2,"cap":0.25,"cal":[…]}</text>
+<text xml:space="preserve" x="738.0" y="4236.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">on connect / edit</text>
+<text xml:space="preserve" x="1178.0" y="4236.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">tunables without reflashing</text>
+<rect x="60.0" y="4019.0" width="1680.0" height="225.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="4270.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Hub applies: bank → channel → group → parameter (level / hue / sat) → master → blackout → fixture output. The board never talks to a bulb directly.</text>
+<rect x="60.0" y="4278.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="4300.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">7  HUB SOFTWARE DESIGN   (extends hub/engine.py, server.py, scenes.py, layout.py)</text>
+<rect x="60.0" y="4330.0" width="1680.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4347.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Module</text>
+<text xml:space="preserve" x="298.0" y="4347.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Status</text>
+<text xml:space="preserve" x="388.0" y="4347.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Responsibility</text>
+<text xml:space="preserve" x="1468.0" y="4347.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Interfaces</text>
+<rect x="60.0" y="4355.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4372.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">engine.py</text>
+<text xml:space="preserve" x="298.0" y="4372.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">exists</text>
+<text xml:space="preserve" x="388.0" y="4372.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Apple TV push, art → colors, LIFX output, AUTO painting; gains BOARD priority</text>
+<text xml:space="preserve" x="1468.0" y="4372.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">enabled flag, _render</text>
+<text xml:space="preserve" x="68.0" y="4397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">fixtures.py</text>
+<text xml:space="preserve" x="298.0" y="4397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">new</text>
+<text xml:space="preserve" x="388.0" y="4397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Fixture / Group / Bank registry, capabilities, latency class (fast/slow)</text>
+<text xml:space="preserve" x="1468.0" y="4397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">JSON ~/.chroma/fixtures.json</text>
+<rect x="60.0" y="4405.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4422.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">outputs/lifx.py</text>
+<text xml:space="preserve" x="298.0" y="4422.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">wrap</text>
+<text xml:space="preserve" x="388.0" y="4422.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">existing LifxController behind a common push(fixture, color) interface</text>
+<text xml:space="preserve" x="1468.0" y="4422.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">LAN UDP</text>
+<text xml:space="preserve" x="68.0" y="4447.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">outputs/wled.py</text>
+<text xml:space="preserve" x="298.0" y="4447.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">new</text>
+<text xml:space="preserve" x="388.0" y="4447.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">DDP sender per WLED node; segment mapping; frame pacing 60 Hz</text>
+<text xml:space="preserve" x="1468.0" y="4447.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">UDP :4048</text>
+<rect x="60.0" y="4455.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4472.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">board.py</text>
+<text xml:space="preserve" x="298.0" y="4472.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">new</text>
+<text xml:space="preserve" x="388.0" y="4472.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">/ws/board: protocol, mapping, master, blackout, flash, strobe limit (≤ 3 Hz)</text>
+<text xml:space="preserve" x="1468.0" y="4472.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">WebSocket</text>
+<text xml:space="preserve" x="68.0" y="4497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">recorder.py</text>
+<text xml:space="preserve" x="298.0" y="4497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">new</text>
+<text xml:space="preserve" x="388.0" y="4497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">event log + replay scheduler keyed to song position; overdub/replace/merge</text>
+<text xml:space="preserve" x="1468.0" y="4497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">JSONL files</text>
+<rect x="60.0" y="4505.0" width="1680.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4522.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">audio_features.py</text>
+<text xml:space="preserve" x="298.0" y="4522.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">phase 2</text>
+<text xml:space="preserve" x="388.0" y="4522.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ingest beat/bands/onsets from the Pi tap; align to song position</text>
+<text xml:space="preserve" x="1468.0" y="4522.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">UDP :9000 ⚠</text>
+<rect x="60.0" y="4330.0" width="1680.0" height="200.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="4564.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">DATA MODEL</text>
+<rect x="60.0" y="4576.0" width="840.0" height="200.0" rx="6" fill="#f1f1ec" stroke="#b9b9b0" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="4598.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">// fixtures.json</text>
+<text xml:space="preserve" x="76.0" y="4617.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">{ "fixtures": [</text>
+<text xml:space="preserve" x="76.0" y="4636.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">    {"id":"lr-tv-right","kind":"lifx","addr":"192.168.0.26",</text>
+<text xml:space="preserve" x="76.0" y="4655.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">     "caps":["level","hue","sat","kelvin"],"class":"slow"},</text>
+<text xml:space="preserve" x="76.0" y="4674.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">    {"id":"pb-01","kind":"wled-seg","host":"pb.local","seg":0,</text>
+<text xml:space="preserve" x="76.0" y="4693.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">     "caps":["level","hue","sat","white"],"class":"fast"} ],</text>
+<text xml:space="preserve" x="76.0" y="4712.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">  "groups": {"playbill":["pb-01","pb-02","…"], "lr-all":["…"]},</text>
+<text xml:space="preserve" x="76.0" y="4731.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">  "banks":  {"A":["lr-all","bed","counter","playbill","lr-l","lr-r","accent","fx"]},</text>
+<text xml:space="preserve" x="76.0" y="4750.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">  "rev": 3 }</text>
+<text xml:space="preserve" x="940.0" y="4564.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">RECORDING FORMAT  (JSON Lines, one file per take)</text>
+<rect x="940.0" y="4576.0" width="780.0" height="200.0" rx="6" fill="#f1f1ec" stroke="#b9b9b0" stroke-width="1.5"/>
+<text xml:space="preserve" x="956.0" y="4598.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">{"v":1,"track":"Artist|||Album|||Title","dur_ms":212000,</text>
+<text xml:space="preserve" x="956.0" y="4617.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"> "fixtures_rev":3,"layout_fp":"…","started":"2026-10-09T21:40Z"}</text>
+<text xml:space="preserve" x="956.0" y="4636.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">{"p":41230,"w":1791600000123,"s":"ch3.f","g":"playbill","k":"level","v":0.62}</text>
+<text xml:space="preserve" x="956.0" y="4655.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">{"p":41230,"s":"b.flash3","d":1}</text>
+<text xml:space="preserve" x="956.0" y="4674.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">{"p":41500,"a":{"rms":0.31,"bands":[…8],"onset":0}}   // phase 2</text>
+<text xml:space="preserve" x="956.0" y="4693.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="956.0" y="4712.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">p = song position ms · w = wall clock ms · s = source control</text>
+<text xml:space="preserve" x="956.0" y="4731.0" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">g = group · k = parameter · v = value · a = audio feature frame</text>
+<text xml:space="preserve" x="60.0" y="4800.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Replay clock: song position from Apple TV (⚠ pyatv position resolution and latency must be measured) interpolated with a local monotonic clock, resynced on each update;</text>
+<text xml:space="preserve" x="60.0" y="4818.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">user offset (nudge) applied on top. Takes: REPLACE a group's timeline, MERGE alongside, or OVERDUB. Last writer wins per (group, parameter).</text>
+<rect x="60.0" y="4830.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="4852.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">8  LEARNING PIPELINE  (so the AI eventually performs in your style)</text>
+<rect x="60.0" y="4882.0" width="1680.0" height="27.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4901.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Stage</text>
+<text xml:space="preserve" x="168.0" y="4901.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">What</text>
+<text xml:space="preserve" x="908.0" y="4901.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Output</text>
+<text xml:space="preserve" x="1348.0" y="4901.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Gate to next stage</text>
+<rect x="60.0" y="4909.0" width="1680.0" height="27.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4928.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0</text>
+<text xml:space="preserve" x="168.0" y="4928.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Capture: board events + audio features + track metadata for every performance</text>
+<text xml:space="preserve" x="908.0" y="4928.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">JSONL takes</text>
+<text xml:space="preserve" x="1348.0" y="4928.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≥ 20 takes across ≥ 3 genres</text>
+<text xml:space="preserve" x="68.0" y="4955.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="168.0" y="4955.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Few-shot: Claude gets audio features of a new track + similar past takes → emits cue timeline</text>
+<text xml:space="preserve" x="908.0" y="4955.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">schema-validated JSON</text>
+<text xml:space="preserve" x="1348.0" y="4955.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">human rates it; accept rate tracked</text>
+<rect x="60.0" y="4963.0" width="1680.0" height="27.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="4982.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<text xml:space="preserve" x="168.0" y="4982.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Evaluate: replay AI vs human take; compare timing, color, group distribution</text>
+<text xml:space="preserve" x="908.0" y="4982.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">per-take metrics</text>
+<text xml:space="preserve" x="1348.0" y="4982.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">stable metrics, not just anecdotes</text>
+<text xml:space="preserve" x="68.0" y="5009.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="168.0" y="5009.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Model continuous curves (intensity, hue drift) from features; LLM keeps structure</text>
+<text xml:space="preserve" x="908.0" y="5009.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">small model + prompt</text>
+<text xml:space="preserve" x="1348.0" y="5009.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">beats few-shot on held-out takes</text>
+<rect x="60.0" y="4882.0" width="1680.0" height="135.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="5039.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Guardrails regardless of stage: output validated against fixture capabilities; flash/strobe limit enforced in the hub; per-fixture current and thermal limits are never AI-controllable.</text>
+<text xml:space="preserve" x="60.0" y="5057.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#6b6b66">Honest expectation: stage 1 can sound like your style on genres you've recorded fairly early; faithfully replicating your taste takes a lot of takes, and the dataset is the durable asset.</text>
+<rect x="60.0" y="5069.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="5091.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">9  PLAYBILL BAR MODULE  (12 frames of 5.5 × 8.5 in now; designed to grow)</text>
+<rect x="70.0" y="5151.0" width="20.0" height="400.0" rx="0" fill="#d9d4c8" stroke="#3a3a36" stroke-width="2"/>
+<text xml:space="preserve" x="80.0" y="5571.0" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="400" text-anchor="middle" fill="#6b6b66">wall</text>
+<rect x="90.0" y="5171.0" width="40.0" height="170.0" rx="0" fill="#c9b79c" stroke="#3a3a36" stroke-width="2"/>
+<line x1="86.0" y1="5171.0" x2="134.0" y2="5171.0" stroke="#6b6b66" stroke-width="2" stroke-dasharray="4 3"/>
+<text xml:space="preserve" x="142.0" y="5175.0" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="400" text-anchor="start" fill="#6b6b66">(frame continues up, 216 mm tall)</text>
+<rect x="90.0" y="5425.0" width="150.0" height="6.0" rx="0" fill="#8d8d86" stroke="#3a3a36" stroke-width="1.5"/>
+<rect x="200.0" y="5411.0" width="40.0" height="14.0" rx="0" fill="#aeb4b8" stroke="#3a3a36" stroke-width="2"/>
+<circle cx="220.0" cy="5411.0" r="3.5" fill="#c47f00" stroke="none" stroke-width="1.5"/>
+<polygon points="220.0,5411.0 130.0,5251.0 130.0,5337.0" fill="#fff4cf" stroke="#c47f00" stroke-width="1"/>
+<line x1="270.0" y1="5341.0" x2="270.0" y2="5411.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="265.0" y1="5341.0" x2="275.0" y2="5341.0" stroke="#6b6b66" stroke-width="1"/>
+<line x1="265.0" y1="5411.0" x2="275.0" y2="5411.0" stroke="#6b6b66" stroke-width="1"/>
+<text transform="translate(264.0,5376.0) rotate(-90)" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#6b6b66">≈ 35 mm gap (tune by eye)</text>
+<line x1="130.0" y1="5341.0" x2="274.0" y2="5341.0" stroke="#6b6b66" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="200.0" y1="5411.0" x2="274.0" y2="5411.0" stroke="#6b6b66" stroke-width="1" stroke-dasharray="3 3"/>
+<circle cx="110.0" cy="5261.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="110.0" y="5265.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">1</text>
+<circle cx="160.0" cy="5428.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="160.0" y="5432.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">2</text>
+<circle cx="220.0" cy="5441.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="220.0" y="5445.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">3</text>
+<circle cx="206.0" cy="5397.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="206.0" y="5401.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">4</text>
+<circle cx="116.0" cy="5291.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="116.0" y="5295.5" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">5</text>
+<circle cx="370.0" cy="5235.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="370.0" y="5239.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">1</text>
+<text xml:space="preserve" x="388.0" y="5239.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">frame (wood) — nothing glued to it</text>
+<circle cx="370.0" cy="5263.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="370.0" y="5267.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">2</text>
+<text xml:space="preserve" x="388.0" y="5267.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">wall bracket, screwed to wall</text>
+<circle cx="370.0" cy="5291.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="370.0" y="5295.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">3</text>
+<text xml:space="preserve" x="388.0" y="5295.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">aluminum channel + opal diffuser</text>
+<circle cx="370.0" cy="5319.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="370.0" y="5323.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">4</text>
+<text xml:space="preserve" x="388.0" y="5323.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 RGBW, ≈ 7 px, aimed ≈ 15° off vertical</text>
+<circle cx="370.0" cy="5347.0" r="9.0" fill="#2c5fb3" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="370.0" y="5351.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">5</text>
+<text xml:space="preserve" x="388.0" y="5351.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">light onto the print, ≤ 50 lux target</text>
+<text xml:space="preserve" x="370.0" y="5411.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">Nothing on the bar touches the frame; keep ≥ 25 mm clear.</text>
+<text xml:space="preserve" x="370.0" y="5427.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">Warm air from the bar rises toward the frame bottom. At</text>
+<text xml:space="preserve" x="370.0" y="5443.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#6b6b66">≤ 0.6 W/bar that should be negligible; confirm in S5.</text>
+<text xml:space="preserve" x="760.0" y="5135.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">BAR SPECIFICATION AND SAFETY LIMITS</text>
+<rect x="760.0" y="5145.0" width="980.0" height="26.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5163.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Item</text>
+<text xml:space="preserve" x="968.0" y="5163.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Spec</text>
+<rect x="760.0" y="5171.0" width="980.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Frame</text>
+<text xml:space="preserve" x="968.0" y="5189.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">140 × 216 mm (5.5 × 8.5 in); ⚠ confirm portrait/landscape and frame depth</text>
+<text xml:space="preserve" x="768.0" y="5215.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Bar</text>
+<text xml:space="preserve" x="968.0" y="5215.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">≈ 120 mm long, centered under each frame; discrete bars, dark gap between</text>
+<rect x="760.0" y="5223.0" width="980.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5241.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">LED</text>
+<text xml:space="preserve" x="968.0" y="5241.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 RGBW, 60 px/m, ≈ 7 px per bar; RGBW for a clean warm white on paper</text>
+<text xml:space="preserve" x="768.0" y="5267.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Current cap</text>
+<text xml:space="preserve" x="968.0" y="5267.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">WLED max current 1.5 A for 12 bars (≈ 0.125 A/bar, ≈ 0.6 W/bar); typical use ≪ cap</text>
+<rect x="760.0" y="5275.0" width="980.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5293.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Supply + fuse</text>
+<text xml:space="preserve" x="968.0" y="5293.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">listed Class 2 / LPS 5 V 3 A; 2 A fast-blow fuse at the source</text>
+<text xml:space="preserve" x="768.0" y="5319.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Hardware backstop</text>
+<text xml:space="preserve" x="968.0" y="5319.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">60 °C NC bimetal thermostat in series with +5V on first and last bar (⚠ rating)</text>
+<rect x="760.0" y="5327.0" width="980.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5345.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Software backstop</text>
+<text xml:space="preserve" x="968.0" y="5345.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">temp sensor on channel: dim at 40 °C, off at 45 °C; hub also limits level per fixture</text>
+<text xml:space="preserve" x="768.0" y="5371.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Wiring</text>
+<text xml:space="preserve" x="968.0" y="5371.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">JST-SM 3-pin both ends; trunk 20 AWG; data 24 AWG; inject +5V every 4 bars; 330 Ω + 74AHCT125 at start</text>
+<rect x="760.0" y="5379.0" width="980.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Mounting</text>
+<text xml:space="preserve" x="968.0" y="5397.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">wall screws/anchors; nothing adhered to the frame finish; ≥ 25 mm clear of wood and paper</text>
+<text xml:space="preserve" x="768.0" y="5423.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Paper light dose</text>
+<text xml:space="preserve" x="968.0" y="5423.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">target ≤ 50 lux at the print (⚠ measure); LEDs have negligible UV; hub can auto-dim idle</text>
+<rect x="760.0" y="5431.0" width="980.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="768.0" y="5449.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Materials</text>
+<text xml:space="preserve" x="968.0" y="5449.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">PETG/ASA brackets away from the heat path; metal channel is the heat spreader</text>
+<text xml:space="preserve" x="768.0" y="5475.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Growth</text>
+<text xml:space="preserve" x="968.0" y="5475.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">new bar = connector + one WLED segment; add a node past ≈ 300 px or a second power zone</text>
+<rect x="760.0" y="5145.0" width="980.0" height="338.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="5611.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#d0392b">This is a design guideline, not a safety certification. Verify temperatures with a thermal camera at the cap for ≥ 2 h before leaving anything unattended near wood or paper.</text>
+<rect x="60.0" y="5625.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="5647.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">10  BILL OF MATERIALS  (rough; confirm every part before ordering)</text>
+<rect x="60.0" y="5677.0" width="1560.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5694.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Qty</text>
+<text xml:space="preserve" x="128.0" y="5694.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Item</text>
+<text xml:space="preserve" x="688.0" y="5694.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Spec / notes</text>
+<text xml:space="preserve" x="1528.0" y="5694.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">≈ USD</text>
+<rect x="60.0" y="5702.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5719.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="5719.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ESP32-S3 dev board / module</text>
+<text xml:space="preserve" x="688.0" y="5719.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">avoid octal-PSRAM if GPIO35–37 needed; USB-C</text>
+<text xml:space="preserve" x="1528.0" y="5719.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12</text>
+<text xml:space="preserve" x="68.0" y="5744.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">9</text>
+<text xml:space="preserve" x="128.0" y="5744.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Slide pot 100 mm, 10 kΩ linear</text>
+<text xml:space="preserve" x="688.0" y="5744.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">⚠ pick part first; 60 mm alt. saves cost + panel</text>
+<text xml:space="preserve" x="1528.0" y="5744.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">54</text>
+<rect x="60.0" y="5752.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5769.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8+1</text>
+<text xml:space="preserve" x="128.0" y="5769.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Arcade buttons 24 mm ×8 + 30 mm ×1</text>
+<text xml:space="preserve" x="688.0" y="5769.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">microswitch, translucent caps</text>
+<text xml:space="preserve" x="1528.0" y="5769.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">28</text>
+<text xml:space="preserve" x="68.0" y="5794.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text xml:space="preserve" x="128.0" y="5794.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ASSIGN pushbuttons 12 mm</text>
+<text xml:space="preserve" x="688.0" y="5794.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">momentary</text>
+<text xml:space="preserve" x="1528.0" y="5794.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">16</text>
+<rect x="60.0" y="5802.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5819.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">23</text>
+<text xml:space="preserve" x="128.0" y="5819.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MX-style switches + keycaps</text>
+<text xml:space="preserve" x="688.0" y="5819.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">shine-through caps</text>
+<text xml:space="preserve" x="1528.0" y="5819.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">28</text>
+<text xml:space="preserve" x="68.0" y="5844.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="128.0" y="5844.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Encoders EC11 + knobs</text>
+<text xml:space="preserve" x="688.0" y="5844.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">push switch, 20 detent</text>
+<text xml:space="preserve" x="1528.0" y="5844.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">19</text>
+<rect x="60.0" y="5852.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5869.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="128.0" y="5869.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Mini toggles</text>
+<text xml:space="preserve" x="688.0" y="5869.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">ON-ON ×1, ON-OFF-ON ×2 ⚠</text>
+<text xml:space="preserve" x="1528.0" y="5869.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">9</text>
+<text xml:space="preserve" x="68.0" y="5894.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="5894.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2.42" OLED (SSD1309/SSD1306)</text>
+<text xml:space="preserve" x="688.0" y="5894.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">I²C ⚠ module variant</text>
+<text xml:space="preserve" x="1528.0" y="5894.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12</text>
+<rect x="60.0" y="5902.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5919.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="128.0" y="5919.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">MCP23017</text>
+<text xml:space="preserve" x="688.0" y="5919.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SO-28 or SPDIP</text>
+<text xml:space="preserve" x="1528.0" y="5919.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">6</text>
+<text xml:space="preserve" x="68.0" y="5944.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<text xml:space="preserve" x="128.0" y="5944.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">74AHCT125</text>
+<text xml:space="preserve" x="688.0" y="5944.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">level shift</text>
+<text xml:space="preserve" x="1528.0" y="5944.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<rect x="60.0" y="5952.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="5969.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">50</text>
+<text xml:space="preserve" x="128.0" y="5969.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">SK6812 mini-e</text>
+<text xml:space="preserve" x="688.0" y="5969.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">backlights + status</text>
+<text xml:space="preserve" x="1528.0" y="5969.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8</text>
+<text xml:space="preserve" x="68.0" y="5994.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">10</text>
+<text xml:space="preserve" x="128.0" y="5994.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Channel module PCBs</text>
+<text xml:space="preserve" x="688.0" y="5994.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2-layer, 32 × 224 mm</text>
+<text xml:space="preserve" x="1528.0" y="5994.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">15</text>
+<rect x="60.0" y="6002.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6019.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="6019.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Main PCB</text>
+<text xml:space="preserve" x="688.0" y="6019.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2-layer, ESP32 + expanders + power</text>
+<text xml:space="preserve" x="1528.0" y="6019.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">20</text>
+<text xml:space="preserve" x="68.0" y="6044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="6044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Face plate</text>
+<text xml:space="preserve" x="688.0" y="6044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3 mm aluminum/acrylic, own lab</text>
+<text xml:space="preserve" x="1528.0" y="6044.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0–120</text>
+<rect x="60.0" y="6052.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6069.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="6069.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Case (ply/hardwood) + hardware</text>
+<text xml:space="preserve" x="688.0" y="6069.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">M3, standoffs, 9 IDC cables</text>
+<text xml:space="preserve" x="1528.0" y="6069.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">70</text>
+<text xml:space="preserve" x="68.0" y="6094.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="6094.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">5 V 3 A listed supply</text>
+<text xml:space="preserve" x="688.0" y="6094.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">USB-C</text>
+<text xml:space="preserve" x="1528.0" y="6094.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12</text>
+<rect x="60.0" y="6102.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6119.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="128.0" y="6119.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">BOARD SUBTOTAL</text>
+<text xml:space="preserve" x="688.0" y="6119.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="1528.0" y="6119.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≈ 310–430</text>
+<text xml:space="preserve" x="68.0" y="6144.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12</text>
+<text xml:space="preserve" x="128.0" y="6144.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Playbill bars: SK6812 RGBW 60/m, channel + diffuser, JST-SM, brackets</text>
+<text xml:space="preserve" x="688.0" y="6144.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≈ 7 px per bar</text>
+<text xml:space="preserve" x="1528.0" y="6144.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">60</text>
+<rect x="60.0" y="6152.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6169.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="6169.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">WLED node (ESP32) + 74AHCT125 + caps/connectors</text>
+<text xml:space="preserve" x="688.0" y="6169.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="1528.0" y="6169.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">10</text>
+<text xml:space="preserve" x="68.0" y="6194.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="128.0" y="6194.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">5 V 3 A supply, 2 A fuse, 2 thermostats, wire</text>
+<text xml:space="preserve" x="688.0" y="6194.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">listed Class 2</text>
+<text xml:space="preserve" x="1528.0" y="6194.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">20</text>
+<rect x="60.0" y="6202.0" width="1560.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6219.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="128.0" y="6219.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">PLAYBILL SUBTOTAL (12 bars)</text>
+<text xml:space="preserve" x="688.0" y="6219.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b"></text>
+<text xml:space="preserve" x="1528.0" y="6219.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≈ 90</text>
+<rect x="60.0" y="5677.0" width="1560.0" height="550.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="60.0" y="6245.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="6267.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">11  SYSTEM ACCEPTANCE TESTS  (P0 tests T1–T8 carry over)</text>
+<rect x="60.0" y="6297.0" width="1680.0" height="26.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6315.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">ID</text>
+<text xml:space="preserve" x="128.0" y="6315.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Test</text>
+<text xml:space="preserve" x="528.0" y="6315.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Method</text>
+<text xml:space="preserve" x="1268.0" y="6315.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Pass</text>
+<rect x="60.0" y="6323.0" width="1680.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6341.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S1</text>
+<text xml:space="preserve" x="128.0" y="6341.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">All 9 faders end-to-end, no cross-talk</text>
+<text xml:space="preserve" x="528.0" y="6341.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">move one fader, log all 9</text>
+<text xml:space="preserve" x="1268.0" y="6341.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">neighbors ≤ ±2 counts; R1 latency met</text>
+<text xml:space="preserve" x="68.0" y="6367.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S2</text>
+<text xml:space="preserve" x="128.0" y="6367.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">40 simultaneous inputs</text>
+<text xml:space="preserve" x="528.0" y="6367.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">hold all keys, move all encoders</text>
+<text xml:space="preserve" x="1268.0" y="6367.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">no missed edges; no wifi drops</text>
+<rect x="60.0" y="6375.0" width="1680.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6393.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S3</text>
+<text xml:space="preserve" x="128.0" y="6393.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Record → replay round trip</text>
+<text xml:space="preserve" x="528.0" y="6393.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3-min take, replay, compare event times</text>
+<text xml:space="preserve" x="1268.0" y="6393.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">±20 ms (R5)</text>
+<text xml:space="preserve" x="68.0" y="6419.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S4</text>
+<text xml:space="preserve" x="128.0" y="6419.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Drift over a full song</text>
+<text xml:space="preserve" x="528.0" y="6419.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">6-min track, offset sampled each 30 s</text>
+<text xml:space="preserve" x="1268.0" y="6419.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">≤ 40 ms with resync</text>
+<rect x="60.0" y="6427.0" width="1680.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6445.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S5</text>
+<text xml:space="preserve" x="128.0" y="6445.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Bar thermal at cap</text>
+<text xml:space="preserve" x="528.0" y="6445.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">12 bars, 2 h, IR camera</text>
+<text xml:space="preserve" x="1268.0" y="6445.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">rise ≤ 10 °C</text>
+<text xml:space="preserve" x="68.0" y="6471.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S6</text>
+<text xml:space="preserve" x="128.0" y="6471.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Backstop trip</text>
+<text xml:space="preserve" x="528.0" y="6471.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">heat the thermostat; kill the hub at 100%</text>
+<text xml:space="preserve" x="1268.0" y="6471.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">LED power cut; no stuck output</text>
+<rect x="60.0" y="6479.0" width="1680.0" height="26.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S7</text>
+<text xml:space="preserve" x="128.0" y="6497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Strobe limit</text>
+<text xml:space="preserve" x="528.0" y="6497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">script 10 Hz flashes from the board</text>
+<text xml:space="preserve" x="1268.0" y="6497.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">hub clamps to ≤ 3 Hz</text>
+<rect x="60.0" y="6297.0" width="1680.0" height="208.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="60.0" y="6523.0" width="1680.0" height="34.0" rx="6" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="76.0" y="6545.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#fff">12  MILESTONES, RISKS, OPEN QUESTIONS</text>
+<rect x="60.0" y="6575.0" width="840.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6592.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">M</text>
+<text xml:space="preserve" x="108.0" y="6592.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Milestone</text>
+<text xml:space="preserve" x="528.0" y="6592.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#fff">Exit criterion</text>
+<rect x="60.0" y="6600.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6617.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">0</text>
+<text xml:space="preserve" x="108.0" y="6617.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">P0 prototype (1 channel, WLED + LIFX)</text>
+<text xml:space="preserve" x="528.0" y="6617.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">T1–T8 pass; decisions locked</text>
+<text xml:space="preserve" x="68.0" y="6642.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">1</text>
+<text xml:space="preserve" x="108.0" y="6642.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Hub fixture/group + WLED output layer</text>
+<text xml:space="preserve" x="528.0" y="6642.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">bar + LIFX driven from one model</text>
+<rect x="60.0" y="6650.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6667.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">2</text>
+<text xml:space="preserve" x="108.0" y="6667.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Software console in the GUI + recorder</text>
+<text xml:space="preserve" x="528.0" y="6667.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">take recorded and replayed</text>
+<text xml:space="preserve" x="68.0" y="6692.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">3</text>
+<text xml:space="preserve" x="108.0" y="6692.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Channel PCBs rev A + main PCB</text>
+<text xml:space="preserve" x="528.0" y="6692.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">8 channels working on bench</text>
+<rect x="60.0" y="6700.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6717.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">4</text>
+<text xml:space="preserve" x="108.0" y="6717.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Panel + case</text>
+<text xml:space="preserve" x="528.0" y="6717.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">assembled console</text>
+<text xml:space="preserve" x="68.0" y="6742.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">5</text>
+<text xml:space="preserve" x="108.0" y="6742.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Playbill bars ×12</text>
+<text xml:space="preserve" x="528.0" y="6742.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">S5, S6 pass; mounted</text>
+<rect x="60.0" y="6750.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="68.0" y="6767.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">6</text>
+<text xml:space="preserve" x="108.0" y="6767.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">Audio tap → features</text>
+<text xml:space="preserve" x="528.0" y="6767.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">features in takes</text>
+<text xml:space="preserve" x="68.0" y="6792.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">7</text>
+<text xml:space="preserve" x="108.0" y="6792.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">AI few-shot from takes</text>
+<text xml:space="preserve" x="528.0" y="6792.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#1d1d1b">accept rate measured</text>
+<rect x="60.0" y="6575.0" width="840.0" height="225.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<rect x="900.0" y="6575.0" width="840.0" height="25.0" rx="0" fill="#1d1d1b" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="908.0" y="6592.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Risk</text>
+<text xml:space="preserve" x="1208.0" y="6592.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" text-anchor="start" fill="#fff">Mitigation</text>
+<rect x="900.0" y="6600.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="908.0" y="6617.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Wifi jitter at 60 Hz</text>
+<text xml:space="preserve" x="1208.0" y="6617.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">own 2.4 GHz channel, AP close; coalescing</text>
+<text xml:space="preserve" x="908.0" y="6642.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Internal ADC too noisy</text>
+<text xml:space="preserve" x="1208.0" y="6642.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">RC + oversample; DNP MCP3208 footprint reserved</text>
+<rect x="900.0" y="6650.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="908.0" y="6667.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">LIFX rate/latency limits</text>
+<text xml:space="preserve" x="1208.0" y="6667.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">slow class: washes only; fast effects on WLED</text>
+<text xml:space="preserve" x="908.0" y="6692.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Apple TV position resolution</text>
+<text xml:space="preserve" x="1208.0" y="6692.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">measure early; fall back to local clock + nudge</text>
+<rect x="900.0" y="6700.0" width="840.0" height="25.0" rx="0" fill="#f1f1ec" stroke="none" stroke-width="1.5"/>
+<text xml:space="preserve" x="908.0" y="6717.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Thermal at frames</text>
+<text xml:space="preserve" x="1208.0" y="6717.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">caps, backstops, thermal camera, low lux target</text>
+<text xml:space="preserve" x="908.0" y="6742.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">Part dimensions differ</text>
+<text xml:space="preserve" x="1208.0" y="6742.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" text-anchor="start" fill="#1d1d1b">cardboard fit check before cutting metal</text>
+<rect x="900.0" y="6575.0" width="840.0" height="175.0" rx="0" fill="none" stroke="#b9b9b0" stroke-width="1"/>
+<text xml:space="preserve" x="60.0" y="6830.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" fill="#1d1d1b">OPEN QUESTIONS</text>
+<text xml:space="preserve" x="60.0" y="6852.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">•  60 mm vs 100 mm faders (P0 decides).     •  Skip scribble OLEDs in v1?     •  Frame orientation + depth.     •  Where the Pi audio tap lives.</text>
+<text xml:space="preserve" x="60.0" y="6872.0" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#1d1d1b">•  Does the hub stay on the Mac, or move to an always-on box (Pi/NUC)?     •  Ethernet option for the console?</text></svg>
