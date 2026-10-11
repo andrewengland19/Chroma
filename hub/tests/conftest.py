@@ -126,3 +126,27 @@ def make_engine():
         eng.provider = provider or FakeProvider(clock=FakeClock())
         return eng, bulbs, eng.provider
     return _make
+
+
+# ---- contract validation (shared by tests) -----------------------------------
+
+CONTRACTS = os.path.join(REPO, "contracts")
+
+
+def contract_validator(name: str):
+    """Draft 2020-12 validator for contracts/<name>.schema.json with cross-file refs."""
+    import glob
+    import json
+    from jsonschema import Draft202012Validator
+    from referencing import Registry, Resource
+    reg = Registry()
+    for path in glob.glob(os.path.join(CONTRACTS, "*.schema.json")):
+        with open(path) as f:
+            reg = reg.with_resource(os.path.basename(path), Resource.from_contents(json.load(f)))
+    with open(os.path.join(CONTRACTS, f"{name}.schema.json")) as f:
+        return Draft202012Validator(json.load(f), registry=reg)
+
+
+def assert_valid(name: str, obj) -> None:
+    errors = sorted(contract_validator(name).iter_errors(obj), key=lambda e: list(e.path))
+    assert not errors, f"{name}: {errors[0].message} at {list(errors[0].path)}"
