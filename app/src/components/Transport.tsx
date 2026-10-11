@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Chip } from "./ui";
-import { useSnapshot } from "../store";
+import { useSelect } from "../store";
 
 function Btn({ style, children, title, testId }: { style: CSSProperties; children: ReactNode; title: string; testId: string }) {
   // Rendered per the mockup; recording/playback arrive in M5, blackout in M4.
@@ -43,8 +43,7 @@ const BOARD: Record<string, { color: string; text: string }> = {
 };
 
 export function StatusChips() {
-  const { state } = useSnapshot();
-  const h = state?.health;
+  const h = useSelect((s) => s.state?.health);
   const atvUp = h?.atv === "up";
   const lifx = h?.lifx ?? { found: 0, total: 0 };
   const lifxColor = lifx.total > 0 && lifx.found === lifx.total ? "var(--color-go)"

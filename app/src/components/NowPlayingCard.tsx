@@ -1,11 +1,10 @@
 import { mmss } from "../lib/format";
-import { useSnapshot, useSongPosition, useStore } from "../store";
+import { useSelect, useSongPosition, useStore } from "../store";
 
 export function NowPlayingCard() {
-  const { state } = useSnapshot();
+  const now = useSelect((s) => s.state?.now);
   const store = useStore();
   const pos = useSongPosition();
-  const now = state?.now;
   const has = !!now?.title || !!now?.artist;
   const dur = now?.dur_ms ?? null;
   const frac = has && dur ? Math.max(0, Math.min(1, (pos ?? 0) / dur)) : 0;

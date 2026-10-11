@@ -45,6 +45,8 @@ pub struct Supervisor {
     pub cfg: EngineConfig,
     pub client: Arc<IpcClient>,
     child: Mutex<Option<Child>>,
+    /// An engine an earlier run of the app spawned (pid file) — still ours to stop.
+    adopted: StdMutex<Option<u32>>,
     status: StdMutex<EngineStatus>,
     stopping: AtomicBool,
     events: Arc<dyn EventSink>,
@@ -66,6 +68,7 @@ impl Supervisor {
             cfg,
             client: IpcClient::new(),
             child: Mutex::new(None),
+            adopted: StdMutex::new(None),
             status: StdMutex::new(status),
             stopping: AtomicBool::new(false),
             events,
@@ -105,9 +108,33 @@ impl Supervisor {
         }
     }
 
+    fn pid_file(&self) -> std::path::PathBuf {
+        self.cfg.home.join("chromad.app.pid")
+    }
+
+    /// The pid this app recorded when it last spawned chromad, if that process is
+    /// still alive and is a chromad (`ps` command line), i.e. left behind by a crash
+    /// or Ctrl+C of an earlier app run.
+    fn previous_spawn(&self) -> Option<u32> {
+        let pid: u32 = std::fs::read_to_string(self.pid_file()).ok()?.trim().parse().ok()?;
+        if unsafe { libc::kill(pid as i32, 0) } != 0 {
+            return None;
+        }
+        let out = std::process::Command::new("ps").args(["-p", &pid.to_string(), "-o", "command="]).output().ok()?;
+        String::from_utf8_lossy(&out.stdout).contains("chromad").then_some(pid)
+    }
+
+    fn rotate_log(&self) {
+        let log = self.cfg.log_file();
+        if std::fs::metadata(&log).map(|m| m.len() > 5 * 1024 * 1024).unwrap_or(false) {
+            let _ = std::fs::rename(&log, log.with_extension("log.1"));
+        }
+    }
+
     async fn spawn_engine(&self) -> Result<u32, String> {
         let program = self.cfg.program.clone().ok_or("no engine command configured")?;
         std::fs::create_dir_all(&self.cfg.home).map_err(|e| e.to_string())?;
+        self.rotate_log();
         let log = OpenOptions::new().create(true).append(true).open(self.cfg.log_file()).map_err(|e| e.to_string())?;
         let log2 = log.try_clone().map_err(|e| e.to_string())?;
         let child = Command::new(&program)
@@ -120,6 +147,7 @@ impl Supervisor {
             .map_err(|e| format!("could not start {}: {e}", program.display()))?;
         let pid = child.id().unwrap_or(0);
         *self.child.lock().await = Some(child);
+        let _ = std::fs::write(self.pid_file(), pid.to_string());
         Ok(pid)
     }
 
@@ -128,8 +156,16 @@ impl Supervisor {
         while !self.stopping.load(Ordering::SeqCst) {
             match UnixStream::connect(&self.cfg.socket).await {
                 Ok(stream) => {
-                    let supervised = self.child_alive().await;
-                    let pid = if supervised { self.child.lock().await.as_ref().and_then(|c| c.id()) } else { None };
+                    let mut supervised = self.child_alive().await;
+                    let mut pid = if supervised { self.child.lock().await.as_ref().and_then(|c| c.id()) } else { None };
+                    if !supervised {
+                        let prev = self.previous_spawn();
+                        *self.adopted.lock().unwrap() = prev;
+                        if prev.is_some() {
+                            supervised = true;
+                            pid = prev;
+                        }
+                    }
                     self.set(|s| {
                         s.phase = "connected".into();
                         s.connected = true;
@@ -179,10 +215,15 @@ impl Supervisor {
                             }),
                         }
                     } else if !self.cfg.supervise {
+                        let why = if self.cfg.program.is_none() {
+                            "no engine command configured (set CHROMAD_CMD, or start chromad; the bundled engine arrives in M7)"
+                        } else {
+                            "waiting for chromad (CHROMA_SUPERVISE=0: the app does not start it)"
+                        };
                         self.set(|s| {
                             s.phase = "waiting".into();
                             s.connected = false;
-                            s.message = "waiting for chromad (not started by the app)".into();
+                            s.message = why.into();
                         });
                     }
                     tokio::time::sleep(Duration::from_millis(200)).await;
@@ -194,7 +235,9 @@ impl Supervisor {
     /// Restart a chromad we spawned (tray: Restart engine). Returns false if we
     /// are only attached to someone else's engine.
     pub async fn restart(&self) -> bool {
-        if !self.child_alive().await {
+        let adopted = *self.adopted.lock().unwrap();
+        if !self.child_alive().await && adopted.is_none() {
+            self.set(|s| s.message = "Restart engine: this engine was not started by the app — restart it where it runs".into());
             return false;
         }
         self.terminate_child().await;
@@ -212,8 +255,22 @@ impl Supervisor {
     }
 
     async fn terminate_child(&self) {
+        let adopted = self.adopted.lock().unwrap().take();
+        if let Some(pid) = adopted {
+            unsafe {
+                libc::kill(pid as i32, libc::SIGTERM);
+            }
+            for _ in 0..60 {
+                if unsafe { libc::kill(pid as i32, 0) } != 0 {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+            let _ = std::fs::remove_file(self.pid_file());
+        }
         let mut guard = self.child.lock().await;
         let Some(child) = guard.as_mut() else { return };
+        let _ = std::fs::remove_file(self.pid_file());
         if let Some(pid) = child.id() {
             unsafe {
                 libc::kill(pid as i32, libc::SIGTERM);
@@ -321,6 +378,35 @@ mod tests {
         assert!(external.try_wait().unwrap().is_none(), "external engine must keep running");
         external.kill().unwrap();
         let _ = external.wait();
+    }
+
+    #[tokio::test]
+    async fn adopts_an_engine_left_behind_by_an_earlier_run_and_stops_it_on_quit() {
+        let d = tempfile::Builder::new().prefix("cx").tempdir_in("/tmp").unwrap();
+        let home = d.path().to_path_buf();
+        let sock = home.join("chromad.sock");
+        // an "earlier run" spawned this chromad and crashed; its argv mentions chromad
+        let mut args = fake_engine_args(&sock);
+        args.push("chromad".into());
+        let mut orphan = std::process::Command::new("/usr/bin/python3").args(&args).spawn().unwrap();
+        std::fs::write(home.join("chromad.app.pid"), orphan.id().to_string()).unwrap();
+        while !sock.exists() {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let sup = Supervisor::new(cfg(home, "/bin/false", vec![]), Arc::new(Nop), Arc::new(Rec(StdMutex::new(vec![]))));
+        let runner = tokio::spawn(sup.clone().run());
+        let t0 = Instant::now();
+        while !sup.status().connected && t0.elapsed() < Duration::from_secs(5) {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(sup.status().supervised, "{:?}", sup.status());
+        sup.shutdown().await;
+        runner.abort();
+        let t0 = Instant::now();
+        while orphan.try_wait().unwrap().is_none() && t0.elapsed() < Duration::from_secs(3) {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(orphan.try_wait().unwrap().is_some(), "adopted engine must be stopped on Quit");
     }
 
     #[tokio::test]

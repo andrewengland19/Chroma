@@ -112,20 +112,28 @@ export function useSnapshot(): Snapshot {
   return useSyncExternalStore(s.subscribe, s.getSnapshot);
 }
 
+/** Subscribe to one slice. Untouched parts of the state keep their identity across
+ *  merge patches, so a component re-renders only when its slice changes. */
+export function useSelect<T>(sel: (s: Snapshot) => T): T {
+  const s = useStore();
+  return useSyncExternalStore(s.subscribe, () => sel(s.getSnapshot()));
+}
+
 /** Song position interpolated locally between engine updates (<= 4 Hz). */
 export function useSongPosition(): number | null {
   const store = useStore();
-  const { state, posAt } = useSnapshot();
+  const now = useSelect((s) => s.state?.now);
+  const posAt = useSelect((s) => s.posAt);
   const [, setTick] = useState(0);
-  const playing = !!state?.now.playing && !store.freeze;
+  const playing = !!now?.playing && !store.freeze;
   useEffect(() => {
     if (!playing) return;
     const id = setInterval(() => setTick((t) => t + 1), 100);
     return () => clearInterval(id);
   }, [playing]);
-  const pos = state?.now.pos_ms;
+  const pos = now?.pos_ms;
   if (pos == null) return null;
   if (!playing) return pos;
-  const dur = state?.now.dur_ms ?? Infinity;
+  const dur = now?.dur_ms ?? Infinity;
   return Math.min(dur, pos + (performance.now() - posAt));
 }

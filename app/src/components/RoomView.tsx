@@ -1,4 +1,4 @@
-import { useSnapshot } from "../store";
+import { useSelect } from "../store";
 import { Panel } from "./ui";
 
 // Canvas of the Room panel (content-local px), from gui-1.
@@ -6,8 +6,7 @@ const W = 300;
 const H = 162;
 
 export function RoomView() {
-  const { state } = useSnapshot();
-  const room = state?.room ?? [];
+  const room = useSelect((s) => s.state?.room) ?? [];
   const lit = room.filter((r) => r.hex).length;
   return (
     <Panel style={{ left: 19, top: 109, width: 324, height: 195 }}>

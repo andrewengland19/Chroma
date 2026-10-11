@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ConsoleScreen } from "./screens/ConsoleScreen";
 import { PendingScreen } from "./screens/PendingScreen";
-import { useSnapshot, useStore } from "./store";
+import { useSelect, useStore } from "./store";
 
 export const CANVAS_W = 1178;
 export const CANVAS_H = 691;
@@ -22,7 +22,7 @@ function useFitScale() {
 }
 
 function EngineNotice() {
-  const { status } = useSnapshot();
+  const status = useSelect((s) => s.status);
   if (!status) return null;
   const text = status.connected
     ? status.fake ? "fake devices" : ""
@@ -41,7 +41,7 @@ function EngineNotice() {
 }
 
 function Toasts() {
-  const { toasts } = useSnapshot();
+  const toasts = useSelect((s) => s.toasts);
   return (
     <div className="absolute flex flex-col items-end" style={{ right: 19, bottom: 24, gap: 6 }}>
       {toasts.map((t) => (

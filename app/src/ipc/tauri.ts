@@ -7,7 +7,9 @@ import type { EngineStatus, IpcClient, Reply } from "./types";
 function subscribe<T>(name: string, cb: (p: T) => void): () => void {
   let unlisten: (() => void) | null = null;
   let cancelled = false;
-  listen<T>(name, (e) => cb(e.payload)).then((u) => (cancelled ? u() : (unlisten = u)));
+  listen<T>(name, (e) => cb(e.payload))
+    .then((u) => (cancelled ? u() : (unlisten = u)))
+    .catch((err) => console.error(`CHROMA: cannot listen to ${name}`, err));
   return () => {
     cancelled = true;
     unlisten?.();

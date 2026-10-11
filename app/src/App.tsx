@@ -7,9 +7,11 @@ export default function App() {
   const [store, setStore] = useState<ChromaStore | null>(null);
   useEffect(() => {
     let stop: (() => void) | undefined;
+    let dispose: (() => void) | undefined;
     let cancelled = false;
     void createBackend().then((b) => {
-      if (cancelled) return;
+      dispose = b.dispose;
+      if (cancelled) return b.dispose?.();
       const s = new ChromaStore(b.ipc, b.artSrc, b.freeze);
       stop = s.start();
       setStore(s);
@@ -17,6 +19,7 @@ export default function App() {
     return () => {
       cancelled = true;
       stop?.();
+      dispose?.();
     };
   }, []);
   if (!store) return <main className="h-full bg-bg" data-testid="app-root" />;

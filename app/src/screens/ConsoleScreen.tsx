@@ -6,7 +6,7 @@ import { NowPlayingCard } from "../components/NowPlayingCard";
 import { RoomView } from "../components/RoomView";
 import { StatusChips, TransportButtons } from "../components/Transport";
 import { Panel, Segmented } from "../components/ui";
-import { useSnapshot, useStore } from "../store";
+import { useSelect, useStore } from "../store";
 
 function Pending({ label, note }: { label: string; note: string }) {
   return (
@@ -19,16 +19,17 @@ function Pending({ label, note }: { label: string; note: string }) {
 
 export function ConsoleScreen() {
   const store = useStore();
-  const { state } = useSnapshot();
+  const who = useSelect((s) => s.state?.who);
+  const artMode = useSelect((s) => s.state?.art_mode);
   return (
     <div data-testid="console-screen">
       <div className="absolute" style={{ left: 19, top: 45 }}>
-        <Segmented<Who> label="Who drives" testId="who" width={123} value={state?.who}
+        <Segmented<Who> label="Who drives" testId="who" width={123} value={who}
           options={[{ value: "auto", label: "AUTO" }, { value: "board", label: "BOARD" }]}
           onChange={(who) => void store.intent({ intent: "who", who })} />
       </div>
       <div className="absolute" style={{ left: 167, top: 45 }}>
-        <Segmented<ArtMode> label="Art mode" testId="art-mode" width={158} value={state?.art_mode}
+        <Segmented<ArtMode> label="Art mode" testId="art-mode" width={158} value={artMode}
           options={[{ value: "det", label: "DET" }, { value: "paint", label: "PAINT" }, { value: "ai", label: "AI" }]}
           onChange={(mode) => void store.op("set_art_mode", { mode })} />
       </div>
