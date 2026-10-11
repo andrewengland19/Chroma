@@ -1,22 +1,30 @@
 @import "tailwindcss";
 
-/* CHROMA console palette (from docs/mvp/gui-*.png). Dark only: the console is used in a dim room. */
+/* CHROMA console palette — sampled from docs/mvp/gui-*.png. Dark only: the console is
+   used in a dim room. Design units are the mockup's logical px (canvas 1178 x 691). */
 @theme {
-  --color-bg: #141416;
-  --color-panel: #1c1c1f;
-  --color-panel-2: #232327;
-  --color-well: #0e0e10;
-  --color-line: #2c2c31;
+  --color-bg: #16161a;
+  --color-panel: #1d1d23;
+  --color-line: #2e2e36;
+  --color-ctl: #25252d;
+  --color-ctl-line: #303039;
+  --color-well: #0b0b0e;
   --color-fg: #ececf1;
-  --color-dim: #8b8b94;
-  --color-faint: #5d5d66;
+  --color-dim: #8d8d99;
+  --color-label: #5c5c68;
   --color-accent: #7c5cff;
-  --color-rec: #ef4452;
-  --color-go: #34d27b;
-  --color-warn: #f2b33d;
-  --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
+  --color-go: #3ddc84;
+  --color-rec: #f44a5a;
+  --color-red: #ff4d5e;
+  --color-warn: #f2b84b;
+  --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
   --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
 }
 
-html, body, #root { height: 100%; margin: 0; background: var(--color-bg); color: var(--color-fg); }
-body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; user-select: none; overflow: hidden; }
+@layer base {
+  html, body, #root { height: 100%; margin: 0; background: var(--color-bg); color: var(--color-fg); }
+  body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; user-select: none; overflow: hidden; cursor: default; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  button:disabled, button[aria-disabled="true"] { cursor: default; }
+  .label { font-size: 7.5px; line-height: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-label); }
+}
