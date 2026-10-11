@@ -12,8 +12,8 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 |---|---|---|
 | M0 contracts, scaffolding, fakes | `app/m0-contracts` | **done** — merged 072a395 |
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
-| M2 Tauri shell + Console header | `app/m2-shell` | **done** (pending-hardware: H2.1–H2.4) |
-| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | — |
+| M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
+| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | in progress |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | — |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
 | M6 board link + simulator | `app/m6-board` | — |
@@ -132,5 +132,14 @@ frames line up with the mockup within ~1–2 px at 2x (`tools/ui_compare.py cons
 renders SF slightly wider than the mockup; the Room dots use the engine's real colours; COLOR / CUES / faders /
 activity strip are placeholders until M4/M5. Added (flagged): "fake devices" notice and toasts.
 
+**Merged** into main as 3af31cf (2026-10-11). Re-test on main: pytest in the user's checkout 205 passed; full
+`tools/test_all.sh` in a detached worktree passed (205 + 15 vitest + 14 cargo); `lite show status` → running.
+
 **Code review (high)**: 8 findings, all fixed (engine adoption after a crash, restart feedback, no-engine message,
 log rotation, slice selectors, mock disposal + excluded from production, Tauri listen errors).
+
+---
+
+## M3 — fixtures, groups, banks, outputs, Setup
+
+Started 2026-10-11.
