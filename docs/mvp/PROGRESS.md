@@ -50,5 +50,7 @@ Started 2026-10-11.
 | FakeProvider produces a scripted 3-minute track with changing position | **pass** | `test_fake_provider.py` (position at 30/60/71/81/100/110/120 s, pause, resume, seek, auto-advance, Engine push path) |
 
 **Deviations / notes**
-- `showctl.start()` reports "started" when the hub dies within its 1 s grace period if the hub is still an
-  unreaped child (zombie) — pre-existing behaviour; not changed. Tests auto-reap to mirror real `lite show`.
+- Pre-existing bug found (not changed): `showctl.start()` never reaps its child, so a hub that dies within the
+  1 s grace period is still a zombie and `start` prints "started" instead of "failed to start". Tests auto-reap
+  (which matches real `stop`, run from a separate process), so `test_start_reports_immediate_failure` documents
+  the intended behaviour. Fix planned for M7, where `showctl` is rewritten to delegate to chromad.
