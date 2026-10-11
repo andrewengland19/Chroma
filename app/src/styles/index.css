@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* CHROMA console palette (from docs/mvp/gui-*.png). Dark only: the console is used in a dim room. */
+@theme {
+  --color-bg: #141416;
+  --color-panel: #1c1c1f;
+  --color-panel-2: #232327;
+  --color-well: #0e0e10;
+  --color-line: #2c2c31;
+  --color-fg: #ececf1;
+  --color-dim: #8b8b94;
+  --color-faint: #5d5d66;
+  --color-accent: #7c5cff;
+  --color-rec: #ef4452;
+  --color-go: #34d27b;
+  --color-warn: #f2b33d;
+  --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+}
+
+html, body, #root { height: 100%; margin: 0; background: var(--color-bg); color: var(--color-fg); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; user-select: none; overflow: hidden; }
