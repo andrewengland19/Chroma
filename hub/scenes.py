@@ -16,7 +16,9 @@ import json
 import os
 from datetime import datetime, timezone
 
-SCENES_PATH = os.path.expanduser("~/.chroma/scenes.json")
+from paths import CHROMA_DIR
+
+SCENES_PATH = os.path.join(CHROMA_DIR, "scenes.json")
 
 
 class SceneStore:

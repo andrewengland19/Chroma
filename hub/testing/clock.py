@@ -29,13 +29,7 @@ class FakeClock:
         self.advance(ms / 1000.0)
 
 
-class RealClock:
-    """Wall + monotonic time from the OS. Default for FakeProvider outside tests."""
-
-    def monotonic(self) -> float:
-        import time
-        return time.monotonic()
-
-    def time(self) -> float:
-        import time
-        return time.time()
+def RealClock():
+    """The OS clock (kept for older imports; prefer clock.MonotonicClock)."""
+    from clock import MonotonicClock
+    return MonotonicClock()

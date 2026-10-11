@@ -25,3 +25,26 @@ tools/test_all.sh
 npm --prefix app install
 (cd app && npm run tauri dev)
 ```
+
+## M1 — chromad, IPC, SongClock
+
+```bash
+# chromad with no hardware, in an isolated home (keep socket paths short: macOS limit is 104 bytes)
+H=$(mktemp -d -t cx)
+hub/.venv/bin/python hub/chromad.py --fake --home $H &
+
+# AC: watch streams state, then position patches (~4 Hz) and any change
+CHROMA_HOME=$H python3 tools/chromactl.py watch --count 10
+CHROMA_HOME=$H python3 tools/chromactl.py state
+CHROMA_HOME=$H python3 tools/chromactl.py op set_art_mode mode=paint
+CHROMA_HOME=$H python3 tools/chromactl.py intent who who=board
+CHROMA_HOME=$H python3 tools/chromactl.py op refresh
+kill %1
+
+# Tests
+(cd hub && .venv/bin/python -m pytest -q tests/test_song_clock.py tests/test_ipc.py tests/test_chromad.py)
+
+# Position spike pipeline on fake data (real recording: HARDWARE_CHECKLIST H1.1)
+hub/.venv/bin/python tools/position_spike.py record --fake --duration 4 --out $H/spike.jsonl
+hub/.venv/bin/python tools/position_spike.py analyze $H/spike.jsonl
+```

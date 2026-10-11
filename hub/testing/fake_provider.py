@@ -109,6 +109,10 @@ class FakeProvider:
         return {"elapsed_s": pos / 1000.0, "anchor_wall": self.clock.time(),
                 "rate": 1.0 if self.is_playing else 0.0}
 
+    def raw_anchor(self) -> dict:
+        """Same surface as AppleTVProvider.raw_anchor()."""
+        return self.elapsed_anchor()
+
     def _rebase(self, pos_ms: Optional[float] = None) -> None:
         self._anchor_pos_ms = self.position_ms() if pos_ms is None else float(pos_ms)
         self._anchor_mono = self.clock.monotonic()

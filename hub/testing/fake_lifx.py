@@ -96,3 +96,19 @@ def install_fake_bulbs(controller, bulbs: Optional[list] = None) -> list:
     controller._lights = list(bulbs)
     controller._labels = [b.label for b in bulbs]
     return bulbs
+
+
+def make_fake_lifx_controller(cfg, bulbs: Optional[list] = None, clock=None):
+    """A real LifxController whose discover() finds fake bulbs (for `chromad --fake`)."""
+    from engine import LifxController
+
+    class FakeLifxController(LifxController):
+        def __init__(self, cfg):
+            super().__init__(cfg)
+            self.fake_bulbs = bulbs if bulbs is not None else living_room_bulbs(clock)
+
+        def discover(self) -> int:
+            install_fake_bulbs(self, self.fake_bulbs)
+            return self.count
+
+    return FakeLifxController(cfg)
