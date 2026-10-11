@@ -12,7 +12,7 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 |---|---|---|
 | M0 contracts, scaffolding, fakes | `app/m0-contracts` | **done** — merged 072a395 |
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
-| M2 Tauri shell + Console header | `app/m2-shell` | in progress |
+| M2 Tauri shell + Console header | `app/m2-shell` | **done** (pending-hardware: H2.1–H2.4) |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | — |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | — |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
@@ -105,3 +105,32 @@ Started 2026-10-11.
 ## M2 — Tauri shell + live Console header
 
 Started 2026-10-11.
+
+**Done**
+- Rust shell (`app/src-tauri/src`): `config.rs` (dev → fake engine in `~/.chroma/dev`; env overrides),
+  `ipc.rs` (NDJSON client, id correlation, event fan-out, 4 MiB line cap), `supervisor.rs` (spawn in own process
+  group, backoff 1/2/4/8/15 s, attach to foreign engines, adopt an engine left by an earlier run, Quit stops only
+  ours, log rotation), `art.rs` (`chroma-art://`), `lib.rs` (tray: status / Open / Restart engine / Quit; close
+  hides; ⌘Q = Quit; `chromad_request`, `engine_status`; debug-only `CHROMA_SELFTEST`).
+- UI: store with merge patches, slice selectors, interpolated position; Tauri + mock IPC adapters; 1178 x 691 canvas
+  scaled to fit; tabs (Takes/Setup stubs); WHO DRIVES + ART MODE (live); Now Playing (art, title, artist · album,
+  play glyph, progress, time); REC / PLAY / STOP / BLACKOUT (rendered, wired in M4/M5); status chips; Room view.
+- `tools/ui_compare.py` (headless Chrome at 2x vs the mockup), `docs/mvp/RUNNING.md` (how to open the app).
+
+**AC**
+| AC | Status | Evidence |
+|---|---|---|
+| Real track/art/progress appear live | **pass (fake engine)** / **pending-hardware (Apple TV)** | Native app + fake chromad: UI `get_state` → Rust → chromad ok (`CHROMA_DEBUG_IPC` log); vitest: title, artist · album, art, progress 49.8 %, time 1:42 / 3:25, interpolation 1:42 → 1:45 over 3 s; real ATV = H2.1 |
+| ART MODE changes the engine mode | **pass** (UI→op tested in vitest; op→engine in pytest) / **pending-hardware** (click in the native window = H2.2) | `ConsoleScreen.test.tsx`, `test_chromad.py::test_ops_art_mode_who_refresh_and_errors` |
+| WHO DRIVES toggles `Engine.enabled` | **pass** / **pending-hardware** (H2.2) | same tests (who → `Engine.enabled` False/True) |
+| Closing the window leaves lights running | **pass** | native self-test: `window visible=false`, engine alive + connected after close |
+| Quit from the tray stops a supervised engine | **pass** | native self-test: app and its chromad exit, socket removed; cargo test `spawns_supervises_and_stops_only_its_own_child`, `adopts_an_engine_left_behind…`, `attaches_to_an_external_engine_and_leaves_it_running` |
+| Works with FakeProvider when the Apple TV is off | **pass** | dev default (`--fake`) |
+
+**Visual comparison (gui-1)**: header, tabs, segmented controls, Now Playing, transport, chips, Room and all panel
+frames line up with the mockup within ~1–2 px at 2x (`tools/ui_compare.py console`). Differences: headless Chrome
+renders SF slightly wider than the mockup; the Room dots use the engine's real colours; COLOR / CUES / faders /
+activity strip are placeholders until M4/M5. Added (flagged): "fake devices" notice and toasts.
+
+**Code review (high)**: 8 findings, all fixed (engine adoption after a crash, restart feedback, no-engine message,
+log rotation, slice selectors, mock disposal + excluded from production, Tauri listen errors).
