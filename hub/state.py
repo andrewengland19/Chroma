@@ -17,6 +17,10 @@ ART_MODE_OUT = {"deterministic": "det", "paint": "paint", "ai": "ai"}
 ART_MODE_IN = {v: k for k, v in ART_MODE_OUT.items()}
 
 
+def _unit(v) -> float:
+    return round(min(1.0, max(0.0, float(v))), 3)
+
+
 def slugify(label: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", (label or "").lower()).strip("-")[:48].strip("-")
     return s or "fixture"
@@ -78,12 +82,12 @@ class StateAssembler:
         eng = self.engine
         per_light = getattr(eng, "_last_per_light", None) or []
         if per_light:
-            return [{"fixture_id": slugify(p["label"]), "label": p["label"], "x": p["x"], "y": p["y"],
+            return [{"fixture_id": slugify(p["label"]), "label": p["label"], "x": _unit(p["x"]), "y": _unit(p["y"]),
                      "hex": p.get("hex"), "online": True} for p in per_light]
         out = []
         for label in eng.lifx.labels():
             x, y = eng.layout.pos_for(label)
-            out.append({"fixture_id": slugify(label), "label": label, "x": round(x, 3), "y": round(y, 3),
+            out.append({"fixture_id": slugify(label), "label": label, "x": _unit(x), "y": _unit(y),
                         "hex": None, "online": True})
         return out
 

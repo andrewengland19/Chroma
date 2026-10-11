@@ -157,3 +157,10 @@ def test_listener_errors_are_contained(c):
         raise RuntimeError("x")
     sc = SongClock(c, on_event=boom)
     assert sc.update(precise("t1", 0, c)) == "track"
+
+
+def test_anchor_age_is_signed_for_clock_skew(c):
+    """ATV clock 150 ms ahead of the Mac: the anchor looks 150 ms 'in the future'."""
+    sc = SongClock(c)
+    sc.update(ClockSample("t1", True, 9000, 200_000, {"elapsed_s": 9.0, "anchor_wall": c.time() + 0.15, "rate": 1.0}))
+    assert sc.pos_ms() == pytest.approx(8_850)

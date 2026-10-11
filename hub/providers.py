@@ -190,10 +190,9 @@ class AppleTVProvider:
         """
         try:
             meta = self._atv.metadata
-            candidates = list(getattr(meta, "instances", None) or [])
             main = getattr(meta, "main_instance", None)
-            if main is not None:
-                candidates.insert(0, main)
+            candidates = ([main] if main is not None else []) + [
+                i for i in (getattr(meta, "instances", None) or []) if i is not main]
             for inst in candidates:
                 psm = getattr(inst, "psm", None)
                 if psm is None:
@@ -202,7 +201,7 @@ class AppleTVProvider:
                 elapsed = st.metadata_field("elapsedTime")
                 stamp = st.metadata_field("elapsedTimeTimestamp")
                 if elapsed is None or not stamp:
-                    return None
+                    continue
                 rate = st.metadata_field("playbackRate") or 0.0
                 return {"elapsed_s": float(elapsed), "anchor_wall": float(stamp) + COCOA_EPOCH,
                         "rate": float(rate)}

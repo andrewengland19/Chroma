@@ -77,6 +77,8 @@ class Harness:
                 raise IpcError("nope")
             if op == "crash":
                 raise ZeroDivisionError("boom")
+            if op == "weird":
+                return {"when": object()}
             raise IpcError(f"unknown op {op!r}")
         self.server = IpcServer(path, handle, lambda: dict(self.state), patch_hz=patch_hz,
                                 max_line=max_line, high_water=high_water)
@@ -164,6 +166,8 @@ async def test_requests_errors_and_bad_input(srv):
     r = await c.req("crash")
     assert r["ok"] is False and r["error"].startswith("internal error: ZeroDivisionError")
     assert (await c.req("format_disk"))["error"] == "unknown op 'format_disk'"
+    r = await c.req("weird")
+    assert r["ok"] is False and "unserialisable" in r["error"]
     c.w.write(b"{not json\n")
     assert await c.read() == {"id": None, "ok": False, "error": "invalid JSON"}
     await c.send({"op": "get_state"})

@@ -49,6 +49,21 @@ def old_hub_pid(home: str):
     return pid if "server.py" in cmd else None
 
 
+def blocking_hub(home: str, no_lifx: bool):
+    """(pid, home) of an old hub this chromad would fight, else None. Same home: shared
+    state files. The default home: the live hub, whose bulbs we'd also drive unless
+    --no-lifx."""
+    homes = [home]
+    default = os.path.abspath(os.path.expanduser("~/.chroma"))
+    if not no_lifx and default != home:
+        homes.append(default)
+    for h in homes:
+        pid = old_hub_pid(h)
+        if pid:
+            return pid, h
+    return None
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
     if args.home:
@@ -60,9 +75,10 @@ def main(argv=None) -> int:
     os.makedirs(home, exist_ok=True)
 
     if not args.fake and not args.allow_alongside:
-        pid = old_hub_pid(home)
-        if pid:
-            print(f"chromad: the old hub is running (server.py, pid {pid}) on {home}; "
+        clash = blocking_hub(home, args.no_lifx)
+        if clash:
+            pid, h = clash
+            print(f"chromad: the old hub is running (server.py, pid {pid}) on {h}; "
                   "stop it first (lite show stop) or pass --allow-alongside", file=sys.stderr)
             return 2
 

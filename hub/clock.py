@@ -106,7 +106,7 @@ class SongClock:
             age = self.clock.time() - float(a["anchor_wall"])
             if -60.0 <= age <= self.ANCHOR_MAX_AGE_S:
                 rate = float(a.get("rate") or 0.0) if s.playing else 0.0
-                m = float(a["elapsed_s"]) * 1000.0 + max(0.0, age) * 1000.0 * rate
+                m = float(a["elapsed_s"]) * 1000.0 + age * 1000.0 * rate   # signed: skew either way
                 return m, m, m, "precise"
         if s.pos_ms is not None:
             p = float(s.pos_ms)

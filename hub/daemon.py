@@ -16,7 +16,7 @@ from typing import Optional
 from clock import ClockSample, MonotonicClock, SongClock
 from config import Config
 from console import ConsoleState
-from engine import Engine
+from engine import Engine, LifxController
 from ipc import IpcError, IpcServer
 from paths import chroma_dir
 from state import ART_MODE_IN, StateAssembler
@@ -25,6 +25,14 @@ log = logging.getLogger("chroma-hub")
 
 INTENT_NAMES = {"fader", "flash", "assign", "bank", "fader_fn", "hue", "sat", "palette_apply",
                 "palette_store", "cue_recall", "cue_store", "blackout", "who"}
+
+
+class NoLifx(LifxController):
+    """`--no-lifx`: discovery finds nothing, so no bulb is ever addressed."""
+
+    def discover(self) -> int:
+        self._lights, self._labels = [], []
+        return 0
 
 
 class Chromad:
@@ -51,10 +59,9 @@ class Chromad:
             async def factory(_loop):
                 self.fake_provider.closed = False
                 return self.fake_provider
-            lifx = make_fake_lifx_controller(cfg, bulbs=[] if no_lifx else None)
+            lifx = NoLifx(cfg) if no_lifx else make_fake_lifx_controller(cfg)
         elif no_lifx:
-            from testing.fake_lifx import make_fake_lifx_controller
-            lifx = make_fake_lifx_controller(cfg, bulbs=[])
+            lifx = NoLifx(cfg)
 
         self.engine = Engine(loop, install_signals=False, provider_factory=factory, lifx=lifx)
         self.song = SongClock(self.clock, on_event=self._on_song_event)
@@ -65,6 +72,8 @@ class Chromad:
                              self.handle, self.state.build)
         self._stop = asyncio.Event()
         self._tasks: list = []
+        self._bg: set = set()
+        self._who_lock = asyncio.Lock()
 
     # ---- now playing → SongClock -------------------------------------------
     def _on_np(self, np, source: str) -> None:
@@ -115,9 +124,23 @@ class Chromad:
             who = intent.get("who")
             if who not in ("auto", "board"):
                 raise IpcError("who must be 'auto' or 'board'")
-            await self.set_who(who)
+            self._spawn(self._serialized_who(who))   # never stall the IPC connection
             return None
         raise IpcError(f"intent {name!r} is not available yet (the console arrives in M4)")
+
+    def _spawn(self, coro) -> None:
+        t = self.loop.create_task(coro)
+        self._bg.add(t)
+        t.add_done_callback(self._bg.discard)
+
+    async def _serialized_who(self, who: str) -> None:
+        async with self._who_lock:                # FIFO: rapid toggles apply in order
+            try:
+                await self.set_who(who)
+            except Exception as e:
+                log.warning(f"who={who} failed: {e}")
+                self.ipc.toast("error", f"Could not switch to {who.upper()}: {e}")
+            self.ipc.mark_dirty()
 
     async def set_who(self, who: str) -> None:
         """AUTO = the art painter drives (Engine.enabled); BOARD = the console drives.
@@ -176,7 +199,7 @@ class Chromad:
     async def shutdown(self, engine_task=None) -> None:
         await self.ipc.stop()
         self.engine.stop()
-        for t in self._tasks:
+        for t in list(self._tasks) + list(self._bg):
             if t is not engine_task:
                 t.cancel()
         if engine_task is not None:
@@ -184,5 +207,5 @@ class Chromad:
                 await asyncio.wait_for(asyncio.shield(engine_task), timeout=1.0)
             except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
                 engine_task.cancel()
-        await asyncio.gather(*self._tasks, return_exceptions=True)
+        await asyncio.gather(*self._tasks, *self._bg, return_exceptions=True)
         log.info("chromad stopped")

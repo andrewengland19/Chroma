@@ -146,8 +146,10 @@ class IpcServer:
                 await self._pump_task
             except (asyncio.CancelledError, Exception):
                 pass
-        for t in list(self._tasks):
+        pending = list(self._tasks)
+        for t in pending:
             t.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
         if self._server:
             self._server.close()
         for c in list(self.clients):
@@ -299,5 +301,9 @@ class IpcServer:
         except Exception as e:
             log.exception(f"op {req.get('op')!r} failed")
             resp = {"id": rid, "ok": False, "error": f"internal error: {type(e).__name__}: {e}"}
-        client.send(resp)
+        try:
+            client.send(resp)
+        except (TypeError, ValueError) as e:       # result not JSON-serialisable
+            log.error(f"op {req.get('op')!r} returned an unserialisable result: {e}")
+            client.send({"id": rid, "ok": False, "error": f"internal error: unserialisable result ({e})"})
         self.mark_dirty()

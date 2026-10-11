@@ -99,16 +99,19 @@ async def test_ops_art_mode_who_refresh_and_errors(daemon):
     assert res[0] == {"id": 1, "ok": True}
     assert res[1]["ok"] is False and "det, paint, ai" in res[1]["error"]
     assert Config.load().mode == "paint"
-    assert res[2] == {"id": 3, "ok": True} and daemon.engine.enabled is False
-    assert res[3]["ok"] and res[3]["result"]["message"] == "refreshed, but painting is disabled"
+    assert res[2] == {"id": 3, "ok": True}
+    assert await wait_for(lambda: daemon.engine.enabled is False)
+    assert res[3]["ok"] and res[3]["result"]["message"] in ("refreshed, but painting is disabled",
+                                                           "lights refreshed")
     assert res[4]["error"] == "unknown intent 'strobe'"
     assert "M4" in res[5]["error"]
     assert res[6]["error"] == "unknown op 'format_disk'"
     # back to AUTO repaints at once from cached art (DECISIONS X3)
     before = len(daemon.engine.lifx.fake_bulbs[0].calls)
     res, _ = await ipc(daemon.ipc.path, {"op": "intent", "intent": {"intent": "who", "who": "auto"}})
-    assert res[0]["ok"] and daemon.engine.enabled is True
-    assert len(daemon.engine.lifx.fake_bulbs[0].calls) == before + 1
+    assert res[0]["ok"]
+    assert await wait_for(lambda: daemon.engine.enabled is True
+                          and len(daemon.engine.lifx.fake_bulbs[0].calls) == before + 1)
 
 
 async def test_song_clock_follows_seek_and_track_change(daemon):
@@ -202,3 +205,50 @@ def test_real_chromad_refuses_to_run_alongside_the_old_hub(tmp_path):
     finally:
         hub.kill()
         hub.wait()
+
+
+async def test_who_intent_never_blocks_the_connection(daemon, monkeypatch):
+    gate = asyncio.Event()
+    real = daemon.engine.set_enabled
+
+    async def slow_set_enabled(on):
+        await gate.wait()
+        return await real(on)
+    monkeypatch.setattr(daemon.engine, "set_enabled", slow_set_enabled)
+    t0 = time.monotonic()
+    res, _ = await ipc(daemon.ipc.path, {"op": "intent", "intent": {"intent": "who", "who": "board"}},
+                       {"op": "get_state"})
+    assert time.monotonic() - t0 < 1.0 and res[0]["ok"] and res[1]["ok"]
+    assert daemon.engine.enabled is True               # still pending
+    gate.set()
+    assert await wait_for(lambda: daemon.engine.enabled is False)
+
+
+def test_guard_also_protects_the_live_hub_on_the_default_home(tmp_path):
+    import chromad
+    default = os.path.abspath(os.path.expanduser("~/.chroma"))      # sandboxed HOME
+    fake_server = tmp_path / "server.py"
+    fake_server.write_text("import time\ntime.sleep(30)\n")
+    hub = subprocess.Popen([PY, str(fake_server)])
+    try:
+        with open(os.path.join(default, "hub.pid"), "w") as f:
+            f.write(str(hub.pid))
+        other = short_home()
+        assert chromad.blocking_hub(other, no_lifx=False) == (hub.pid, default)
+        assert chromad.blocking_hub(other, no_lifx=True) is None       # no bulbs, separate state
+        assert chromad.blocking_hub(default, no_lifx=True) == (hub.pid, default)
+    finally:
+        hub.kill()
+        hub.wait()
+    assert chromad.blocking_hub(default, no_lifx=False) is None        # dead pid is not a hub
+
+
+def test_room_coordinates_are_clamped():
+    from state import StateAssembler
+
+    class E:
+        _last_per_light = [{"label": "Off Canvas", "x": 1.04, "y": -0.2, "hex": "#ffffff"}]
+    sa = StateAssembler.__new__(StateAssembler)
+    sa.engine = E()
+    assert sa._room() == [{"fixture_id": "off-canvas", "label": "Off Canvas", "x": 1.0, "y": 0.0,
+                           "hex": "#ffffff", "online": True}]

@@ -63,13 +63,13 @@ def test_raw_anchor_reads_mrp_state_and_survives_missing_fields():
             self.psm = Psm(fields)
 
     class Meta:
-        def __init__(self, fields):
+        def __init__(self, fields, others=()):
             self.main_instance = Inst(fields)
-            self.instances = [self.main_instance]
+            self.instances = [self.main_instance, *[Inst(o) for o in others]]
 
     class Atv:
-        def __init__(self, fields):
-            self.metadata = Meta(fields)
+        def __init__(self, fields, others=()):
+            self.metadata = Meta(fields, others)
 
     class Cfg:
         name = "TV"
@@ -78,6 +78,9 @@ def test_raw_anchor_reads_mrp_state_and_survives_missing_fields():
                              "playbackRate": 1.0}), Cfg())
     assert p.raw_anchor() == {"elapsed_s": 61.25, "anchor_wall": 813300000.5 + COCOA_EPOCH, "rate": 1.0}
     assert AppleTVProvider(Atv({"elapsedTime": 3.0}), Cfg()).raw_anchor() is None
+    # the first instance lacks the anchor, another has it
+    p2 = AppleTVProvider(Atv({"elapsedTime": 3.0}, [{"elapsedTime": 4.5, "elapsedTimeTimestamp": 10.0}]), Cfg())
+    assert p2.raw_anchor()["elapsed_s"] == 4.5
     broken = AppleTVProvider(object(), Cfg())
     assert broken.raw_anchor() is None
 
