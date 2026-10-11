@@ -24,3 +24,31 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 ## M0 — contracts, scaffolding, fakes
 
 Started 2026-10-11.
+
+**Done**
+- Worktree `/Users/andy/Code/Chroma-app` from local main @ a8d3142; venv `hub/.venv` (Python 3.13, pyatv 0.18.0)
+  with `hub/requirements.txt` + new `hub/requirements-dev.txt` (pytest, pytest-asyncio, jsonschema, httpx).
+- **Regression net before any engine change** (golden values captured from a8d3142):
+  `hub/tests/test_art_paint_regression.py` (19), `test_server_routes.py` (11, incl. every Pass 5 route and page),
+  `test_showctl.py` (13). Tests run with `HOME` sandboxed in `hub/tests/conftest.py`; real LIFX discovery,
+  `lifxlan.Light`, pyatv scan/connect/pair and the Keychain are blocked. Verified the real `~/.chroma` was not
+  written during test runs.
+- `hub/testing/`: `FakeClock`, `FakeProvider` (scripted tracks, whole-second pyatv-style position plus a precise
+  MRP-style anchor, pause/resume/seek/track change, push + device listeners), `FakeLight`/`FakeLifxLAN`,
+  `make_art`.
+- `contracts/`: 12 schemas (+ `board-map.md`, README), 76 example files (ok + bad for every contract);
+  `hub/tests/test_contracts.py` validates them and checks ops/intents match the spec.
+- `app/`: Tauri 2 + React 19 + TS + Vite 8 + Tailwind v4 + vitest; `src/contracts.ts` generated from the
+  schemas (`npm run gen:types`, `gen:types:check`). Rust crate `chroma` with a placeholder test.
+- `tools/test_all.sh` runs every suite.
+
+**AC**
+| AC | Status | Evidence |
+|---|---|---|
+| `pytest` passes and validates all examples | **pass** | `tools/test_all.sh`: 148 passed (contracts 101 incl. 26 bad examples rejected for the intended reason) |
+| `npm run tauri dev` opens an empty window | **pass** | dev binary `target/debug/chroma` (pid 45292) owned an on-screen 1200×750 window per `CGWindowListCopyWindowInfo`. A screenshot was not possible: macOS Screen Recording permission for the Claude app is not granted. |
+| FakeProvider produces a scripted 3-minute track with changing position | **pass** | `test_fake_provider.py` (position at 30/60/71/81/100/110/120 s, pause, resume, seek, auto-advance, Engine push path) |
+
+**Deviations / notes**
+- `showctl.start()` reports "started" when the hub dies within its 1 s grace period if the hub is still an
+  unreaped child (zombie) — pre-existing behaviour; not changed. Tests auto-reap to mirror real `lite show`.
