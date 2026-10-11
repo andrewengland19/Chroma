@@ -24,7 +24,7 @@ VENV_PY = os.path.join(HUB_DIR, ".venv", "bin", "python")
 # the HTTP/WebSocket API. engine.py stays runnable standalone for headless debug.
 ENGINE = os.path.join(HUB_DIR, "server.py")
 
-CHROMA_DIR = os.path.expanduser("~/.chroma")
+CHROMA_DIR = os.path.abspath(os.path.expanduser(os.environ.get("CHROMA_HOME") or "~/.chroma"))
 PID_FILE = os.path.join(CHROMA_DIR, "hub.pid")
 LOG_FILE = os.path.join(CHROMA_DIR, "hub.log")
 STATE_FILE = os.path.join(CHROMA_DIR, "state.json")

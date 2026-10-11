@@ -19,7 +19,9 @@ from dataclasses import dataclass, field
 
 from PIL import Image
 
-LAYOUT_PATH = os.path.expanduser("~/.chroma/layout.json")
+from paths import CHROMA_DIR
+
+LAYOUT_PATH = os.path.join(CHROMA_DIR, "layout.json")
 
 
 @dataclass

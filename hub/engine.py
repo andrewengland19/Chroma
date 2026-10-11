@@ -35,12 +35,12 @@ from enhancers import build_enhancer
 from keystore import has_anthropic_key
 from scenes import SceneStore
 from distribute import round_robin, idw_blend, hex_to_rgb, rgb_to_hex
+from paths import CHROMA_DIR
 
 
 def _hsbk_dicts(hsbk: list) -> list:
     return [{"h": h, "s": s, "b": b, "k": k} for (h, s, b, k) in hsbk]
 
-CHROMA_DIR = os.path.expanduser("~/.chroma")
 COLORS_FILE = os.path.join(CHROMA_DIR, "current_colors.json")
 ARTWORK_FILE = os.path.join(CHROMA_DIR, "current_artwork.jpg")
 STATE_FILE = os.path.join(CHROMA_DIR, "state.json")
@@ -179,11 +179,16 @@ class EventBus:
 # =============================================================================
 
 class Engine(DeviceListener, PushListener):
-    def __init__(self, loop, install_signals: bool = True):
+    def __init__(self, loop, install_signals: bool = True, provider_factory=None, lifx=None):
         self.loop = loop
         self.cfg = Config.load()
-        self.lifx = LifxController(self.cfg)
+        self.lifx = lifx if lifx is not None else LifxController(self.cfg)
         self.provider: Optional[AppleTVProvider] = None
+        # chromad seams: `chromad --fake` injects a FakeProvider factory + fake bulbs.
+        self._connect = provider_factory or AppleTVProvider.connect
+        # Called with (np, source) for every now-playing sample (push, prime, reconcile),
+        # before dedup — chromad feeds its SongClock from here. Never raises into the engine.
+        self.np_listeners: list = []
         self.bus = EventBus()
         self.enabled = self.cfg.enabled
         self._install_signals_enabled = install_signals
@@ -229,6 +234,11 @@ class Engine(DeviceListener, PushListener):
 
     # ---- core: dedup + apply -----------------------------------------------
     async def _on_playing(self, np: Optional[NowPlaying], source: str) -> None:
+        for cb in list(self.np_listeners):
+            try:
+                cb(np, source)
+            except Exception as e:
+                log.debug(f"now-playing listener failed: {e}")
         if not np or not np.has_track():
             return
         async with self._apply_lock:
@@ -684,7 +694,7 @@ class Engine(DeviceListener, PushListener):
         while not self._stop.is_set():
             try:
                 log.info("Connecting to the paired Apple TV…")
-                self.provider = await AppleTVProvider.connect(self.loop)
+                self.provider = await self._connect(self.loop)
             except Exception as e:
                 delay = RECONNECT_BACKOFF[min(attempt, len(RECONNECT_BACKOFF) - 1)]
                 attempt += 1

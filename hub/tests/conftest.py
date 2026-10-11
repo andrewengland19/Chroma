@@ -15,7 +15,7 @@ import shutil
 import sys
 import tempfile
 
-HUB = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HUB = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # hub/
 REPO = os.path.dirname(HUB)
 
 _TEST_HOME = tempfile.mkdtemp(prefix="chroma-test-home-")

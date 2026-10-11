@@ -13,8 +13,9 @@ import os
 from dataclasses import dataclass, asdict, field, fields
 
 from color_pipeline import PipelineParams
+from paths import CHROMA_DIR
 
-CONFIG_PATH = os.path.expanduser("~/.chroma/config.json")
+CONFIG_PATH = os.path.join(CHROMA_DIR, "config.json")
 
 
 @dataclass

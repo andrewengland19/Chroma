@@ -19,11 +19,16 @@ from typing import Optional, Protocol, runtime_checkable
 import pyatv
 from pyatv.const import Protocol as ATVProtocol, DeviceState
 
+from paths import CHROMA_DIR
+
 # Protocols we pair. AirPlay carries the tunneled MRP that exposes now-playing
 # + artwork on tvOS 15+; Companion carries remote control / transport.
 PAIR_PROTOCOLS = (ATVProtocol.AirPlay, ATVProtocol.Companion)
 
-CREDENTIALS_PATH = os.path.expanduser("~/.chroma/atv_credentials.json")
+CREDENTIALS_PATH = os.path.join(CHROMA_DIR, "atv_credentials.json")
+
+# Cocoa reference date (2001-01-01 UTC) as a Unix timestamp — MRP timestamps use it.
+COCOA_EPOCH = 978307200.0
 
 
 # =============================================================================
@@ -37,16 +42,24 @@ class NowPlaying:
     album: str = ""
     playing: bool = False
     hash: str = ""  # pyatv content hash — robust across identical title/artist
+    # Position/duration in ms. pyatv reports whole seconds (truncated), so pos_ms is a
+    # coarse sample; SongClock refines it with AppleTVProvider.raw_anchor().
+    pos_ms: Optional[int] = None
+    dur_ms: Optional[int] = None
 
     @classmethod
     def from_playing(cls, p) -> "NowPlaying":
         """Build from a pyatv Playing object (used by now_playing + push listener)."""
+        pos = getattr(p, "position", None)
+        total = getattr(p, "total_time", None)
         return cls(
             title=p.title or "",
             artist=p.artist or "",
             album=p.album or "",
             playing=(p.device_state == DeviceState.Playing),
             hash=getattr(p, "hash", "") or "",
+            pos_ms=int(pos) * 1000 if pos is not None else None,
+            dur_ms=int(total) * 1000 if total is not None else None,
         )
 
     def track_id(self) -> str:
@@ -166,6 +179,36 @@ class AppleTVProvider:
 
     async def previous(self) -> None:
         await self._atv.remote_control.previous()
+
+    def raw_anchor(self) -> Optional[dict]:
+        """Precise position anchor from MRP: {elapsed_s, anchor_wall, rate}.
+
+        pyatv's public Playing.position truncates to whole seconds; the MRP player
+        state underneath keeps the float elapsedTime, the (Cocoa) wall time it was
+        sampled and the playback rate. This reads that private state — guarded, so
+        any pyatv change just yields None and SongClock falls back to the coarse path.
+        """
+        try:
+            meta = self._atv.metadata
+            candidates = list(getattr(meta, "instances", None) or [])
+            main = getattr(meta, "main_instance", None)
+            if main is not None:
+                candidates.insert(0, main)
+            for inst in candidates:
+                psm = getattr(inst, "psm", None)
+                if psm is None:
+                    continue
+                st = psm.playing
+                elapsed = st.metadata_field("elapsedTime")
+                stamp = st.metadata_field("elapsedTimeTimestamp")
+                if elapsed is None or not stamp:
+                    return None
+                rate = st.metadata_field("playbackRate") or 0.0
+                return {"elapsed_s": float(elapsed), "anchor_wall": float(stamp) + COCOA_EPOCH,
+                        "rate": float(rate)}
+        except Exception:
+            return None
+        return None
 
     @property
     def push_updater(self):
