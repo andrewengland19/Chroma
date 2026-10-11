@@ -48,3 +48,21 @@ kill %1
 hub/.venv/bin/python tools/position_spike.py record --fake --duration 4 --out $H/spike.jsonl
 hub/.venv/bin/python tools/position_spike.py analyze $H/spike.jsonl
 ```
+
+## M2 — Tauri shell + live Console header
+
+See `docs/mvp/RUNNING.md` for every way to open the app.
+
+```bash
+# The real app with a fake engine (AC: track/art/progress live, ART MODE, WHO DRIVES)
+(cd app && npm run tauri dev)
+
+# Scripted lifecycle check (debug builds): close the window → engine keeps running;
+# Quit → the engine the app started stops. Prints [selftest] lines.
+(cd app && CHROMA_DEBUG_IPC=1 CHROMA_SELFTEST=close-quit npm run tauri dev)
+pgrep -fl "chromad.py --home $HOME/.chroma/dev"      # empty after the self-test quits
+
+# Mock UI in a browser + side-by-side with the mockup at 2x
+(cd app && npm run dev:mock -- --port 1430) &
+hub/.venv/bin/python tools/ui_compare.py console /tmp/ui --region 0 0 1178 310
+```

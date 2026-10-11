@@ -60,7 +60,13 @@ struct Shell {
 
 #[tauri::command]
 async fn chromad_request(shell: tauri::State<'_, Shell>, req: Value) -> Result<Value, String> {
-    shell.sup.client.request(req).await
+    let op = req.get("op").and_then(Value::as_str).unwrap_or("?").to_string();
+    let reply = shell.sup.client.request(req).await;
+    if std::env::var_os("CHROMA_DEBUG_IPC").is_some() {
+        let ok = reply.as_ref().map(|r| r.get("ok") == Some(&Value::Bool(true))).unwrap_or(false);
+        eprintln!("[chroma] ui request {op} -> ok={ok}");
+    }
+    reply
 }
 
 #[tauri::command]
@@ -82,6 +88,38 @@ fn quit(app: &AppHandle) {
     tauri::async_runtime::spawn(async move {
         sup.shutdown().await;
         app.exit(0);
+    });
+}
+
+/// Debug builds only: CHROMA_SELFTEST=close-quit drives the same code paths as a user
+/// closing the window and then choosing Quit, and logs what happened, so the M2
+/// lifecycle checks can be verified from a script (no screen access needed).
+#[cfg(debug_assertions)]
+fn selftest(app: AppHandle, sup: Arc<Supervisor>) {
+    if std::env::var("CHROMA_SELFTEST").as_deref() != Ok("close-quit") {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        use std::time::Duration;
+        for _ in 0..200 {
+            if sup.status().connected {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        tokio::time::sleep(Duration::from_secs(3)).await; // let the UI fetch state
+        let st = sup.status();
+        eprintln!("[selftest] connected={} supervised={} pid={:?}", st.connected, st.supervised, st.pid);
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.close(); // → CloseRequested → hidden, not closed
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            eprintln!("[selftest] after close: window visible={:?}", w.is_visible().ok());
+        }
+        let alive = st.pid.map(|p| unsafe { libc::kill(p as i32, 0) } == 0);
+        eprintln!("[selftest] after close: engine alive={alive:?} connected={}", sup.status().connected);
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        eprintln!("[selftest] quitting");
+        quit(&app);
     });
 }
 
@@ -142,7 +180,9 @@ pub fn run() {
                 Arc::new(UiStatus { app: handle.clone(), item: status_item }),
             );
             app.manage(Shell { sup: sup.clone() });
-            tauri::async_runtime::spawn(sup.run());
+            tauri::async_runtime::spawn(sup.clone().run());
+            #[cfg(debug_assertions)]
+            selftest(handle.clone(), sup);
             Ok(())
         })
         .on_window_event(|window, event| {
