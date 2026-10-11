@@ -266,40 +266,40 @@
       "fixture_id": "tv-left",
       "label": "TV Left",
       "x": 0.12,
-      "y": 0.28,
-      "hex": "#f2683c",
+      "y": 0.3,
+      "hex": "#e86a3c",
       "online": true
     },
     {
       "fixture_id": "tv-right",
       "label": "TV Right",
       "x": 0.88,
-      "y": 0.28,
-      "hex": "#e5484d",
+      "y": 0.3,
+      "hex": "#d6453d",
       "online": true
     },
     {
       "fixture_id": "washer",
-      "label": "Washer",
+      "label": "Lamp",
       "x": 0.5,
-      "y": 0.45,
-      "hex": "#f5a05b",
+      "y": 0.46,
+      "hex": "#f0a35a",
       "online": true
     },
     {
       "fixture_id": "couch-left",
-      "label": "Couch Left",
+      "label": "Couch L",
       "x": 0.28,
-      "y": 0.72,
-      "hex": "#a855f7",
+      "y": 0.71,
+      "hex": "#8a4fd0",
       "online": true
     },
     {
       "fixture_id": "right-couch",
-      "label": "Right couch",
+      "label": "Couch R",
       "x": 0.72,
-      "y": 0.72,
-      "hex": "#ec4899",
+      "y": 0.71,
+      "hex": "#c95aa0",
       "online": true
     }
   ],

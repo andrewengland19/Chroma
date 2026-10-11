@@ -13,11 +13,11 @@
     "windows": [
       {
         "label": "main",
-        "title": "CHROMA — Console",
-        "width": 1200,
-        "height": 750,
-        "minWidth": 1100,
-        "minHeight": 700,
+        "title": "CHROMA \u2014 Console",
+        "width": 1472,
+        "height": 864,
+        "minWidth": 1000,
+        "minHeight": 600,
         "backgroundColor": "#141416"
       }
     ],
