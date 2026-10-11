@@ -8,11 +8,9 @@
 # =============================================================================
 
 import json
-import os
 
 import pytest
 
-from testing.art import OLDER, make_art
 from testing.clock import FakeClock
 from testing.fake_provider import FakeProvider, FakeTrack
 

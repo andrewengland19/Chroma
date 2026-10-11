@@ -8,7 +8,7 @@ ROOT="${0:A:h:h}"
 PY="${PY:-$ROOT/hub/.venv/bin/python}"
 
 echo "== pytest (hub + contracts) =="
-(cd "$ROOT/hub" && "$PY" -m pytest -q -W ignore::DeprecationWarning)
+(cd "$ROOT/hub" && "$PY" -m pytest -q)
 
 echo "== app: generated types up to date =="
 npm --prefix "$ROOT/app" run --silent gen:types:check
@@ -23,6 +23,6 @@ echo "== app: cargo test =="
 if ! out=$(cd "$ROOT/app/src-tauri" && cargo test --quiet 2>&1); then
   print -r -- "$out"; exit 1
 fi
-print -r -- "$out" | grep -E "^test result" | head -1
+{ print -r -- "$out" | grep -E "^test result" | head -1 } || true
 
 echo "== all suites passed =="

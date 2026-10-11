@@ -84,3 +84,19 @@ async def test_transport_and_close():
     assert await prov.artwork_bytes()
     await prov.close()
     assert await prov.now_playing() is None
+
+
+def test_empty_playlist_skip_is_a_noop():
+    p = FakeProvider([], clock=FakeClock())
+    p.skip(1)
+    assert p.track is None and not p.is_playing
+
+
+def test_parked_at_end_without_auto_advance_is_not_playing():
+    clock = FakeClock()
+    p = three_minute(clock, auto_advance=False)
+    clock.advance(200)
+    p.tick()
+    assert p.position_ms() == 180_000 and not p.is_playing
+    assert p.elapsed_anchor()["rate"] == 0.0
+    assert p.playing().device_state == DeviceState.Paused

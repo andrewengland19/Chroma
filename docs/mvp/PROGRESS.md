@@ -45,12 +45,14 @@ Started 2026-10-11.
 **AC**
 | AC | Status | Evidence |
 |---|---|---|
-| `pytest` passes and validates all examples | **pass** | `tools/test_all.sh`: 148 passed (contracts 101 incl. 26 bad examples rejected for the intended reason) |
+| `pytest` passes and validates all examples | **pass** | `tools/test_all.sh`: 150 passed (contracts 101 incl. 26 bad examples rejected for the intended reason) |
 | `npm run tauri dev` opens an empty window | **pass** | dev binary `target/debug/chroma` (pid 45292) owned an on-screen 1200×750 window per `CGWindowListCopyWindowInfo`. A screenshot was not possible: macOS Screen Recording permission for the Claude app is not granted. |
 | FakeProvider produces a scripted 3-minute track with changing position | **pass** | `test_fake_provider.py` (position at 30/60/71/81/100/110/120 s, pause, resume, seek, auto-advance, Engine push path) |
 
 **Deviations / notes**
-- Pre-existing bug found (not changed): `showctl.start()` never reaps its child, so a hub that dies within the
-  1 s grace period is still a zombie and `start` prints "started" instead of "failed to start". Tests auto-reap
-  (which matches real `stop`, run from a separate process), so `test_start_reports_immediate_failure` documents
-  the intended behaviour. Fix planned for M7, where `showctl` is rewritten to delegate to chromad.
+- Pre-existing bug fixed (found by the M0 code review): `showctl.start()` checked `os.kill(pid, 0)`, which a
+  dead-but-unreaped child still answers, so a hub that crashed within the 1 s grace period was reported as
+  "started". It now checks `proc.poll()`; `test_start_reports_immediate_failure` covers it without auto-reaping.
+- Code review (high): 8 findings, all fixed — showctl start-failure detection, FakeProvider empty-playlist skip
+  and end-of-track "playing" flag, test_all.sh summary under pipefail, `vite.config.ts` now type-checked, unused
+  imports, hue range is now [0, 360), pytest warning filter narrowed to the one colorthief/Pillow deprecation.

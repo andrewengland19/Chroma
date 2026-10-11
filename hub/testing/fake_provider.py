@@ -91,7 +91,9 @@ class FakeProvider:
 
     @property
     def is_playing(self) -> bool:
-        return self._playing and self.track is not None
+        """Playing and not parked at the end of the track (auto_advance=False)."""
+        t = self.track
+        return self._playing and t is not None and self.position_ms() < t.dur_ms
 
     def position_ms(self) -> float:
         if self.track is None:
@@ -133,7 +135,8 @@ class FakeProvider:
         self._notify()
 
     def skip(self, step: int = 1) -> None:
-        self.set_index((self.index + step) % len(self.tracks))
+        if self.tracks:
+            self.set_index((self.index + step) % len(self.tracks))
 
     def drop_connection(self, exc: Optional[Exception] = None) -> None:
         if self._device_listener is not None:
@@ -177,7 +180,7 @@ class FakeProvider:
         t = self.track
         if t is None:
             return FakePlaying(None, None, None, DeviceState.Idle, "", None, None)
-        state = DeviceState.Playing if self._playing else DeviceState.Paused
+        state = DeviceState.Playing if self.is_playing else DeviceState.Paused
         return FakePlaying(t.title, t.artist, t.album, state, t.hash,
                            int(self.position_ms() // 1000), t.dur_ms // 1000,
                            extra=self.elapsed_anchor())

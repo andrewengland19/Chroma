@@ -28,7 +28,7 @@ export type HueIntent = {
   intent: "hue";
   delta?: number;
   /**
-   * Degrees; 360 == 0.
+   * Degrees in [0, 360).
    */
   v?: number;
   src?: "ui" | "board" | "replay" | "cli";
@@ -316,7 +316,7 @@ export interface ChannelState {
   group_id: string | null;
   level: number;
   /**
-   * Degrees; 360 == 0.
+   * Degrees in [0, 360).
    */
   hue: number;
   sat: number;
@@ -597,7 +597,7 @@ export interface TakeInit {
     group_id: string | null;
     level: number;
     /**
-     * Degrees; 360 == 0.
+     * Degrees in [0, 360).
      */
     hue: number;
     sat: number;
@@ -684,7 +684,7 @@ export interface ConsoleFile {
 export interface LookChannel {
   level: number;
   /**
-   * Degrees; 360 == 0.
+   * Degrees in [0, 360).
    */
   hue: number;
   sat: number;

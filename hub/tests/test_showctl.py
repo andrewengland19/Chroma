@@ -77,7 +77,7 @@ def test_start_stop_restart_cycle(sc, autoreap, capsys, monkeypatch, tmp_path):
     assert not sc._alive(pid) and not os.path.exists(sc.PID_FILE)
 
 
-def test_start_reports_immediate_failure(sc, autoreap, capsys, monkeypatch, tmp_path):
+def test_start_reports_immediate_failure(sc, capsys, monkeypatch, tmp_path):
     monkeypatch.setattr(sc, "ENGINE", dummy_engine(tmp_path, "raise SystemExit(1)\n"))
     monkeypatch.setattr(sc, "VENV_PY", sys.executable)
     assert sc.start() == 1

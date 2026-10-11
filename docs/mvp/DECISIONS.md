@@ -39,3 +39,7 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 
 - 2026-10-11 — Python 3.13 (miniforge, same as the live venv) for the worktree venv; pyatv 0.18.0 matches the live venv.
 - 2026-10-11 — Dev/test deps in `hub/requirements-dev.txt`: pytest, pytest-asyncio, jsonschema, httpx (FastAPI TestClient). None are runtime deps.
+- 2026-10-11 — Fixed a pre-existing `showctl.start()` bug (dead child reported as "started"): checks `proc.poll()` instead of `os.kill(pid, 0)`. Output strings unchanged.
+- 2026-10-11 — Hue is `[0, 360)` everywhere (schema `exclusiveMaximum: 360`); console code normalises with `% 360`.
+- 2026-10-11 — Tailwind v4 (`@tailwindcss/vite`), React 19, Vite 8, TypeScript 6 (create-tauri-app 4.7.5 defaults). Tests import from `vitest` explicitly (no globals).
+- 2026-10-11 — Contract TS types are generated into `app/src/contracts.ts` with fixed-length arrays emitted as plain arrays (`ignoreMinAndMaxItems`); the schema still enforces the lengths.

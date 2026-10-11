@@ -4,7 +4,7 @@
   "description": "Shared building blocks referenced by the other contracts.",
   "$defs": {
     "unit": { "type": "number", "minimum": 0, "maximum": 1 },
-    "hue": { "type": "number", "minimum": 0, "maximum": 360, "description": "Degrees; 360 == 0." },
+    "hue": { "type": "number", "minimum": 0, "exclusiveMaximum": 360, "description": "Degrees in [0, 360)." },
     "bank": { "type": "string", "enum": ["A", "B", "C"] },
     "ch": { "type": "integer", "minimum": 1, "maximum": 8 },
     "slot": { "type": "integer", "minimum": 0, "maximum": 7, "description": "Palette swatch or cue index." },
