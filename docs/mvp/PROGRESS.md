@@ -11,8 +11,8 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | Milestone | Branch | Status |
 |---|---|---|
 | M0 contracts, scaffolding, fakes | `app/m0-contracts` | **done** — merged 072a395 |
-| M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** (pending-hardware: H1.1–H1.3) |
-| M2 Tauri shell + Console header | `app/m2-shell` | — |
+| M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
+| M2 Tauri shell + Console header | `app/m2-shell` | in progress |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | — |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | — |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
@@ -89,6 +89,9 @@ Started 2026-10-11.
 | `position-spike.md` exists with numbers | **pending-hardware** | tool built and tested on fake data; real recording = H1.1 |
 | Existing `lite show` still works | **pass** (tests) / **pending-hardware** (live restart) | regression suite 205 passed; `lite show status` after merge; `restart`/`refresh` on the live hub = H1.3 |
 
+**Merged** into main as c4ceaad (2026-10-11). Re-test on main: pytest in the user's checkout 205 passed; full
+`tools/test_all.sh` in a detached worktree passed; `lite show status` → running (pid 22052).
+
 **Deviations / notes**
 - State patches: `null` means "the value is null", never "delete the key" (the State has a fixed shape). Logged
   in DECISIONS.
@@ -96,3 +99,9 @@ Started 2026-10-11.
   hub on `~/.chroma`, signed anchor age, raw_anchor tries every instance, room clamp, stop awaits tasks,
   unserialisable results answered, no test fakes in production `--no-lifx`); 1 deferred to M7 (share the PID
   helpers with showctl when it is rewritten).
+
+---
+
+## M2 — Tauri shell + live Console header
+
+Started 2026-10-11.
