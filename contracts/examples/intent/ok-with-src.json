@@ -1,0 +1,6 @@
+{
+  "intent": "fader",
+  "ch": 1,
+  "v": 0.5,
+  "src": "board"
+}

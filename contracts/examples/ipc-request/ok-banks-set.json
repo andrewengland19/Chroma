@@ -1,0 +1,7 @@
+{
+  "id": 15,
+  "op": "banks.set",
+  "bank": "C",
+  "channel": 1,
+  "group_id": "fx"
+}

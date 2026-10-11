@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FixturesFile",
+  "description": "~/.chroma/fixtures.json — fixtures, groups and the 3x8 bank map. `rev` bumps on every change and is stamped into takes as fixtures_rev.",
+  "type": "object",
+  "required": ["v", "rev", "fixtures", "groups", "banks"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "rev": { "type": "integer", "minimum": 0 },
+    "fixtures": { "type": "array", "items": { "$ref": "#/$defs/fixture" } },
+    "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+    "banks": { "$ref": "#/$defs/banks" }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object", "title": "Fixture",
+      "required": ["id", "label", "type", "status", "class", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/slug_id" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "type": { "type": "string", "enum": ["lifx", "virtual", "wled"] },
+        "status": { "type": "string", "enum": ["active", "not_added", "planned"],
+                    "description": "active = driven; not_added = discovered but not in the rig; planned = placeholder hardware (no output)." },
+        "class": { "type": "string", "enum": ["slow", "fast"], "description": "slow = LIFX washes (~100–250 ms); fast = WLED / virtual." },
+        "ip": { "type": "string", "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" },
+        "mac": { "type": "string", "pattern": "^[0-9a-f]{2}(:[0-9a-f]{2}){5}$" },
+        "lifx_group": { "type": "string", "description": "LIFX group label from discovery (e.g. Living Room)." },
+        "series": { "type": "string", "description": "Optional display grouping, e.g. 'Playbill 01–12' collapses into one table row." },
+        "x": { "$ref": "common.schema.json#/$defs/unit" },
+        "y": { "$ref": "common.schema.json#/$defs/unit" },
+        "color": { "$ref": "common.schema.json#/$defs/hex", "description": "Display colour for the Setup table dot." }
+      }
+    },
+    "group": {
+      "type": "object", "title": "Group",
+      "required": ["id", "name", "color", "members", "max_level", "max_flash_hz", "idle_dim_min"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/slug_id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 16, "description": "Scribble-strip label, e.g. LR ALL." },
+        "color": { "$ref": "common.schema.json#/$defs/hex", "description": "UI colour (lanes, bank grid)." },
+        "members": { "type": "array", "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/slug_id" } },
+        "max_level": { "$ref": "common.schema.json#/$defs/unit", "description": "Safety cap applied after master; flash cannot exceed it." },
+        "max_flash_hz": { "type": "number", "exclusiveMinimum": 0, "maximum": 3,
+                          "description": "Safety: on/off cycles per second; never above 3 (BUILD_ORDER §8.1)." },
+        "idle_dim_min": { "oneOf": [{ "type": "integer", "minimum": 1, "maximum": 240 }, { "type": "null" }],
+                          "description": "BOARD only: dim to 30 % after this many minutes without input; null = off." }
+      }
+    },
+    "bank_row": {
+      "type": "array", "minItems": 8, "maxItems": 8,
+      "items": { "oneOf": [{ "$ref": "common.schema.json#/$defs/slug_id" }, { "type": "null" }] }
+    },
+    "banks": {
+      "type": "object", "required": ["A", "B", "C"], "additionalProperties": false,
+      "properties": { "A": { "$ref": "#/$defs/bank_row" }, "B": { "$ref": "#/$defs/bank_row" }, "C": { "$ref": "#/$defs/bank_row" } }
+    }
+  }
+}

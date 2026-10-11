@@ -1,0 +1,5 @@
+{
+  "id": 3,
+  "op": "set_art_mode",
+  "mode": "deterministic"
+}

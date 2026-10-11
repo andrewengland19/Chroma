@@ -7,3 +7,11 @@
 
 # Hub virtualenv (machine-specific; recreate via requirements.txt)
 hub/.venv/
+
+# Test caches
+.pytest_cache/
+
+# CHROMA Console app (Tauri) build output
+app/node_modules/
+app/dist/
+app/src-tauri/target/

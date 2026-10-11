@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BoardPacket",
+  "description": "Board -> engine UDP datagram (BUILD_ORDER §5.5): a full state snapshot, <= 512 bytes, sent on change (<= 60 Hz) and at >= 2 Hz as heartbeat. `mac` must be the LAST member; see board-map.md for the exact bytes it covers.",
+  "type": "object",
+  "required": ["v", "id", "boot", "seq", "t", "f", "b", "e", "s", "mac"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,23}$", "description": "Board id; ids starting with 'sim' are board_sim." },
+    "boot": { "type": "integer", "minimum": 0, "maximum": 4294967295, "description": "Random per-boot nonce; seq restarts with it." },
+    "seq": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "t": { "type": "integer", "minimum": 0, "description": "Board uptime ms." },
+    "f": { "type": "array", "minItems": 9, "maxItems": 9, "items": { "$ref": "common.schema.json#/$defs/unit" },
+           "description": "Faders 1-8 then master." },
+    "b": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{10}$", "description": "40-bit button mask (board-map.md)." },
+    "e": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+           "description": "Absolute encoder counts: hue, sat, nudge." },
+    "s": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "integer", "minimum": 0, "maximum": 2 },
+           "description": "Toggles: art mode (det/paint/ai), who (auto/board), fader fn (level/hue/sat)." },
+    "mac": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+  }
+}

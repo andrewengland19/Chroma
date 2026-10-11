@@ -1,0 +1,709 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IpcRequest",
+  "description": "UI/CLI -> chromad over the Unix socket, one JSON object per line (BUILD_ORDER §5.1). Every request carries an id; the response echoes it.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "intent"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "intent"
+        },
+        "intent": {
+          "$ref": "intent.schema.json"
+        }
+      },
+      "description": "The console (§5.2)."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "get_state"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "subscribe"
+        }
+      },
+      "description": "Response, then an `ev:state` event, then patches."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "refresh"
+        }
+      },
+      "description": "Same as Engine.refresh() / `lite show refresh`."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "mode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "set_art_mode"
+        },
+        "mode": {
+          "$ref": "common.schema.json#/$defs/art_mode"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "fixtures.list"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "fixtures.discover"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "fixture"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "fixtures.upsert"
+        },
+        "fixture": {
+          "$ref": "fixtures.schema.json#/$defs/fixture"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "fixture_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "fixtures.remove"
+        },
+        "fixture_id": {
+          "$ref": "common.schema.json#/$defs/slug_id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "fixture_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "fixtures.test"
+        },
+        "fixture_id": {
+          "$ref": "common.schema.json#/$defs/slug_id"
+        }
+      },
+      "description": "Two gentle pulses (inside the strobe cap), then restore."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "groups.list"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "group"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "groups.upsert"
+        },
+        "group": {
+          "$ref": "fixtures.schema.json#/$defs/group"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "group_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "groups.remove"
+        },
+        "group_id": {
+          "$ref": "common.schema.json#/$defs/slug_id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "banks.get"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "bank",
+        "channel",
+        "group_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "banks.set"
+        },
+        "bank": {
+          "$ref": "common.schema.json#/$defs/bank"
+        },
+        "channel": {
+          "$ref": "common.schema.json#/$defs/ch"
+        },
+        "group_id": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/slug_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "i",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "cues.rename"
+        },
+        "i": {
+          "$ref": "common.schema.json#/$defs/slot"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 24
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.list"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.get"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        }
+      },
+      "description": "Header + events."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.delete"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.rename"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.export"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        }
+      },
+      "description": "Returns the JSONL text; the app writes it where the user chooses."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.duplicate"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id",
+        "flag",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.set_flag"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "flag": {
+          "enum": [
+            "training"
+          ]
+        },
+        "value": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id",
+        "p_ms",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.marker.add"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "p_ms": {
+          "$ref": "common.schema.json#/$defs/ms"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id",
+        "p_ms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "takes.marker.remove"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "p_ms": {
+          "$ref": "common.schema.json#/$defs/ms"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "rec.arm"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "mode": {
+          "$ref": "common.schema.json#/$defs/record_mode"
+        }
+      },
+      "description": "Wait for a playing track, then start."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "rec.start"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "mode": {
+          "$ref": "common.schema.json#/$defs/record_mode"
+        }
+      },
+      "description": "Without take_id: a new take. With take_id: record into it using mode (default merge). Refused if nothing is playing."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "rec.stop"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "play.start"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "pos_ms": {
+          "$ref": "common.schema.json#/$defs/ms"
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "play.stop"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "pos_ms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "play.seek"
+        },
+        "pos_ms": {
+          "$ref": "common.schema.json#/$defs/ms"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "take_id",
+        "ms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "take.nudge"
+        },
+        "take_id": {
+          "$ref": "common.schema.json#/$defs/take_id"
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": -2000,
+          "maximum": 2000
+        }
+      },
+      "description": "Sets the take's nudge_ms (absolute)."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "board.pairing"
+        }
+      },
+      "description": "Creates ~/.chroma/board.key if absent; returns key + port + host addresses."
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

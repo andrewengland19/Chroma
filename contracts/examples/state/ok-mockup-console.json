@@ -1,0 +1,384 @@
+{
+  "now": {
+    "track_id": "a1b2c3d4e5f60718",
+    "title": "Older",
+    "artist": "Sasha Alex Sloan",
+    "album": "Loser - EP",
+    "playing": true,
+    "pos_ms": 102000,
+    "dur_ms": 205000,
+    "art_url": "chroma-art://current?rev=1"
+  },
+  "who": "board",
+  "art_mode": "ai",
+  "bank": "A",
+  "fader_fn": "level",
+  "master": 0.9,
+  "blackout": false,
+  "channels": [
+    {
+      "bank": "A",
+      "ch": 1,
+      "group_id": "lr-all",
+      "level": 0.82,
+      "hue": 356,
+      "sat": 0.85,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 2,
+      "group_id": "bed",
+      "level": 0.0,
+      "hue": 25,
+      "sat": 0.7,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 3,
+      "group_id": "counter",
+      "level": 0.55,
+      "hue": 48,
+      "sat": 0.8,
+      "flash": true,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 4,
+      "group_id": "playbill",
+      "level": 0.0,
+      "hue": 142,
+      "sat": 0.7,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 5,
+      "group_id": "lr-l",
+      "level": 0.68,
+      "hue": 172,
+      "sat": 0.8,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 6,
+      "group_id": "lr-r",
+      "level": 0.74,
+      "hue": 222,
+      "sat": 0.78,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 7,
+      "group_id": "accent",
+      "level": 0.3,
+      "hue": 270,
+      "sat": 0.75,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "A",
+      "ch": 8,
+      "group_id": "fx",
+      "level": 0.12,
+      "hue": 330,
+      "sat": 0.6,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 1,
+      "group_id": "tv",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 2,
+      "group_id": "couch",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 3,
+      "group_id": "lamp",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 4,
+      "group_id": "pb-1-4",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 5,
+      "group_id": "pb-5-8",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 6,
+      "group_id": "pb-9-12",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 7,
+      "group_id": "br-1-2",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "B",
+      "ch": 8,
+      "group_id": "br-3-4",
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 1,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 2,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 3,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 4,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 5,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 6,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 7,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    },
+    {
+      "bank": "C",
+      "ch": 8,
+      "group_id": null,
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0,
+      "flash": false,
+      "engaged": true
+    }
+  ],
+  "last_touched": {
+    "bank": "A",
+    "ch": 6
+  },
+  "room": [
+    {
+      "fixture_id": "tv-left",
+      "label": "TV Left",
+      "x": 0.12,
+      "y": 0.28,
+      "hex": "#f2683c",
+      "online": true
+    },
+    {
+      "fixture_id": "tv-right",
+      "label": "TV Right",
+      "x": 0.88,
+      "y": 0.28,
+      "hex": "#e5484d",
+      "online": true
+    },
+    {
+      "fixture_id": "washer",
+      "label": "Washer",
+      "x": 0.5,
+      "y": 0.45,
+      "hex": "#f5a05b",
+      "online": true
+    },
+    {
+      "fixture_id": "couch-left",
+      "label": "Couch Left",
+      "x": 0.28,
+      "y": 0.72,
+      "hex": "#a855f7",
+      "online": true
+    },
+    {
+      "fixture_id": "right-couch",
+      "label": "Right couch",
+      "x": 0.72,
+      "y": 0.72,
+      "hex": "#ec4899",
+      "online": true
+    }
+  ],
+  "cues": [
+    {
+      "id": 0,
+      "name": "Intro",
+      "stored": true
+    },
+    {
+      "id": 1,
+      "name": "Build",
+      "stored": true
+    },
+    {
+      "id": 2,
+      "name": "DROP",
+      "stored": true
+    },
+    {
+      "id": 3,
+      "name": "Chill",
+      "stored": true
+    },
+    {
+      "id": 4,
+      "name": "Chorus",
+      "stored": true
+    },
+    {
+      "id": 5,
+      "name": "Break",
+      "stored": true
+    },
+    {
+      "id": 6,
+      "name": "Outro",
+      "stored": true
+    },
+    {
+      "id": 7,
+      "name": "Blackout",
+      "stored": true
+    }
+  ],
+  "cue_active": 2,
+  "palette": [
+    "#e5484d",
+    "#f5a05b",
+    "#f2c94c",
+    "#4ade80",
+    "#2dd4bf",
+    "#3b82f6",
+    "#a855f7",
+    "#f472b6"
+  ],
+  "rec": {
+    "state": "recording",
+    "take_id": "20261009-214800",
+    "elapsed_ms": 102000,
+    "events": 412,
+    "mode": "merge",
+    "name": "Older — draft 03",
+    "groups_touched": 6
+  },
+  "play": {
+    "state": "idle",
+    "take_id": null,
+    "pos_ms": 0,
+    "loop": false
+  },
+  "health": {
+    "atv": "up",
+    "lifx": {
+      "found": 5,
+      "total": 5
+    },
+    "board": "virtual"
+  },
+  "fixtures_rev": 3,
+  "takes_rev": 6
+}

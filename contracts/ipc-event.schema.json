@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IpcEvent",
+  "description": "chromad -> subscribed clients. `state` right after subscribe (and after a resync), then `patch` (RFC 7386, coalesced <= 30 Hz); `toast` for user-visible messages.",
+  "oneOf": [
+    { "type": "object", "title": "StateEvent", "required": ["ev", "state"], "additionalProperties": false,
+      "properties": { "ev": { "const": "state" }, "state": { "$ref": "state.schema.json" } } },
+    { "type": "object", "title": "PatchEvent", "required": ["ev", "patch"], "additionalProperties": false,
+      "properties": { "ev": { "const": "patch" }, "patch": { "type": "object" } } },
+    { "type": "object", "title": "ToastEvent", "required": ["ev", "level", "text"], "additionalProperties": false,
+      "properties": { "ev": { "const": "toast" }, "level": { "enum": ["info", "warn", "error"] },
+                      "text": { "type": "string", "minLength": 1 } } }
+  ]
+}

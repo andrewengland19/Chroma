@@ -76,7 +76,7 @@ def start() -> int:
     with open(PID_FILE, "w") as f:
         f.write(str(proc.pid))
     time.sleep(1.0)  # give it a beat to fail loudly (bad creds, etc.)
-    if not _alive(proc.pid):
+    if proc.poll() is not None:  # exited (a dead child still answers kill(pid, 0) until reaped)
         print(f"chroma show failed to start — see {LOG_FILE}", file=sys.stderr)
         _clear_pid()
         return 1

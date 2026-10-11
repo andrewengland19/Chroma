@@ -1,0 +1,294 @@
+{
+  "v": 1,
+  "bank": "A",
+  "fader_fn": "level",
+  "master": 0.9,
+  "channels": [
+    {
+      "level": 0.82,
+      "hue": 356,
+      "sat": 0.85
+    },
+    {
+      "level": 0.0,
+      "hue": 25,
+      "sat": 0.7
+    },
+    {
+      "level": 0.55,
+      "hue": 48,
+      "sat": 0.8
+    },
+    {
+      "level": 0.0,
+      "hue": 142,
+      "sat": 0.7
+    },
+    {
+      "level": 0.68,
+      "hue": 172,
+      "sat": 0.8
+    },
+    {
+      "level": 0.74,
+      "hue": 222,
+      "sat": 0.78
+    },
+    {
+      "level": 0.3,
+      "hue": 270,
+      "sat": 0.75
+    },
+    {
+      "level": 0.12,
+      "hue": 330,
+      "sat": 0.6
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    },
+    {
+      "level": 0.0,
+      "hue": 0,
+      "sat": 0.0
+    }
+  ],
+  "palette": [
+    "#e5484d",
+    "#f5a05b",
+    "#f2c94c",
+    "#4ade80",
+    "#2dd4bf",
+    "#3b82f6",
+    "#a855f7",
+    "#f472b6"
+  ],
+  "cues": [
+    {
+      "name": "Intro",
+      "look": null
+    },
+    {
+      "name": "Build",
+      "look": null
+    },
+    {
+      "name": "DROP",
+      "look": [
+        {
+          "level": 0.82,
+          "hue": 356,
+          "sat": 0.85
+        },
+        {
+          "level": 0.0,
+          "hue": 25,
+          "sat": 0.7
+        },
+        {
+          "level": 0.55,
+          "hue": 48,
+          "sat": 0.8
+        },
+        {
+          "level": 0.0,
+          "hue": 142,
+          "sat": 0.7
+        },
+        {
+          "level": 0.68,
+          "hue": 172,
+          "sat": 0.8
+        },
+        {
+          "level": 0.74,
+          "hue": 222,
+          "sat": 0.78
+        },
+        {
+          "level": 0.3,
+          "hue": 270,
+          "sat": 0.75
+        },
+        {
+          "level": 0.12,
+          "hue": 330,
+          "sat": 0.6
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        },
+        {
+          "level": 0.0,
+          "hue": 0,
+          "sat": 0.0
+        }
+      ]
+    },
+    {
+      "name": "Chill",
+      "look": null
+    },
+    {
+      "name": "Chorus",
+      "look": null
+    },
+    {
+      "name": "Break",
+      "look": null
+    },
+    {
+      "name": "Outro",
+      "look": null
+    },
+    {
+      "name": "Blackout",
+      "look": null
+    }
+  ],
+  "play_offset_ms": 0
+}

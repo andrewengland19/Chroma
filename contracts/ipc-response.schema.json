@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IpcResponse",
+  "description": "chromad -> client reply to a request. Echoes `id`. Failures are {ok:false, error}. Successful replies carry op-specific fields (see $defs for the shapes).",
+  "oneOf": [
+    {
+      "type": "object", "title": "IpcOk", "required": ["id", "ok"],
+      "properties": { "id": { "type": "integer", "minimum": 0 }, "ok": { "const": true },
+                      "state": { "$ref": "state.schema.json" } }
+    },
+    {
+      "type": "object", "title": "IpcError", "required": ["id", "ok", "error"], "additionalProperties": false,
+      "properties": { "id": { "type": ["integer", "null"] }, "ok": { "const": false }, "error": { "type": "string", "minLength": 1 } }
+    }
+  ],
+  "$defs": {
+    "take_summary": {
+      "type": "object", "title": "TakeSummary",
+      "required": ["id", "name", "title", "artist", "album", "dur_ms", "created_ms", "events", "groups_used", "training"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/take_id" }, "name": { "type": "string" },
+        "title": { "type": "string" }, "artist": { "type": "string" }, "album": { "type": "string" },
+        "dur_ms": { "oneOf": [{ "type": "integer" }, { "type": "null" }] },
+        "created_ms": { "type": "integer" }, "events": { "type": "integer" },
+        "groups_used": { "type": "array", "items": { "type": "string" } }, "training": { "type": "boolean" },
+        "art_hex": { "oneOf": [{ "$ref": "common.schema.json#/$defs/hex" }, { "type": "null" }] }
+      }
+    },
+    "pairing": {
+      "type": "object", "title": "BoardPairing", "required": ["key", "port", "hosts"], "additionalProperties": false,
+      "properties": { "key": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "port": { "type": "integer" },
+                      "hosts": { "type": "array", "items": { "type": "string" } }, "created": { "type": "boolean" } }
+    }
+  }
+}

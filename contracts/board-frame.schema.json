@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BoardFrame",
+  "description": "Engine -> board UDP datagram: what the board's LEDs and display should show. Sent on change and at 2 Hz. `mac` is computed exactly as for BoardPacket.",
+  "type": "object",
+  "required": ["v", "seq", "ui", "mac"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "seq": { "type": "integer", "minimum": 0 },
+    "ui": {
+      "type": "object", "required": ["bank", "labels", "colors", "track", "who", "rec", "level"],
+      "additionalProperties": false,
+      "properties": {
+        "bank": { "$ref": "common.schema.json#/$defs/bank" },
+        "labels": { "type": "array", "minItems": 8, "maxItems": 8, "items": { "type": "string", "maxLength": 16 } },
+        "colors": { "type": "array", "minItems": 8, "maxItems": 8, "items": { "$ref": "common.schema.json#/$defs/hex" } },
+        "track": { "type": "string", "maxLength": 48 },
+        "who": { "$ref": "common.schema.json#/$defs/who" },
+        "rec": { "type": "boolean" },
+        "level": { "type": "array", "minItems": 8, "maxItems": 8, "items": { "$ref": "common.schema.json#/$defs/unit" } }
+      }
+    },
+    "mac": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+  }
+}
