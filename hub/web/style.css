@@ -86,3 +86,9 @@ input[type=range]{flex:1; accent-color:var(--accent); max-width:60%}
   margin:-4px 0 14px; font-size:13px; color:#f0c9a8}
 #aiBanner button{padding:6px 12px; font-size:12px}
 #aiBanner button:disabled{opacity:.4; cursor:default}
+
+/* Music / Lights tabs */
+.tabs{display:flex; gap:6px; margin-bottom:16px}
+.tabs a{flex:1; text-align:center; padding:10px 0; border-radius:10px; border:1px solid var(--line);
+        color:var(--fg); text-decoration:none; font-weight:600; background:#20202a}
+.tabs a.active{background:var(--accent); color:#150022; border-color:var(--accent)}

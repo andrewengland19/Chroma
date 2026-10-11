@@ -149,6 +149,110 @@ async def post_stop():
     return {"ok": True, "stopping": True}
 
 
+# ── Pass 5: natural-language light agent ─────────────────────────────────────
+
+@app.post("/agent")
+async def agent(body: dict):
+    import lights_agent
+    prompt = (body.get("prompt") or "").strip()
+    if not prompt:
+        return JSONResponse({"error": "empty prompt"}, status_code=400)
+    if engine.enabled:  # stop album-art painting from overwriting the agent's look
+        await engine.set_enabled(False)
+    try:
+        return await asyncio.get_running_loop().run_in_executor(None, lights_agent.run, prompt)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/agent/undo")
+async def agent_undo():
+    import lights_agent
+    return await asyncio.get_running_loop().run_in_executor(None, lights_agent.undo)
+
+
+@app.post("/agent/save")
+async def agent_save(body: dict):
+    import lights_agent
+    return await asyncio.get_running_loop().run_in_executor(
+        None, lights_agent.t_save_scene, {"name": body.get("name", "")})
+
+
+# ── Pass 5: Lights tab (hub/web/lights.html) ─────────────────────────────────
+
+async def _ex(fn, *a):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *a)
+
+
+@app.get("/lights")
+async def lights_get():
+    import lights_agent
+    return await _ex(lights_agent.room_view)
+
+
+@app.post("/lights/set")
+async def lights_set(body: dict):
+    import lights_agent
+    if engine.enabled:  # manual control wins over album-art painting
+        await engine.set_enabled(False)
+    return await _ex(lights_agent.t_set_lights, {"changes": body.get("changes", [])})
+
+
+@app.get("/scenes")
+async def scenes_get():
+    import lights_agent
+    return await _ex(lights_agent.scenes_view)
+
+
+@app.post("/scenes/recall")
+async def scenes_recall(body: dict):
+    import lights_agent
+    if engine.enabled:
+        await engine.set_enabled(False)
+    return await _ex(lights_agent.t_recall_scene, {"name": body.get("name", "")})
+
+
+# ── Pass 5: TV remote (hub/web/remote.html) — wraps the `tv` CLI ──────────────
+
+TV_BIN = "/usr/local/bin/tv"
+TV_SIMPLE = {"play", "pause", "stop", "toggle", "next", "prev", "up", "down", "left",
+             "right", "select", "ok", "menu", "home", "top", "wake", "sleep", "now", "apps"}
+
+
+async def _tv(*argv: str) -> dict:
+    proc = await asyncio.create_subprocess_exec(
+        TV_BIN, *argv, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    try:
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+    except asyncio.TimeoutError:
+        proc.kill()
+        return {"ok": False, "output": "tv: timed out"}
+    return {"ok": proc.returncode == 0, "output": out.decode(errors="replace").strip()}
+
+
+@app.post("/tv")
+async def tv(body: dict):
+    cmd = str(body.get("cmd", "")).lower()
+    arg = str(body.get("arg", "")).strip()
+    if cmd in TV_SIMPLE:
+        return await _tv(cmd)
+    if cmd in ("skip", "back") and (not arg or arg.isdigit()):
+        return await _tv(cmd, *([arg] if arg else []))
+    if cmd == "vol" and arg.split()[:1] in (["up"], ["down"]):
+        return await _tv("vol", *arg.split()[:2])
+    if cmd == "launch" and arg:
+        return await _tv("launch", arg)
+    return JSONResponse({"ok": False, "output": f"unsupported tv command {cmd!r}"}, status_code=400)
+
+
+@app.get("/tv/apps")
+async def tv_apps():
+    import re
+    r = await _tv("apps")
+    names = [m.group(1) for m in re.finditer(r"^\s*\d+\.\s+(.+?)\s+\(", r["output"], re.M)]
+    return sorted(set(names))
+
+
 @app.get("/artwork.jpg")
 async def get_artwork():
     if not os.path.exists(ARTWORK_FILE):

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>CHROMA lights</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{ --glow:#c17aff; }
+  body{ transition:background .8s; background:
+        radial-gradient(900px 500px at 50% -10%, color-mix(in srgb, var(--glow) 18%, transparent), transparent 70%),
+        var(--bg); background-attachment:fixed; min-height:100vh }
+  .tabs a.active{background:var(--glow); color:#111; border-color:transparent; transition:background .8s}
+
+  /* prompt */
+  #ask{display:flex; gap:8px; margin-bottom:16px}
+  #prompt{flex:1; font-size:17px; padding:15px 16px; border-radius:14px; border:1px solid var(--line);
+          background:var(--card); color:var(--fg); outline:none; transition:border-color .3s, box-shadow .3s}
+  #prompt:focus{border-color:var(--glow); box-shadow:0 0 0 4px color-mix(in srgb, var(--glow) 20%, transparent)}
+  #go{width:54px; border-radius:14px; font-size:20px}
+  #ask.busy #prompt{background:linear-gradient(90deg,var(--card) 0%,#24242e 50%,var(--card) 100%);
+          background-size:200% 100%; animation:shimmer 1.2s linear infinite}
+  @keyframes shimmer{to{background-position:-200% 0}}
+
+  /* scenes */
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
+  .chip{display:flex; align-items:center; gap:8px; padding:8px 12px 8px 8px; border-radius:999px}
+  .chip .dots{display:flex}
+  .chip .dots i{width:12px; height:12px; border-radius:50%; margin-left:-4px; box-shadow:0 0 0 2px var(--card)}
+  .chip .dots i:first-child{margin-left:0}
+  .chip:active{transform:scale(.96)}
+
+  /* rooms */
+  .bulbs{display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:14px}
+  .bulb{display:flex; flex-direction:column; align-items:center; gap:8px; background:none; border:none;
+        padding:6px 0; color:var(--fg)}
+  .orb{width:54px; height:54px; border-radius:50%; transition:background .3s, box-shadow .3s, opacity .3s;
+       box-shadow:0 0 calc(var(--b,1)*34px) calc(var(--b,1)*6px) var(--c,#0000); background:var(--c,#2a2a33)}
+  .bulb.off .orb{background:#1d1d24; box-shadow:inset 0 0 0 1px var(--line)}
+  .bulb.unreach .orb{opacity:.3}
+  .bulb span{font-size:12px; color:var(--dim); text-align:center}
+  .roomhead{display:flex; justify-content:space-between; align-items:center}
+  .roomhead button{padding:5px 10px; font-size:12px}
+
+  /* bulb sheet */
+  #sheet{position:fixed; inset:auto 0 0 0; max-width:760px; margin:0 auto; background:var(--card);
+         border:1px solid var(--line); border-radius:20px 20px 0 0; padding:18px 18px 28px;
+         transform:translateY(105%); transition:transform .3s cubic-bezier(.2,.8,.2,1); z-index:20}
+  #sheet.open{transform:none}
+  #sheet h3{margin:0 0 14px; display:flex; justify-content:space-between; align-items:center}
+  .swrow{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+  .swrow button{width:38px; height:38px; border-radius:50%; padding:0; border:2px solid #fff2}
+  #pick{width:38px; height:38px; border:none; padding:0; background:none; border-radius:50%}
+  #sheet input[type=range]{width:100%}
+  #scrim{position:fixed; inset:0; background:#0006; opacity:0; pointer-events:none; transition:opacity .3s; z-index:19}
+  #scrim.open{opacity:1; pointer-events:auto}
+
+  /* toast */
+  #toast{position:fixed; left:50%; bottom:22px; transform:translate(-50%,140%); width:min(92vw,560px);
+         background:#1e1e26; border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+         box-shadow:0 12px 40px #000a; transition:transform .35s cubic-bezier(.2,.8,.2,1); z-index:30}
+  #toast.show{transform:translate(-50%,0)}
+  #toast p{margin:0 0 10px; font-size:14px}
+  #toast .row{margin-top:0; justify-content:flex-end}
+  #toast .primary{background:var(--glow); color:#111; border-color:transparent}
+</style>
+</head>
+<body>
+<nav class="tabs"><a href="/">Music</a><a href="/lights.html" class="active">Lights</a><a href="/remote.html">Remote</a></nav>
+
+<form id="ask" autocomplete="off">
+  <input id="prompt" placeholder="Describe the vibe…  e.g. cozy rainy evening, desk bright" enterkeyhint="go">
+  <button id="go" title="Set the lights">↵</button>
+</form>
+
+<section class="card">
+  <h2>Scenes</h2>
+  <div class="chips" id="chips"></div>
+</section>
+
+<div id="rooms"><section class="card"><h2>Rooms <small>reading bulbs…</small></h2></section></div>
+
+<div id="scrim"></div>
+<div id="sheet">
+  <h3><span id="sheetTitle">Bulb</span> <button id="power" class="ghost">Turn off</button></h3>
+  <div class="swrow" id="swatches"></div>
+  <label>Brightness <input type="range" id="bri" min="0.02" max="1" step="0.01"></label>
+</div>
+
+<div id="toast"><p id="toastText"></p>
+  <div class="row"><button id="undo" class="ghost">Undo</button><button id="save" class="primary">Save scene</button></div>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const SWATCHES = [["2700K","k",2700],["4000K","k",4000],["6000K","k",6000],
+  ["#ff6a3d"],["#ffb27a"],["#f5d76e"],["#7ed6a5"],["#4fc3f7"],["#5b6cff"],["#a46bff"],["#ff5fa2"]];
+let bulbs = [], current = null, suggested = null, toastTimer = null, busy = false;
+
+const api = (path, body) => fetch(path, body === undefined ? {} : {
+  method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+}).then(r => r.json());
+
+// ---------- rooms ----------
+async function loadLights() {
+  if (busy || document.hidden) return;
+  try { bulbs = await api("/lights"); render(); } catch {}
+}
+function render() {
+  const groups = {};
+  bulbs.forEach(b => (groups[b.group] ||= []).push(b));
+  $("rooms").innerHTML = Object.keys(groups).sort().map(g => `
+    <section class="card"><div class="roomhead"><h2>${g}</h2>
+      <button class="ghost" data-room-off="${g}">All off</button></div>
+      <div class="bulbs">${groups[g].map(b => `
+        <button class="bulb ${b.power === "on" ? "" : b.power === "off" ? "off" : "unreach"}" data-label="${b.label}">
+          <div class="orb" style="--c:${b.hex || "#333"};--b:${b.brightness ?? 0}"></div>
+          <span>${b.label}${b.power === "unreachable" ? " · offline" : ""}</span></button>`).join("")}
+      </div></section>`).join("");
+  const on = bulbs.filter(b => b.power === "on" && b.hex);
+  if (on.length) document.documentElement.style.setProperty("--glow", avgHex(on.map(b => b.hex)));
+}
+function avgHex(hexes) {
+  const c = [0, 1, 2].map(i => Math.round(hexes.reduce((s, h) => s + parseInt(h.slice(1 + 2 * i, 3 + 2 * i), 16), 0) / hexes.length));
+  return "#" + c.map(v => v.toString(16).padStart(2, "0")).join("");
+}
+$("rooms").addEventListener("click", (e) => {
+  const off = e.target.closest("[data-room-off]");
+  if (off) return setLights([{target: off.dataset.roomOff, power: "off", fade_ms: 600}]);
+  const el = e.target.closest(".bulb");
+  if (el) openSheet(bulbs.find(b => b.label === el.dataset.label));
+});
+
+// ---------- bulb sheet (changes apply live, no Apply button) ----------
+$("swatches").innerHTML = SWATCHES.map(([v, t, k]) =>
+  `<button title="${v}" data-v="${v}" ${t ? `data-k="${k}"` : ""} style="background:${t ? kHex(k) : v}"></button>`
+).join("") + `<input type="color" id="pick" title="Any color">`;
+function kHex(k) { const t = Math.min(1, Math.max(0, (k - 2000) / 4500));
+  return `rgb(255,${180 + 60 * t | 0},${110 + 140 * t | 0})`; }
+
+function openSheet(b) {
+  if (!b) return;
+  current = b;
+  $("sheetTitle").textContent = b.label;
+  $("bri").value = b.brightness ?? 0.6;
+  $("power").textContent = b.power === "on" ? "Turn off" : "Turn on";
+  $("sheet").classList.add("open"); $("scrim").classList.add("open");
+}
+function closeSheet() { $("sheet").classList.remove("open"); $("scrim").classList.remove("open"); current = null; }
+$("scrim").onclick = closeSheet;
+
+function patchLocal(label, patch) { const b = bulbs.find(x => x.label === label); if (b) Object.assign(b, patch); render(); }
+$("swatches").addEventListener("click", (e) => {
+  const sw = e.target.closest("button"); if (!sw || !current) return;
+  const bri = +$("bri").value;
+  const change = sw.dataset.k ? {kelvin: +sw.dataset.k} : {color: sw.dataset.v};
+  patchLocal(current.label, {power: "on", hex: sw.dataset.k ? kHex(+sw.dataset.k) : sw.dataset.v, brightness: bri});
+  setLights([{target: current.label, ...change, brightness: bri, fade_ms: 300}]);
+});
+let pickT;
+$("swatches").addEventListener("input", (e) => {
+  if (e.target.id !== "pick" || !current) return;
+  const hex = e.target.value, label = current.label, bri = +$("bri").value;
+  patchLocal(label, {power: "on", hex, brightness: bri});
+  clearTimeout(pickT); pickT = setTimeout(() => setLights([{target: label, color: hex, brightness: bri, fade_ms: 200}]), 120);
+});
+let briT;
+$("bri").addEventListener("input", () => {
+  if (!current) return;
+  const label = current.label, bri = +$("bri").value;
+  patchLocal(label, {power: "on", brightness: bri});
+  clearTimeout(briT); briT = setTimeout(() => setLights([{target: label, brightness: bri, fade_ms: 200}]), 120);
+});
+$("power").onclick = () => {
+  if (!current) return;
+  const turnOn = current.power !== "on";
+  patchLocal(current.label, {power: turnOn ? "on" : "off"});
+  setLights([{target: current.label, power: turnOn ? "on" : "off", fade_ms: 400}]);
+  closeSheet();
+};
+async function setLights(changes) {
+  busy = true;
+  try { await api("/lights/set", {changes}); } finally { busy = false; setTimeout(loadLights, 700); }
+}
+
+// ---------- scenes ----------
+let showAll = false;
+async function loadScenes() {
+  const scenes = await api("/scenes");
+  const list = showAll ? scenes : scenes.slice(0, 6);
+  $("chips").innerHTML = list.map(s => `<button class="chip" data-scene="${s.name}">
+      <span class="dots">${s.colors.map(c => `<i style="background:${c}"></i>`).join("")}</span>${s.name}</button>`).join("")
+    + (scenes.length > 6 ? `<button class="chip ghost" id="more">${showAll ? "Less" : `More (${scenes.length - 6})`}</button>` : "");
+}
+$("chips").addEventListener("click", async (e) => {
+  if (e.target.closest("#more")) { showAll = !showAll; return loadScenes(); }
+  const c = e.target.closest("[data-scene]"); if (!c) return;
+  busy = true;
+  try { await api("/scenes/recall", {name: c.dataset.scene}); } finally { busy = false; setTimeout(loadLights, 1000); }
+});
+
+// ---------- describe-the-vibe ----------
+$("ask").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const prompt = $("prompt").value.trim(); if (!prompt) return;
+  $("ask").classList.add("busy"); $("prompt").disabled = true; busy = true;
+  try {
+    const r = await api("/agent", {prompt});
+    if (r.error) toast(`Couldn't do that: ${r.error}`, null);
+    else { toast(r.reply, r.suggested_name); $("prompt").value = ""; }
+  } catch { toast("Hub unreachable.", null); }
+  finally { $("ask").classList.remove("busy"); $("prompt").disabled = false; busy = false; loadLights(); }
+});
+function toast(text, name) {
+  suggested = name; $("toastText").textContent = text;
+  $("save").hidden = !name; $("undo").hidden = !name;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("show"), 10000);
+}
+// Hovering / touching the toast keeps it open.
+$("toast").addEventListener("pointerenter", () => clearTimeout(toastTimer));
+$("toast").addEventListener("pointerleave", () => {
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 4000);
+});
+$("undo").onclick = async () => { $("toast").classList.remove("show"); await api("/agent/undo", {}); setTimeout(loadLights, 800); };
+$("save").onclick = async () => {
+  const name = (prompt("Scene name", suggested || "") || "").trim(); if (!name) return;
+  const r = await api("/agent/save", {name});
+  toast(r.error ? r.error : `Saved “${name}”.`, null); loadScenes();
+};
+
+if (new URLSearchParams(location.search).has("ask")) $("prompt").focus();
+loadLights(); loadScenes();
+setInterval(loadLights, 6000);
+document.addEventListener("visibilitychange", loadLights);
+</script>
+</body>
+</html>
