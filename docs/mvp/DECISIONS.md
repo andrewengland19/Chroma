@@ -43,3 +43,4 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 - 2026-10-11 — Hue is `[0, 360)` everywhere (schema `exclusiveMaximum: 360`); console code normalises with `% 360`.
 - 2026-10-11 — Tailwind v4 (`@tailwindcss/vite`), React 19, Vite 8, TypeScript 6 (create-tauri-app 4.7.5 defaults). Tests import from `vitest` explicitly (no globals).
 - 2026-10-11 — Contract TS types are generated into `app/src/contracts.ts` with fixed-length arrays emitted as plain arrays (`ignoreMinAndMaxItems`); the schema still enforces the lengths.
+- 2026-10-11 — User will not grant Screen Recording; he provides screenshots of the native app manually. Native-window checks: the window's existence/size is verified via `CGWindowListCopyWindowInfo` (no permission needed); visual checks against the mockups run in the built-in browser with the mock IPC; a "screenshot of the Tauri window" item goes into each UI milestone's batched request (HARDWARE_CHECKLIST.md).
