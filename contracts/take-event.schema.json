@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TakeEvent",
+  "description": "One recorded intent (every line after the header). `i` is the intent exactly as received (post-pickup), without src. b/c/a/v are the resolved target so replay does not depend on the live bank, fader function or last-touched channel.",
+  "type": "object",
+  "required": ["p", "w", "i"],
+  "additionalProperties": false,
+  "properties": {
+    "p": { "$ref": "common.schema.json#/$defs/ms", "description": "Song position (SongClock) in ms." },
+    "w": { "type": "integer", "minimum": 0, "description": "Wall clock ms." },
+    "i": { "$ref": "intent.schema.json" },
+    "g": { "oneOf": [{ "$ref": "common.schema.json#/$defs/slug_id" }, { "type": "null" }], "description": "Resolved group id (informational)." },
+    "b": { "$ref": "common.schema.json#/$defs/bank" },
+    "c": { "oneOf": [{ "$ref": "common.schema.json#/$defs/ch" }, { "const": "master" }] },
+    "a": { "type": "string", "enum": ["level", "hue", "sat", "flash", "assign", "master", "blackout",
+                                       "cue", "palette", "bank", "fader_fn", "who", "select"] },
+    "v": { "oneOf": [{ "type": "number" }, { "type": "boolean" }, { "type": "string" }, { "type": "null" }] }
+  }
+}

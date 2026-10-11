@@ -1,0 +1,14 @@
+{
+  "id": 12,
+  "op": "fixtures.upsert",
+  "fixture": {
+    "id": "virtual-light-1",
+    "label": "Virtual Light 1",
+    "type": "virtual",
+    "status": "active",
+    "class": "fast",
+    "x": 0.5,
+    "y": 0.45,
+    "color": "#3b82f6"
+  }
+}

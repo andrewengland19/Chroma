@@ -1,0 +1,7 @@
+{
+  "id": 16,
+  "op": "takes.set_flag",
+  "take_id": "20261009-214800",
+  "flag": "training",
+  "value": true
+}

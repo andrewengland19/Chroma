@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Intent",
+  "description": "The only way to change console state (BUILD_ORDER §5.2). Identical for UI, board, replay and CLI. `src` is stamped by the receiver; senders omit it. Unknown intents are rejected.",
+  "oneOf": [
+    { "$ref": "#/$defs/fader" }, { "$ref": "#/$defs/flash" }, { "$ref": "#/$defs/assign" },
+    { "$ref": "#/$defs/bank" }, { "$ref": "#/$defs/fader_fn" }, { "$ref": "#/$defs/hue" },
+    { "$ref": "#/$defs/sat" }, { "$ref": "#/$defs/palette_apply" }, { "$ref": "#/$defs/palette_store" },
+    { "$ref": "#/$defs/cue_recall" }, { "$ref": "#/$defs/cue_store" }, { "$ref": "#/$defs/blackout" },
+    { "$ref": "#/$defs/who" }
+  ],
+  "$defs": {
+    "src": { "$ref": "common.schema.json#/$defs/src" },
+    "fader": {
+      "type": "object", "title": "FaderIntent",
+      "description": "Raw fader position. Board-sourced values go through pickup (§5.3).",
+      "required": ["intent", "ch", "v"], "additionalProperties": false,
+      "properties": {
+        "intent": { "const": "fader" },
+        "ch": { "oneOf": [{ "$ref": "common.schema.json#/$defs/ch" }, { "const": "master" }] },
+        "v": { "$ref": "common.schema.json#/$defs/unit" },
+        "src": { "$ref": "#/$defs/src" }
+      }
+    },
+    "flash": {
+      "type": "object", "title": "FlashIntent",
+      "description": "Momentary full level while down; returns to the fader level on release.",
+      "required": ["intent", "ch", "down"], "additionalProperties": false,
+      "properties": {
+        "intent": { "const": "flash" }, "ch": { "$ref": "common.schema.json#/$defs/ch" },
+        "down": { "type": "boolean" }, "src": { "$ref": "#/$defs/src" }
+      }
+    },
+    "assign": {
+      "type": "object", "title": "AssignIntent",
+      "description": "Remap a channel of the current bank. Without group_id it only selects the channel (sets last_touched); group_id null clears the binding.",
+      "required": ["intent", "ch"], "additionalProperties": false,
+      "properties": {
+        "intent": { "const": "assign" }, "ch": { "$ref": "common.schema.json#/$defs/ch" },
+        "group_id": { "oneOf": [{ "$ref": "common.schema.json#/$defs/slug_id" }, { "type": "null" }] },
+        "src": { "$ref": "#/$defs/src" }
+      }
+    },
+    "bank": {
+      "type": "object", "title": "BankIntent", "required": ["intent", "bank"], "additionalProperties": false,
+      "properties": { "intent": { "const": "bank" }, "bank": { "$ref": "common.schema.json#/$defs/bank" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "fader_fn": {
+      "type": "object", "title": "FaderFnIntent", "required": ["intent", "fn"], "additionalProperties": false,
+      "properties": { "intent": { "const": "fader_fn" }, "fn": { "$ref": "common.schema.json#/$defs/fader_fn" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "hue": {
+      "type": "object", "title": "HueIntent",
+      "description": "Acts on last_touched. Exactly one of delta (encoder detents) or v (degrees).",
+      "required": ["intent"], "additionalProperties": false,
+      "oneOf": [{ "required": ["delta"] }, { "required": ["v"] }],
+      "properties": {
+        "intent": { "const": "hue" }, "delta": { "type": "integer", "minimum": -360, "maximum": 360 },
+        "v": { "$ref": "common.schema.json#/$defs/hue" }, "src": { "$ref": "#/$defs/src" }
+      }
+    },
+    "sat": {
+      "type": "object", "title": "SatIntent",
+      "description": "Acts on last_touched. Exactly one of delta (encoder detents) or v (0..1).",
+      "required": ["intent"], "additionalProperties": false,
+      "oneOf": [{ "required": ["delta"] }, { "required": ["v"] }],
+      "properties": {
+        "intent": { "const": "sat" }, "delta": { "type": "integer", "minimum": -100, "maximum": 100 },
+        "v": { "$ref": "common.schema.json#/$defs/unit" }, "src": { "$ref": "#/$defs/src" }
+      }
+    },
+    "palette_apply": {
+      "type": "object", "title": "PaletteApplyIntent", "required": ["intent", "i"], "additionalProperties": false,
+      "properties": { "intent": { "const": "palette_apply" }, "i": { "$ref": "common.schema.json#/$defs/slot" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "palette_store": {
+      "type": "object", "title": "PaletteStoreIntent", "required": ["intent", "i"], "additionalProperties": false,
+      "properties": { "intent": { "const": "palette_store" }, "i": { "$ref": "common.schema.json#/$defs/slot" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "cue_recall": {
+      "type": "object", "title": "CueRecallIntent", "required": ["intent", "i"], "additionalProperties": false,
+      "properties": { "intent": { "const": "cue_recall" }, "i": { "$ref": "common.schema.json#/$defs/slot" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "cue_store": {
+      "type": "object", "title": "CueStoreIntent", "required": ["intent", "i"], "additionalProperties": false,
+      "properties": { "intent": { "const": "cue_store" }, "i": { "$ref": "common.schema.json#/$defs/slot" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "blackout": {
+      "type": "object", "title": "BlackoutIntent", "required": ["intent", "on"], "additionalProperties": false,
+      "properties": { "intent": { "const": "blackout" }, "on": { "type": "boolean" },
+                      "src": { "$ref": "#/$defs/src" } }
+    },
+    "who": {
+      "type": "object", "title": "WhoIntent", "required": ["intent", "who"], "additionalProperties": false,
+      "properties": { "intent": { "const": "who" }, "who": { "$ref": "common.schema.json#/$defs/who" },
+                      "src": { "$ref": "#/$defs/src" } }
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "State",
+  "description": "Full console/engine state sent by chromad (BUILD_ORDER §5.1). Patches are RFC 7386 merge patches against it.",
+  "type": "object",
+  "required": ["now", "who", "art_mode", "bank", "fader_fn", "master", "blackout", "channels",
+               "last_touched", "room", "cues", "cue_active", "palette", "rec", "play", "health",
+               "fixtures_rev", "takes_rev"],
+  "additionalProperties": false,
+  "properties": {
+    "now": { "$ref": "#/$defs/now" },
+    "who": { "$ref": "common.schema.json#/$defs/who", "description": "WHO DRIVES. auto == Engine.enabled true; board == false." },
+    "art_mode": { "$ref": "common.schema.json#/$defs/art_mode" },
+    "bank": { "$ref": "common.schema.json#/$defs/bank" },
+    "fader_fn": { "$ref": "common.schema.json#/$defs/fader_fn" },
+    "master": { "$ref": "common.schema.json#/$defs/unit" },
+    "blackout": { "type": "boolean" },
+    "channels": { "type": "array", "minItems": 24, "maxItems": 24, "items": { "$ref": "#/$defs/channel" },
+                  "description": "3 banks x 8, ordered A1..A8, B1..B8, C1..C8." },
+    "last_touched": { "oneOf": [{ "$ref": "#/$defs/channel_ref" }, { "type": "null" }] },
+    "room": { "type": "array", "items": { "$ref": "#/$defs/room_fixture" } },
+    "cues": { "type": "array", "minItems": 8, "maxItems": 8, "items": { "$ref": "#/$defs/cue" } },
+    "cue_active": { "oneOf": [{ "$ref": "common.schema.json#/$defs/slot" }, { "type": "null" }] },
+    "palette": { "type": "array", "minItems": 8, "maxItems": 8, "items": { "$ref": "common.schema.json#/$defs/hex" } },
+    "rec": { "$ref": "#/$defs/rec" },
+    "play": { "$ref": "#/$defs/play" },
+    "health": { "$ref": "#/$defs/health" },
+    "fixtures_rev": { "type": "integer", "minimum": 0, "description": "Bumps when fixtures/groups/banks change; the UI refetches them." },
+    "takes_rev": { "type": "integer", "minimum": 0, "description": "Bumps when the take library changes; the UI refetches takes.list." }
+  },
+  "$defs": {
+    "now": {
+      "type": "object", "title": "NowPlayingState",
+      "required": ["track_id", "title", "artist", "album", "playing", "pos_ms", "dur_ms", "art_url"],
+      "additionalProperties": false,
+      "properties": {
+        "track_id": { "type": "string", "description": "NowPlaying.track_id(); empty when nothing is known." },
+        "title": { "type": "string" }, "artist": { "type": "string" }, "album": { "type": "string" },
+        "playing": { "type": "boolean" },
+        "pos_ms": { "oneOf": [{ "$ref": "common.schema.json#/$defs/ms" }, { "type": "null" }],
+                    "description": "SongClock position at the time of the patch; published at <= 4 Hz, the UI interpolates while playing." },
+        "dur_ms": { "oneOf": [{ "$ref": "common.schema.json#/$defs/ms" }, { "type": "null" }] },
+        "art_url": { "oneOf": [{ "type": "string" }, { "type": "null" }],
+                     "description": "Opaque URL for the current artwork (chroma-art://current?rev=N in the app)." }
+      }
+    },
+    "channel": {
+      "type": "object", "title": "ChannelState",
+      "required": ["bank", "ch", "group_id", "level", "hue", "sat", "flash", "engaged"],
+      "additionalProperties": false,
+      "properties": {
+        "bank": { "$ref": "common.schema.json#/$defs/bank" }, "ch": { "$ref": "common.schema.json#/$defs/ch" },
+        "group_id": { "oneOf": [{ "$ref": "common.schema.json#/$defs/slug_id" }, { "type": "null" }] },
+        "level": { "$ref": "common.schema.json#/$defs/unit" },
+        "hue": { "$ref": "common.schema.json#/$defs/hue" },
+        "sat": { "$ref": "common.schema.json#/$defs/unit" },
+        "flash": { "type": "boolean" },
+        "engaged": { "type": "boolean", "description": "Pickup state for the physical board; false shows a ghost marker." }
+      }
+    },
+    "channel_ref": {
+      "type": "object", "required": ["bank", "ch"], "additionalProperties": false,
+      "properties": { "bank": { "$ref": "common.schema.json#/$defs/bank" }, "ch": { "$ref": "common.schema.json#/$defs/ch" } }
+    },
+    "room_fixture": {
+      "type": "object", "title": "RoomFixture", "required": ["fixture_id", "label", "x", "y", "hex"],
+      "additionalProperties": false,
+      "properties": {
+        "fixture_id": { "$ref": "common.schema.json#/$defs/slug_id" },
+        "label": { "type": "string" },
+        "x": { "$ref": "common.schema.json#/$defs/unit" }, "y": { "$ref": "common.schema.json#/$defs/unit" },
+        "hex": { "oneOf": [{ "$ref": "common.schema.json#/$defs/hex" }, { "type": "null" }],
+                 "description": "Current output colour (brightness applied); null if unknown." },
+        "online": { "type": "boolean" }
+      }
+    },
+    "cue": {
+      "type": "object", "title": "CueSummary", "required": ["id", "name", "stored"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/slot" }, "name": { "type": "string", "maxLength": 24 },
+        "stored": { "type": "boolean" }
+      }
+    },
+    "rec": {
+      "type": "object", "title": "RecState",
+      "required": ["state", "take_id", "elapsed_ms", "events", "mode", "name", "groups_touched"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "type": "string", "enum": ["idle", "armed", "recording"] },
+        "take_id": { "oneOf": [{ "$ref": "common.schema.json#/$defs/take_id" }, { "type": "null" }] },
+        "elapsed_ms": { "$ref": "common.schema.json#/$defs/ms" },
+        "events": { "type": "integer", "minimum": 0 },
+        "mode": { "$ref": "common.schema.json#/$defs/record_mode" },
+        "name": { "type": "string" },
+        "groups_touched": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "play": {
+      "type": "object", "title": "PlayState", "required": ["state", "take_id", "pos_ms", "loop"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "type": "string", "enum": ["idle", "playing"] },
+        "take_id": { "oneOf": [{ "$ref": "common.schema.json#/$defs/take_id" }, { "type": "null" }] },
+        "pos_ms": { "$ref": "common.schema.json#/$defs/ms" },
+        "loop": { "type": "boolean" }
+      }
+    },
+    "health": {
+      "type": "object", "title": "Health", "required": ["atv", "lifx", "board"], "additionalProperties": false,
+      "properties": {
+        "atv": { "type": "string", "enum": ["up", "down"] },
+        "lifx": { "type": "object", "required": ["found", "total"], "additionalProperties": false,
+                  "properties": { "found": { "type": "integer", "minimum": 0 }, "total": { "type": "integer", "minimum": 0 } } },
+        "board": { "type": "string", "enum": ["none", "virtual", "online", "offline"],
+                   "description": "none = never paired; virtual = board_sim is the source; online/offline = physical board." }
+      }
+    }
+  }
+}

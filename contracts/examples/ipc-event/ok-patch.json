@@ -1,0 +1,250 @@
+{
+  "ev": "patch",
+  "patch": {
+    "now": {
+      "pos_ms": 102250
+    },
+    "channels": [
+      {
+        "bank": "A",
+        "ch": 1,
+        "group_id": "lr-all",
+        "level": 0.82,
+        "hue": 356,
+        "sat": 0.85,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 2,
+        "group_id": "bed",
+        "level": 0.0,
+        "hue": 25,
+        "sat": 0.7,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 3,
+        "group_id": "counter",
+        "level": 0.55,
+        "hue": 48,
+        "sat": 0.8,
+        "flash": true,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 4,
+        "group_id": "playbill",
+        "level": 0.0,
+        "hue": 142,
+        "sat": 0.7,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 5,
+        "group_id": "lr-l",
+        "level": 0.68,
+        "hue": 172,
+        "sat": 0.8,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 6,
+        "group_id": "lr-r",
+        "level": 0.74,
+        "hue": 222,
+        "sat": 0.78,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 7,
+        "group_id": "accent",
+        "level": 0.3,
+        "hue": 270,
+        "sat": 0.75,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "A",
+        "ch": 8,
+        "group_id": "fx",
+        "level": 0.12,
+        "hue": 330,
+        "sat": 0.6,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 1,
+        "group_id": "tv",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 2,
+        "group_id": "couch",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 3,
+        "group_id": "lamp",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 4,
+        "group_id": "pb-1-4",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 5,
+        "group_id": "pb-5-8",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 6,
+        "group_id": "pb-9-12",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 7,
+        "group_id": "br-1-2",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "B",
+        "ch": 8,
+        "group_id": "br-3-4",
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 1,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 2,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 3,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 4,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 5,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 6,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 7,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      },
+      {
+        "bank": "C",
+        "ch": 8,
+        "group_id": null,
+        "level": 0.0,
+        "hue": 0,
+        "sat": 0.0,
+        "flash": false,
+        "engaged": true
+      }
+    ]
+  }
+}

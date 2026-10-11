@@ -1,0 +1,41 @@
+{
+  "v": 1,
+  "seq": 55,
+  "ui": {
+    "bank": "A",
+    "labels": [
+      "LR ALL",
+      "BED",
+      "COUNTER",
+      "PLAYBILL",
+      "LR L",
+      "LR R",
+      "ACCENT",
+      "FX"
+    ],
+    "colors": [
+      "#e5484d",
+      "#f5a05b",
+      "#f2c94c",
+      "#4ade80",
+      "#2dd4bf",
+      "#3b82f6",
+      "#a855f7",
+      "#f472b6"
+    ],
+    "track": "Older",
+    "who": "board",
+    "rec": true,
+    "level": [
+      0.82,
+      0.0,
+      0.55,
+      0.0,
+      0.68,
+      0.74,
+      0.3,
+      0.12
+    ]
+  },
+  "mac": "0011223344556677"
+}

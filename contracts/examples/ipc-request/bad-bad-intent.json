@@ -1,0 +1,9 @@
+{
+  "id": 2,
+  "op": "intent",
+  "intent": {
+    "intent": "fader",
+    "ch": 0,
+    "v": 0.5
+  }
+}

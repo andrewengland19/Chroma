@@ -1,0 +1,4 @@
+{
+  "intent": "fader_fn",
+  "fn": "hue"
+}

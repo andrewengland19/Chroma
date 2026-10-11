@@ -1,0 +1,26 @@
+{
+  "id": 14,
+  "op": "groups.upsert",
+  "group": {
+    "id": "playbill",
+    "name": "PLAYBILL",
+    "color": "#4ade80",
+    "members": [
+      "playbill-01",
+      "playbill-02",
+      "playbill-03",
+      "playbill-04",
+      "playbill-05",
+      "playbill-06",
+      "playbill-07",
+      "playbill-08",
+      "playbill-09",
+      "playbill-10",
+      "playbill-11",
+      "playbill-12"
+    ],
+    "max_level": 0.6,
+    "max_flash_hz": 3,
+    "idle_dim_min": 20
+  }
+}

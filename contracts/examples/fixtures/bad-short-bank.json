@@ -1,0 +1,453 @@
+{
+  "v": 1,
+  "rev": 3,
+  "fixtures": [
+    {
+      "id": "tv-left",
+      "label": "TV Left",
+      "type": "lifx",
+      "status": "active",
+      "class": "slow",
+      "ip": "192.168.0.31",
+      "mac": "d0:73:d5:00:00:01",
+      "lifx_group": "Living Room",
+      "x": 0.3,
+      "y": 0.25,
+      "color": "#f2683c"
+    },
+    {
+      "id": "tv-right",
+      "label": "TV Right",
+      "type": "lifx",
+      "status": "active",
+      "class": "slow",
+      "ip": "192.168.0.26",
+      "mac": "d0:73:d5:00:00:02",
+      "lifx_group": "Living Room",
+      "x": 0.65,
+      "y": 0.29,
+      "color": "#e5484d"
+    },
+    {
+      "id": "couch-left",
+      "label": "Couch Left",
+      "type": "lifx",
+      "status": "active",
+      "class": "slow",
+      "ip": "192.168.0.44",
+      "mac": "d0:73:d5:00:00:03",
+      "lifx_group": "Living Room",
+      "x": 0.3,
+      "y": 0.72,
+      "color": "#a855f7"
+    },
+    {
+      "id": "right-couch",
+      "label": "Right couch",
+      "type": "lifx",
+      "status": "active",
+      "class": "slow",
+      "ip": "192.168.0.45",
+      "mac": "d0:73:d5:00:00:04",
+      "lifx_group": "Living Room",
+      "x": 0.66,
+      "y": 0.74,
+      "color": "#ec4899"
+    },
+    {
+      "id": "washer",
+      "label": "Washer",
+      "type": "lifx",
+      "status": "active",
+      "class": "slow",
+      "ip": "192.168.0.52",
+      "mac": "d0:73:d5:00:00:05",
+      "lifx_group": "Living Room",
+      "x": 0.05,
+      "y": 0.58,
+      "color": "#f59e5b"
+    },
+    {
+      "id": "bright-light",
+      "label": "Bright Light",
+      "type": "lifx",
+      "status": "not_added",
+      "class": "slow",
+      "ip": "192.168.0.60",
+      "mac": "d0:73:d5:00:00:06",
+      "lifx_group": "Bedroom",
+      "x": 0.5,
+      "y": 0.5
+    },
+    {
+      "id": "counter-strip",
+      "label": "Counter strip",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "x": 0.9,
+      "y": 0.5
+    },
+    {
+      "id": "playbill-01",
+      "label": "playbill-01",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.1,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-02",
+      "label": "playbill-02",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.173,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-03",
+      "label": "playbill-03",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.245,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-04",
+      "label": "playbill-04",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.318,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-05",
+      "label": "playbill-05",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.391,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-06",
+      "label": "playbill-06",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.464,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-07",
+      "label": "playbill-07",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.536,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-08",
+      "label": "playbill-08",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.609,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-09",
+      "label": "playbill-09",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.682,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-10",
+      "label": "playbill-10",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.755,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-11",
+      "label": "playbill-11",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.827,
+      "y": 0.05
+    },
+    {
+      "id": "playbill-12",
+      "label": "playbill-12",
+      "type": "wled",
+      "status": "planned",
+      "class": "fast",
+      "series": "Playbill 01–12",
+      "x": 0.9,
+      "y": 0.05
+    },
+    {
+      "id": "virtual-light-1",
+      "label": "Virtual Light 1",
+      "type": "virtual",
+      "status": "active",
+      "class": "fast",
+      "x": 0.5,
+      "y": 0.45,
+      "color": "#3b82f6"
+    }
+  ],
+  "groups": [
+    {
+      "id": "lr-all",
+      "name": "LR ALL",
+      "color": "#e5484d",
+      "members": [
+        "tv-left",
+        "tv-right",
+        "couch-left",
+        "right-couch",
+        "washer"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "bed",
+      "name": "BED",
+      "color": "#f59e5b",
+      "members": [],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "counter",
+      "name": "COUNTER",
+      "color": "#f2c94c",
+      "members": [
+        "counter-strip"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "playbill",
+      "name": "PLAYBILL",
+      "color": "#4ade80",
+      "members": [
+        "playbill-01",
+        "playbill-02",
+        "playbill-03",
+        "playbill-04",
+        "playbill-05",
+        "playbill-06",
+        "playbill-07",
+        "playbill-08",
+        "playbill-09",
+        "playbill-10",
+        "playbill-11",
+        "playbill-12"
+      ],
+      "max_level": 0.6,
+      "max_flash_hz": 3,
+      "idle_dim_min": 20
+    },
+    {
+      "id": "lr-l",
+      "name": "LR L",
+      "color": "#2dd4bf",
+      "members": [
+        "tv-left",
+        "couch-left"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "lr-r",
+      "name": "LR R",
+      "color": "#3b82f6",
+      "members": [
+        "tv-right",
+        "right-couch"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "accent",
+      "name": "ACCENT",
+      "color": "#a855f7",
+      "members": [
+        "washer"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "fx",
+      "name": "FX",
+      "color": "#f472b6",
+      "members": [
+        "virtual-light-1"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "tv",
+      "name": "TV",
+      "color": "#e5484d",
+      "members": [
+        "tv-left",
+        "tv-right"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "couch",
+      "name": "COUCH",
+      "color": "#f59e5b",
+      "members": [
+        "couch-left",
+        "right-couch"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "lamp",
+      "name": "LAMP",
+      "color": "#f2c94c",
+      "members": [
+        "washer"
+      ],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "pb-1-4",
+      "name": "PB 1–4",
+      "color": "#4ade80",
+      "members": [
+        "playbill-01",
+        "playbill-02",
+        "playbill-03",
+        "playbill-04"
+      ],
+      "max_level": 0.6,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "pb-5-8",
+      "name": "PB 5–8",
+      "color": "#2dd4bf",
+      "members": [
+        "playbill-05",
+        "playbill-06",
+        "playbill-07",
+        "playbill-08"
+      ],
+      "max_level": 0.6,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "pb-9-12",
+      "name": "PB 9–12",
+      "color": "#3b82f6",
+      "members": [
+        "playbill-09",
+        "playbill-10",
+        "playbill-11",
+        "playbill-12"
+      ],
+      "max_level": 0.6,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "br-1-2",
+      "name": "BR 1–2",
+      "color": "#a855f7",
+      "members": [],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    },
+    {
+      "id": "br-3-4",
+      "name": "BR 3–4",
+      "color": "#f472b6",
+      "members": [],
+      "max_level": 1.0,
+      "max_flash_hz": 3,
+      "idle_dim_min": null
+    }
+  ],
+  "banks": {
+    "A": [
+      "lr-all",
+      "bed",
+      "counter",
+      "playbill",
+      "lr-l",
+      "lr-r",
+      "accent"
+    ],
+    "B": [
+      "tv",
+      "couch",
+      "lamp",
+      "pb-1-4",
+      "pb-5-8",
+      "pb-9-12",
+      "br-1-2",
+      "br-3-4"
+    ],
+    "C": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  }
+}
