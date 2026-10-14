@@ -65,6 +65,7 @@ export function FixturesPanel() {
   const room = useSelect((s) => s.state?.room);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const roomHex = Object.fromEntries((room ?? []).map((r) => [r.fixture_id, r.hex]));
   const rows = rig ? tableRows(rig, roomHex) : [];
 
@@ -133,13 +134,20 @@ export function FixturesPanel() {
                   Add
                 </button>
               )}
-              {one && row.status !== "planned" && (
-                <button aria-label={`Remove ${row.label}`} title="Remove from the rig"
-                  onClick={() => void store.op("fixtures.remove", { fixture_id: one.id })}
+              {one && row.status !== "planned" && (confirmRemove === one.id ? (
+                <button onClick={() => { setConfirmRemove(null); void store.op("fixtures.remove", { fixture_id: one.id }); }}
+                  onBlur={() => setConfirmRemove(null)} autoFocus data-testid={`confirm-remove-${one.id}`}
+                  className="absolute rounded-[4px] font-bold text-red" style={{ left: 622, top: 7, width: 48, height: 17, fontSize: 8.5,
+                    border: "1px solid var(--color-red)" }}>
+                  Remove?
+                </button>
+              ) : (
+                <button aria-label={`Remove ${row.label}`} title="Remove from the rig (asks to confirm)"
+                  onClick={() => setConfirmRemove(one.id)}
                   className="absolute text-label hover:text-red" style={{ left: 652, top: 7, width: 16, height: 16, fontSize: 11 }}>
                   ×
                 </button>
-              )}
+              ))}
             </div>
           );
         })}

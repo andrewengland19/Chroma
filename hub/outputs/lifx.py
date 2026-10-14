@@ -66,7 +66,7 @@ class LifxOutput:
         """Two transient 1 Hz pulses to a dim level; the bulb returns to its own colour
         afterwards (LIFX waveform, transient=1). Power state is not changed."""
         light = self._light(f)
-        light.set_waveform(1, (0, 0, int(0.15 * 65535), self.kelvin), 1000, 2, 0, 1)   # SINE
+        light.set_waveform(1, (0, 0, int(0.15 * 65535), self.kelvin), 1000, 2, 0, 1, rapid=True)   # SINE, no ack wait
 
 
 def discover_bulbs(lan_factory: Optional[Callable] = None) -> list:

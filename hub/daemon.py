@@ -233,7 +233,8 @@ class Chromad:
         self._tasks = [engine_task] + [self.loop.create_task(c()) for c in
                                        (self._bus_watch, self._poll_position, self._ticker)]
         log.info(f"chromad running (home {self.home}{', fake devices' if self.fake else ''})")
-        if self.store.fresh:          # first start: bring the discovered bulbs into the rig
+        if not any(f.type == "lifx" for f in self.store.fixtures.values()):
+            # first start (or an earlier import found nothing): bring the bulbs into the rig
             self._spawn(self.rig.discover(quiet=True))
         try:
             await self._stop.wait()

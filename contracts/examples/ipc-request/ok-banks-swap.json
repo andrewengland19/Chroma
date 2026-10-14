@@ -1,0 +1,12 @@
+{
+  "id": 31,
+  "op": "banks.swap",
+  "from": {
+    "bank": "A",
+    "channel": 1
+  },
+  "to": {
+    "bank": "A",
+    "channel": 2
+  }
+}

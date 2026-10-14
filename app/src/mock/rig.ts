@@ -56,6 +56,25 @@ export class MockRig {
         this.changed();
         return { ok: true, group: g, rev: r.rev };
       }
+      case "groups.set_limits": {
+        const g = r.groups.find((x) => x.id === req.group_id);
+        if (!g) return { ok: false, error: `no group '${String(req.group_id)}'` };
+        if (req.max_flash_hz !== undefined && !((req.max_flash_hz as number) > 0 && (req.max_flash_hz as number) <= 3))
+          return { ok: false, error: "max flash rate must be above 0 and at most 3 Hz" };
+        for (const k of ["max_level", "max_flash_hz", "idle_dim_min"] as const)
+          if (k in req) (g as unknown as Record<string, unknown>)[k] = req[k];
+        this.changed();
+        return { ok: true, group: g, rev: r.rev };
+      }
+      case "banks.swap": {
+        const a = req.from as { bank: "A" | "B" | "C"; channel: number };
+        const b = req.to as { bank: "A" | "B" | "C"; channel: number };
+        const t = r.banks[a.bank][a.channel - 1];
+        r.banks[a.bank][a.channel - 1] = r.banks[b.bank][b.channel - 1];
+        r.banks[b.bank][b.channel - 1] = t;
+        this.changed();
+        return { ok: true, banks: r.banks, rev: r.rev };
+      }
       case "banks.get":
         return { ok: true, banks: r.banks, rev: r.rev };
       case "banks.set": {

@@ -1,6 +1,7 @@
 # M3: fixtures / groups / banks model (hub/fixtures.py).
 
 import json
+import os
 
 import pytest
 
@@ -138,3 +139,38 @@ def test_members_of_returns_active_fixtures_only(store):
     assert [f.id for f in store.members_of("lr-all")] == ["tv-left", "tv-right", "couch-left", "right-couch", "washer"]
     assert store.members_of("bed") == [] and [f.id for f in store.members_of("bed", active_only=False)]
     assert store.members_of("playbill") == []                 # planned WLED: nothing to drive yet
+
+
+def test_rediscovery_keeps_the_users_name(store):
+    store.import_discovered(BULBS)
+    store.upsert_fixture({**store.fixtures["right-couch"].to_dict(), "label": "Couch R"})
+    store.import_discovered(BULBS)
+    assert store.fixtures["right-couch"].label == "Couch R"
+
+
+def test_corrupt_file_is_kept_aside_and_the_default_rig_used(tmp_path):
+    p = tmp_path / "fixtures.json"
+    p.write_text('{"v": 1, "rev": 3, "fixtures": [ {"id": "BAD ID"')
+    s = FixtureStore.load(str(p))
+    assert s.recovered and os.path.exists(s.recovered) and s.fresh
+    assert_valid("fixtures", s.to_dict())
+    p.write_text(json.dumps({"v": 1, "rev": 1, "fixtures": [], "banks": {},
+                             "groups": [{"id": "x", "name": "X", "color": "#112233", "max_flash_hz": 9}]}))
+    s = FixtureStore.load(str(p))
+    assert s.recovered and "playbill" in s.groups            # invalid limits are never loaded
+
+
+def test_set_limits_and_swap(store):
+    store.import_discovered(BULBS)
+    members = list(store.groups["lr-all"].members)
+    g = store.set_limits("lr-all", max_level=0.5)
+    assert g.max_level == 0.5 and g.members == members and g.max_flash_hz == 3.0
+    with pytest.raises(RigError, match="at most 3 Hz"):
+        store.set_limits("lr-all", max_flash_hz=3.5)
+    with pytest.raises(RigError, match="no group"):
+        store.set_limits("ghost", max_level=0.1)
+    rev = store.rev
+    store.swap_banks(("A", 1), ("C", 8))
+    assert store.banks["A"][0] is None and store.banks["C"][7] == "lr-all" and store.rev == rev + 1
+    with pytest.raises(RigError, match="cells"):
+        store.swap_banks(("A", 0), ("A", 1))

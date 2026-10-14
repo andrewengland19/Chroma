@@ -50,9 +50,10 @@ class RigService:
                 before = s.fixtures.get((req.get("fixture") or {}).get("id"))
                 old_xy = (before.x, before.y) if before else None
                 fx = s.upsert_fixture(req.get("fixture"))
-                if fx.type == "lifx" and old_xy and old_xy != (fx.x, fx.y):
-                    # one room: the art painter reads positions from layout.json
-                    await self.engine.set_layout({"lights": {fx.label: {"x": fx.x, "y": fx.y}}})
+                lbl = self.engine_label(fx) if fx.type == "lifx" else None
+                if lbl and old_xy and old_xy != (fx.x, fx.y):
+                    # one room: the art painter reads positions from layout.json (keyed by bulb label)
+                    await self.engine.set_layout({"lights": {lbl: {"x": fx.x, "y": fx.y}}})
                 self.changed()
                 return {"fixture": fx.to_dict(), "rev": s.rev}
             if op == "fixtures.remove":
@@ -73,6 +74,16 @@ class RigService:
                 self.changed()
                 return {"rev": s.rev}
             if op == "banks.get":
+                return {"banks": {b: list(r) for b, r in s.banks.items()}, "rev": s.rev}
+            if op == "groups.set_limits":
+                limits = {k: req[k] for k in ("max_level", "max_flash_hz", "idle_dim_min") if k in req}
+                g = s.set_limits(req.get("group_id"), **limits)
+                self.changed()
+                return {"group": g.to_dict(), "rev": s.rev}
+            if op == "banks.swap":
+                fa, fb = req.get("from") or {}, req.get("to") or {}
+                s.swap_banks((fa.get("bank"), fa.get("channel")), (fb.get("bank"), fb.get("channel")))
+                self.changed()
                 return {"banks": {b: list(r) for b, r in s.banks.items()}, "rev": s.rev}
             if op == "banks.set":
                 s.set_bank(req.get("bank"), req.get("channel"), req.get("group_id"))
@@ -154,28 +165,43 @@ class RigService:
         self.notify()
 
     # ---- State pieces -------------------------------------------------------------------
-    def _lifx_labels(self) -> set:
-        return set(self.engine.lifx.labels())
+    def _engine_bulbs(self) -> dict:
+        """mac -> label of the bulbs the engine discovered (lifxlan keeps both locally)."""
+        out = {}
+        for light, label in zip(getattr(self.engine.lifx, "_lights", []), self.engine.lifx.labels()):
+            try:
+                out[str(light.get_mac_addr()).lower()] = label
+            except Exception:
+                pass
+        return out
+
+    def engine_label(self, f, bulbs: Optional[dict] = None) -> Optional[str]:
+        """The engine's label for a LIFX fixture: by MAC, or by name for IP-only fixtures."""
+        bulbs = self._engine_bulbs() if bulbs is None else bulbs
+        if f.mac:
+            return bulbs.get(f.mac)
+        return f.label if f.label in bulbs.values() else None
 
     def online(self) -> dict:
-        labels = self._lifx_labels()
+        bulbs = self._engine_bulbs()
         out = {}
         for f in self.store.fixtures.values():
             if f.status != "active":
                 out[f.id] = False
             elif f.type == "lifx":
-                out[f.id] = f.label in labels
+                out[f.id] = self.engine_label(f, bulbs) is not None
             else:
                 out[f.id] = f.type == "virtual"
         return out
 
     def room(self) -> list:
         per_light = {p["label"]: p.get("hex") for p in (self.engine._last_per_light or [])}
-        labels = self._lifx_labels()
+        bulbs = self._engine_bulbs()
         out = []
         for f in self.store.active():
             if f.type == "lifx":
-                hexc, online = per_light.get(f.label), f.label in labels
+                lbl = self.engine_label(f, bulbs)
+                hexc, online = per_light.get(lbl) if lbl else None, lbl is not None
             elif f.type == "virtual":
                 hexc, online = self.virtual.hex_for(f.id), True
             else:
@@ -186,5 +212,5 @@ class RigService:
 
     def lifx_health(self) -> dict:
         active = self.store.active("lifx")
-        labels = self._lifx_labels()
-        return {"found": sum(1 for f in active if f.label in labels), "total": len(active)}
+        bulbs = self._engine_bulbs()
+        return {"found": sum(1 for f in active if self.engine_label(f, bulbs) is not None), "total": len(active)}

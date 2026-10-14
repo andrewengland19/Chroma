@@ -156,3 +156,36 @@ async def test_unknown_rig_op_and_bad_args(daemon):
         await op(daemon, "fixtures.explode")
     with pytest.raises(IpcError, match="fixture must be an object"):
         await op(daemon, "fixtures.upsert", fixture=None)
+
+
+async def test_renamed_lifx_fixture_stays_linked_to_its_bulb(daemon):
+    fx = next(f for f in (await op(daemon, "fixtures.list"))["fixtures"] if f["id"] == "right-couch")
+    await op(daemon, "fixtures.upsert", fixture={**fx, "label": "Couch R"})
+    st = daemon.state.build()
+    r = next(x for x in st["room"] if x["fixture_id"] == "right-couch")
+    assert r["label"] == "Couch R" and r["hex"] and r["online"]
+    assert st["health"]["lifx"] == {"found": 5, "total": 5}
+    await op(daemon, "fixtures.upsert", fixture={**fx, "label": "Couch R", "x": 0.7, "y": 0.8})
+    assert daemon.engine.layout.pos_for("Right couch") == (0.7, 0.8)      # the bulb's own label
+
+
+async def test_set_limits_and_swap_ops(daemon):
+    from ipc import IpcError
+    res = await op(daemon, "groups.set_limits", group_id="accent", max_level=0.3)
+    assert res["group"]["max_level"] == 0.3 and res["group"]["members"] == ["washer"]
+    with pytest.raises(IpcError, match="at most 3 Hz"):
+        await op(daemon, "groups.set_limits", group_id="accent", max_flash_hz=6)
+    res = await op(daemon, "banks.swap", **{"from": {"bank": "A", "channel": 1}, "to": {"bank": "B", "channel": 1}})
+    assert res["banks"]["A"][0] == "tv" and res["banks"]["B"][0] == "lr-all"
+
+
+async def test_import_is_retried_when_the_rig_has_no_bulbs():
+    from fixtures import FixtureStore
+    from paths import chroma_dir
+    s = FixtureStore.load(os.path.join(chroma_dir(), "fixtures.json"))   # seeded, but no import ran
+    assert not any(f.type == "lifx" for f in s.fixtures.values()) and s.fresh
+    d, task = await start()                                               # fresh=False now, still imports
+    try:
+        assert d.store.fresh is False and len(d.store.active("lifx")) == 5
+    finally:
+        await stop(d, task)

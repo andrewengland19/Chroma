@@ -29,7 +29,9 @@ export function GroupPanel({ selected, onSelect }: { selected: string | null; on
   useEffect(() => {
     if (!g && groups.length) onSelect(defaultGroupId(groups)!);
   }, [g, groups, onSelect]);
-  const save = (patch: Partial<Group>) => g && void store.op("groups.upsert", { group: { ...g, ...patch } });
+  // limits only: members are never re-sent from a possibly stale rig
+  const save = (patch: Pick<Partial<Group>, "max_level" | "max_flash_hz" | "idle_dim_min">) =>
+    g && void store.op("groups.set_limits", { group_id: g.id, ...patch });
   const fx = (id: string) => rig?.fixtures.find((f) => f.id === id);
   const dot = (id: string) => {
     const f = fx(id);

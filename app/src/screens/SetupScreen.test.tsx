@@ -61,18 +61,25 @@ describe("Setup (gui-3)", () => {
     expect(flash).toHaveAttribute("aria-valuetext", "3 Hz");
     fireEvent.keyDown(flash, { key: "ArrowRight" });
     fireEvent.keyUp(flash, { key: "ArrowRight" });                     // already at the 3 Hz cap
-    expect(engine.requests.some((r) => r.op === "groups.upsert")).toBe(false);
+    expect(engine.requests.some((r) => r.op === "groups.set_limits")).toBe(false);
     fireEvent.keyDown(flash, { key: "ArrowLeft" });
     await act(async () => fireEvent.keyUp(flash, { key: "ArrowLeft" }));
-    const up = engine.requests.find((r) => r.op === "groups.upsert") as { group: { id: string; max_flash_hz: number } };
-    expect(up.group.id).toBe("playbill");
-    expect(up.group.max_flash_hz).toBe(2.5);
+    expect(engine.requests).toContainEqual({ op: "groups.set_limits", group_id: "playbill", max_flash_hz: 2.5 });
     const level = screen.getByTestId("max-level");
     expect(level).toHaveAttribute("aria-valuetext", "60 %");
     expect(screen.getByTestId("idle-dim")).toHaveAttribute("aria-valuetext", "after 20 min");
     fireEvent.click(screen.getByTestId("group-select"));
     fireEvent.click(screen.getByRole("option", { name: /^fx/ }));
     expect(screen.getByTestId("group-select")).toHaveTextContent("fx");
+  });
+
+  test("removing a fixture asks first", async () => {
+    const { engine } = await setup();
+    fireEvent.click(screen.getByRole("button", { name: "Remove TV Left" }));
+    expect(engine.requests.some((r) => r.op === "fixtures.remove")).toBe(false);
+    await act(async () => fireEvent.click(screen.getByTestId("confirm-remove-tv-left")));
+    expect(engine.requests).toContainEqual({ op: "fixtures.remove", fixture_id: "tv-left" });
+    await waitFor(() => expect(screen.queryByTestId("row-tv-left")).toBeNull());
   });
 
   test("banks: drop a group on a cell, swap cells, keyboard assign and clear", async () => {
@@ -86,6 +93,7 @@ describe("Setup (gui-3)", () => {
     const s = dt();
     fireEvent.dragStart(screen.getByTestId("cell-A1"), { dataTransfer: s });
     await act(async () => fireEvent.drop(screen.getByTestId("cell-A2"), { dataTransfer: s }));
+    expect(engine.requests).toContainEqual({ op: "banks.swap", from: { bank: "A", channel: 1 }, to: { bank: "A", channel: 2 } });
     await waitFor(() => expect(screen.getByTestId("cell-A2")).toHaveTextContent("LR ALL"));
     expect(screen.getByTestId("cell-A1")).toHaveTextContent("BED");
 

@@ -1,0 +1,6 @@
+{
+  "id": 32,
+  "op": "groups.set_limits",
+  "group_id": "playbill",
+  "max_flash_hz": 4
+}

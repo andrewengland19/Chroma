@@ -24,10 +24,7 @@ export function BanksPanel({ selected, onSelect }: { selected: string | null; on
     if (cell) {
       const [fb, fch] = [cell[0] as BankName, Number(cell.slice(1))];
       if (fb === bank && fch === ch) return;
-      const moving = rig.banks[fb][fch - 1];
-      const here = rig.banks[bank][ch - 1];
-      await set(bank, ch, moving);
-      await set(fb, fch, here);               // swap
+      await store.op("banks.swap", { from: { bank: fb, channel: fch }, to: { bank, channel: ch } });
       return;
     }
     const gid = e.dataTransfer.getData(MIME_GROUP);

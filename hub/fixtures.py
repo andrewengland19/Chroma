@@ -210,10 +210,31 @@ class FixtureStore:
         self.groups: dict = {}        # id -> Group
         self.banks: dict = {b: [None] * 8 for b in BANKS}
         self.fresh = False            # True when seeded this run (first start): auto-import bulbs
+        self.recovered: Optional[str] = None   # a corrupt fixtures.json was moved here
 
     # ---- persistence ---------------------------------------------------------
     @classmethod
     def load(cls, path: str) -> "FixtureStore":
+        """Load fixtures.json; a missing file seeds the default rig. A corrupt or invalid
+        file is kept aside as fixtures.json.bad-<time> and the default rig is used, so
+        chromad never crash-loops on it (`recovered` names the kept file)."""
+        try:
+            return cls._load(path)
+        except (ValueError, KeyError, TypeError, OSError) as e:
+            import logging
+            import time
+            bad = f"{path}.bad-{time.strftime('%Y%m%d-%H%M%S')}"
+            try:
+                os.replace(path, bad)
+            except OSError:
+                bad = None
+            logging.getLogger("chroma-hub").error(f"fixtures.json unreadable ({e}); kept as {bad}, using the default rig")
+            s = cls(path).seed_default()
+            s.recovered = bad
+            return s
+
+    @classmethod
+    def _load(cls, path: str) -> "FixtureStore":
         s = cls(path)
         if not os.path.exists(path):
             return s.seed_default()
@@ -315,6 +336,27 @@ class FixtureStore:
         self._changed()
         return g
 
+    def set_limits(self, gid: str, **limits) -> Group:
+        """Change only safety limits (members untouched: no lost updates from a stale UI)."""
+        g = self.groups.get(gid)
+        if g is None:
+            raise RigError(f"no group {gid!r}")
+        d = g.to_dict()
+        for k in ("max_level", "max_flash_hz", "idle_dim_min"):
+            if k in limits:
+                d[k] = limits[k]
+        return self.upsert_group(d)
+
+    def swap_banks(self, a: tuple, b: tuple) -> None:
+        for bank, ch in (a, b):
+            if bank not in BANKS or not isinstance(ch, int) or isinstance(ch, bool) or not 1 <= ch <= 8:
+                raise RigError("cells are a bank A–C and a channel 1–8")
+        (ba, ca), (bb, cb) = a, b
+        if (ba, ca) == (bb, cb):
+            return
+        self.banks[ba][ca - 1], self.banks[bb][cb - 1] = self.banks[bb][cb - 1], self.banks[ba][ca - 1]
+        self._changed()
+
     def remove_group(self, gid: str) -> None:
         if gid not in self.groups:
             raise RigError(f"no group {gid!r}")
@@ -348,9 +390,9 @@ class FixtureStore:
                 continue
             label = (b.get("label") or mac).strip()[:48] or mac
             known = by_mac.get(mac)
-            if known:
-                if known.ip != b["ip"] or known.label != label or known.lifx_group != b.get("group"):
-                    known.ip, known.label, known.lifx_group = b["ip"], label, b.get("group")
+            if known:                           # the user's name for it wins; refresh the address
+                if known.ip != b["ip"] or known.lifx_group != b.get("group"):
+                    known.ip, known.lifx_group = b["ip"], b.get("group")
                     updated.append(known.id)
                 continue
             living = (b.get("group") or "").lower() == living_room.lower()
