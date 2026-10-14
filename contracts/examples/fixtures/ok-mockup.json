@@ -13,7 +13,7 @@
       "lifx_group": "Living Room",
       "x": 0.3,
       "y": 0.25,
-      "color": "#f2683c"
+      "color": "#e86a3c"
     },
     {
       "id": "tv-right",
@@ -26,11 +26,11 @@
       "lifx_group": "Living Room",
       "x": 0.65,
       "y": 0.29,
-      "color": "#e5484d"
+      "color": "#d6453d"
     },
     {
       "id": "couch-left",
-      "label": "Couch Left",
+      "label": "Couch L",
       "type": "lifx",
       "status": "active",
       "class": "slow",
@@ -39,11 +39,11 @@
       "lifx_group": "Living Room",
       "x": 0.3,
       "y": 0.72,
-      "color": "#a855f7"
+      "color": "#8a4fd0"
     },
     {
       "id": "right-couch",
-      "label": "Right couch",
+      "label": "Couch R",
       "type": "lifx",
       "status": "active",
       "class": "slow",
@@ -52,11 +52,11 @@
       "lifx_group": "Living Room",
       "x": 0.66,
       "y": 0.74,
-      "color": "#ec4899"
+      "color": "#c95aa0"
     },
     {
       "id": "washer",
-      "label": "Washer",
+      "label": "Lamp",
       "type": "lifx",
       "status": "active",
       "class": "slow",
@@ -65,17 +65,57 @@
       "lifx_group": "Living Room",
       "x": 0.05,
       "y": 0.58,
-      "color": "#f59e5b"
+      "color": "#f0a35a"
     },
     {
-      "id": "bright-light",
-      "label": "Bright Light",
+      "id": "bedroom-1",
+      "label": "Bedroom 1",
       "type": "lifx",
       "status": "not_added",
       "class": "slow",
-      "ip": "192.168.0.60",
-      "mac": "d0:73:d5:00:00:06",
+      "ip": "192.168.0.61",
+      "mac": "d0:73:d5:00:00:11",
       "lifx_group": "Bedroom",
+      "series": "Bedroom 1–4",
+      "x": 0.5,
+      "y": 0.5
+    },
+    {
+      "id": "bedroom-2",
+      "label": "Bedroom 2",
+      "type": "lifx",
+      "status": "not_added",
+      "class": "slow",
+      "ip": "192.168.0.62",
+      "mac": "d0:73:d5:00:00:12",
+      "lifx_group": "Bedroom",
+      "series": "Bedroom 1–4",
+      "x": 0.5,
+      "y": 0.5
+    },
+    {
+      "id": "bedroom-3",
+      "label": "Bedroom 3",
+      "type": "lifx",
+      "status": "not_added",
+      "class": "slow",
+      "ip": "192.168.0.63",
+      "mac": "d0:73:d5:00:00:13",
+      "lifx_group": "Bedroom",
+      "series": "Bedroom 1–4",
+      "x": 0.5,
+      "y": 0.5
+    },
+    {
+      "id": "bedroom-4",
+      "label": "Bedroom 4",
+      "type": "lifx",
+      "status": "not_added",
+      "class": "slow",
+      "ip": "192.168.0.64",
+      "mac": "d0:73:d5:00:00:14",
+      "lifx_group": "Bedroom",
+      "series": "Bedroom 1–4",
       "x": 0.5,
       "y": 0.5
     },
@@ -239,7 +279,12 @@
       "id": "bed",
       "name": "BED",
       "color": "#f59e5b",
-      "members": [],
+      "members": [
+        "bedroom-1",
+        "bedroom-2",
+        "bedroom-3",
+        "bedroom-4"
+      ],
       "max_level": 1.0,
       "max_flash_hz": 3,
       "idle_dim_min": null
@@ -327,10 +372,7 @@
       "id": "tv",
       "name": "TV",
       "color": "#e5484d",
-      "members": [
-        "tv-left",
-        "tv-right"
-      ],
+      "members": [],
       "max_level": 1.0,
       "max_flash_hz": 3,
       "idle_dim_min": null
@@ -339,10 +381,7 @@
       "id": "couch",
       "name": "COUCH",
       "color": "#f59e5b",
-      "members": [
-        "couch-left",
-        "right-couch"
-      ],
+      "members": [],
       "max_level": 1.0,
       "max_flash_hz": 3,
       "idle_dim_min": null
@@ -351,9 +390,7 @@
       "id": "lamp",
       "name": "LAMP",
       "color": "#f2c94c",
-      "members": [
-        "washer"
-      ],
+      "members": [],
       "max_level": 1.0,
       "max_flash_hz": 3,
       "idle_dim_min": null
@@ -404,7 +441,10 @@
       "id": "br-1-2",
       "name": "BR 1–2",
       "color": "#a855f7",
-      "members": [],
+      "members": [
+        "bedroom-1",
+        "bedroom-2"
+      ],
       "max_level": 1.0,
       "max_flash_hz": 3,
       "idle_dim_min": null
@@ -413,7 +453,10 @@
       "id": "br-3-4",
       "name": "BR 3–4",
       "color": "#f472b6",
-      "members": [],
+      "members": [
+        "bedroom-3",
+        "bedroom-4"
+      ],
       "max_level": 1.0,
       "max_flash_hz": 3,
       "idle_dim_min": null

@@ -10,6 +10,7 @@ import type { IpcEvent, State } from "../contracts";
 import { applyMergePatch } from "../lib/mergePatch";
 import type { EngineStatus, IpcClient, Reply } from "../ipc/types";
 import { MOCK_ART } from "./art";
+import { MockRig } from "./rig";
 
 export const MOCK_STATUS: EngineStatus = {
   phase: "connected",
@@ -21,7 +22,7 @@ export const MOCK_STATUS: EngineStatus = {
   socket: "mock",
 };
 
-export type Scenario = "mockup-console" | "live" | "empty";
+export type Scenario = "mockup-console" | "mockup-setup" | "live" | "empty";
 
 function baseState(scenario: Scenario): State {
   const s = structuredClone(mockupState) as State;
@@ -41,9 +42,11 @@ export class MockEngine implements IpcClient {
   private events = new Set<(e: IpcEvent) => void>();
   private timer: ReturnType<typeof setInterval> | null = null;
   readonly requests: Record<string, unknown>[] = [];
+  readonly rig = new MockRig((rev) => this.patch({ fixtures_rev: rev }));
 
   constructor(readonly scenario: Scenario = "live") {
     this.state = baseState(scenario);
+    this.state.fixtures_rev = this.rig.rig.rev;
     if (scenario === "live") this.timer = setInterval(() => this.tick(250), 250);
   }
 
@@ -96,6 +99,7 @@ export class MockEngine implements IpcClient {
         return { ok: false, error: `mock: intent ${String(i?.intent)} not handled yet` };
       }
       default:
+        if (typeof req.op === "string" && /^(fixtures|groups|banks)\./.test(req.op)) return this.rig.handle(req);
         return { ok: false, error: `unknown op '${String(req.op)}'` };
     }
   }

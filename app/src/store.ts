@@ -2,7 +2,7 @@
 // events and merge `patch`es, plus the engine connection status and toasts.
 // The UI never changes state locally — it sends intents/ops and waits for patches.
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
-import type { Intent, IpcEvent, State } from "./contracts";
+import type { FixturesFile, Intent, IpcEvent, State } from "./contracts";
 import type { ArtResolver } from "./ipc";
 import type { EngineStatus, IpcClient, Reply } from "./ipc/types";
 import { applyMergePatch } from "./lib/mergePatch";
@@ -13,15 +13,21 @@ export interface Toast {
   text: string;
 }
 
+/** fixtures.json as served by `fixtures.list`, plus which fixtures are reachable now. */
+export type Rig = FixturesFile & { online: Record<string, boolean> };
+
 export interface Snapshot {
   state: State | null;
+  rig: Rig | null;
   status: EngineStatus | null;
   posAt: number; // performance.now() when now.pos_ms was last received
   toasts: Toast[];
 }
 
 export class ChromaStore {
-  private snap: Snapshot = { state: null, status: null, posAt: 0, toasts: [] };
+  private snap: Snapshot = { state: null, rig: null, status: null, posAt: 0, toasts: [] };
+  private rigFetching = false;
+  private rigFetchedFor: number | undefined;
   private subs = new Set<() => void>();
   private toastId = 1;
 
@@ -62,12 +68,40 @@ export class ChromaStore {
 
   async refreshState() {
     const r = await this.ipc.request({ op: "get_state" });
-    if (r.ok && r.state) this.set({ state: r.state as State, posAt: this.clock() });
+    if (r.ok && r.state) {
+      this.set({ state: r.state as State, posAt: this.clock() });
+      this.maybeRefreshRig();
+    }
+  }
+
+  /** The rig (fixtures/groups/banks) is not in the State; refetch when fixtures_rev moves. */
+  private maybeRefreshRig() {
+    const rev = this.snap.state?.fixtures_rev;
+    if (rev == null || this.rigFetching || rev === this.rigFetchedFor) return;
+    void this.refreshRig();
+  }
+
+  async refreshRig() {
+    const wanted = this.snap.state?.fixtures_rev;
+    this.rigFetching = true;
+    try {
+      const r = await this.ipc.request({ op: "fixtures.list" });
+      if (r.ok) {
+        const { id: _id, ok: _ok, ...rig } = r;
+        this.set({ rig: rig as unknown as Rig });
+      }
+    } finally {
+      this.rigFetching = false;
+      this.rigFetchedFor = wanted;
+    }
+    // fetch again only if the rig changed while we were fetching (never loops on a stale reply)
+    if (this.snap.state?.fixtures_rev !== wanted) this.maybeRefreshRig();
   }
 
   onEvent(e: IpcEvent) {
     if (e.ev === "state") {
       this.set({ state: e.state, posAt: this.clock() });
+      this.maybeRefreshRig();
     } else if (e.ev === "patch") {
       if (!this.snap.state) {
         void this.refreshState();
@@ -77,6 +111,7 @@ export class ChromaStore {
       const now = (e.patch as { now?: Record<string, unknown> }).now;
       const posMoved = now && ("pos_ms" in now || "track_id" in now || "playing" in now);
       this.set({ state, posAt: posMoved ? this.clock() : this.snap.posAt });
+      if ("fixtures_rev" in (e.patch as object)) this.maybeRefreshRig();
     } else if (e.ev === "toast") {
       this.toast(e.level, e.text);
     }

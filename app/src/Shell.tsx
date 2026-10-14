@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ConsoleScreen } from "./screens/ConsoleScreen";
 import { PendingScreen } from "./screens/PendingScreen";
+import { SetupScreen } from "./screens/SetupScreen";
 import { useSelect, useStore } from "./store";
 
 export const CANVAS_W = 1178;
@@ -58,7 +59,10 @@ function Toasts() {
 export function Shell() {
   const store = useStore();
   const scale = useFitScale();
-  const [tab, setTab] = useState<Tab>("Console");
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = new URLSearchParams(window.location.search).get("tab") ?? "";
+    return TABS.find((x) => x.toLowerCase() === t.toLowerCase()) ?? "Console";
+  });
   useEffect(() => store.ipc.setTitle?.(`CHROMA — ${tab}`), [tab, store]);
   return (
     <div className="flex h-full w-full items-center justify-center bg-bg">
@@ -76,7 +80,7 @@ export function Shell() {
         <EngineNotice />
         {tab === "Console" && <ConsoleScreen />}
         {tab === "Takes" && <PendingScreen name="Takes" milestone="M5" />}
-        {tab === "Setup" && <PendingScreen name="Setup" milestone="M3" />}
+        {tab === "Setup" && <SetupScreen />}
         <Toasts />
       </div>
     </div>
