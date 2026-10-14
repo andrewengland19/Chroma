@@ -13,16 +13,16 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M0 contracts, scaffolding, fakes | `app/m0-contracts` | **done** — merged 072a395 |
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
-| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** (pending-hardware: H3.1–H3.2) |
-| M4 console, intents, AUTO/BOARD | `app/m4-console` | — |
+| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
+| M4 console, intents, AUTO/BOARD | `app/m4-console` | next — branch created from 8b29256 |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-14: **M0–M3 done and merged into local main**; next is **M4 (console, intents, AUTO/BOARD)** on a new
-branch `app/m4-console` from local main. Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
+Status on 2026-10-14: **M0–M3 done and merged into local main (8b29256)**; next is **M4 (console, intents,
+AUTO/BOARD)** on branch `app/m4-console` (already created from 8b29256 in the worktree; it only holds this note). Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
 
 How the build has been run (keep doing it this way):
 - Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
@@ -200,6 +200,9 @@ which seeded the rig and imported 8 fake bulbs (5 active, 3 not added).
 (`tools/ui_compare.py setup`). Deliberate differences: a row "×" (remove, asks to confirm); member dots use the
 fixture's real status (planned = grey; the mockup shows green); the flash-rate track is drawn to 10 Hz with everything
 above the 3 Hz safety cap hatched and unreachable (the mockup puts the 3 Hz knob ~30 % along).
+
+**Merged** into main as 8b29256 (2026-10-14). Re-test on main: pytest in the user's checkout 251 passed; full
+`tools/test_all.sh` in a detached worktree passed (251 + 21 vitest + 14 cargo); `lite show status` → running.
 
 **Code review (high)**: 7 findings, all fixed (MAC linking, corrupt-file recovery, limits-only and atomic-swap ops,
 remove confirmation, import retry, non-blocking blink).
