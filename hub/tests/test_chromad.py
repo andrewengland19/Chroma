@@ -76,14 +76,22 @@ async def test_state_is_schema_valid_and_reflects_the_engine(daemon):
 
 
 async def test_watch_streams_position_patches(daemon):
-    (ok,), events = await ipc(daemon.ipc.path, {"op": "subscribe"}, subscribe_events=4)
-    assert ok == {"id": 1, "ok": True}
-    assert events[0]["ev"] == "state"
-    assert_valid("ipc-event", events[0])
-    positions = [events[0]["state"]["now"]["pos_ms"]] + [e["patch"]["now"]["pos_ms"] for e in events[1:]]
+    r, w = await asyncio.open_unix_connection(daemon.ipc.path, limit=1 << 22)
+    w.write(b'{"id":1,"op":"subscribe"}\n')
+    await w.drain()
+    assert json.loads(await r.readline()) == {"id": 1, "ok": True}
+    first = json.loads(await r.readline())
+    assert first["ev"] == "state"
+    assert_valid("ipc-event", first)
+    positions = [first["state"]["now"]["pos_ms"]]
+    while len(positions) < 4:                 # other patches (room, rig) may interleave
+        ev = json.loads(await asyncio.wait_for(r.readline(), 3))
+        assert_valid("ipc-event", ev)
+        pos = ev.get("patch", {}).get("now", {}).get("pos_ms")
+        if pos is not None:
+            positions.append(pos)
+    w.close()
     assert positions == sorted(positions) and positions[-1] > positions[0]
-    for e in events[1:]:
-        assert_valid("ipc-event", e)
 
 
 async def test_ops_art_mode_who_refresh_and_errors(daemon):
