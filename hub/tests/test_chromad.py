@@ -39,7 +39,8 @@ async def daemon():
     d = Chromad(asyncio.get_running_loop(), fake=True, socket_path=os.path.join(home, "chromad.sock"))
     task = asyncio.create_task(d.run())
     assert await wait_for(lambda: os.path.exists(d.ipc.path))
-    assert await wait_for(lambda: d.engine._last_per_light)          # first paint done
+    assert await wait_for(lambda: d.engine._last_per_light and d.virtual.current
+                          and d.store.active("lifx"))                # first paint + first-run import done
     yield d
     d.request_stop()
     await asyncio.wait_for(task, timeout=5)
@@ -68,20 +69,29 @@ async def test_state_is_schema_valid_and_reflects_the_engine(daemon):
     assert st["now"]["title"] == "Older" and st["now"]["dur_ms"] == 205_000
     assert st["now"]["art_url"] == "chroma-art://current?rev=1"
     assert st["who"] == "auto" and st["art_mode"] == "det"
-    assert [r["label"] for r in st["room"]] == ["TV Left", "TV Right", "Couch Left", "Right couch", "Washer"]
-    assert all(r["hex"] for r in st["room"])
+    assert [r["label"] for r in st["room"]] == ["TV Left", "TV Right", "Couch Left", "Right couch", "Washer",
+                                                "Virtual Light 1"]
+    assert all(r["hex"] for r in st["room"])       # the virtual light gets an art colour in AUTO
     assert st["health"] == {"atv": "up", "lifx": {"found": 5, "total": 5}, "board": "none"}
 
 
 async def test_watch_streams_position_patches(daemon):
-    (ok,), events = await ipc(daemon.ipc.path, {"op": "subscribe"}, subscribe_events=4)
-    assert ok == {"id": 1, "ok": True}
-    assert events[0]["ev"] == "state"
-    assert_valid("ipc-event", events[0])
-    positions = [events[0]["state"]["now"]["pos_ms"]] + [e["patch"]["now"]["pos_ms"] for e in events[1:]]
+    r, w = await asyncio.open_unix_connection(daemon.ipc.path, limit=1 << 22)
+    w.write(b'{"id":1,"op":"subscribe"}\n')
+    await w.drain()
+    assert json.loads(await r.readline()) == {"id": 1, "ok": True}
+    first = json.loads(await r.readline())
+    assert first["ev"] == "state"
+    assert_valid("ipc-event", first)
+    positions = [first["state"]["now"]["pos_ms"]]
+    while len(positions) < 4:                 # other patches (room, rig) may interleave
+        ev = json.loads(await asyncio.wait_for(r.readline(), 3))
+        assert_valid("ipc-event", ev)
+        pos = ev.get("patch", {}).get("now", {}).get("pos_ms")
+        if pos is not None:
+            positions.append(pos)
+    w.close()
     assert positions == sorted(positions) and positions[-1] > positions[0]
-    for e in events[1:]:
-        assert_valid("ipc-event", e)
 
 
 async def test_ops_art_mode_who_refresh_and_errors(daemon):

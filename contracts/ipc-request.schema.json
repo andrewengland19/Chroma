@@ -697,6 +697,98 @@
         }
       },
       "description": "Creates ~/.chroma/board.key if absent; returns key + port + host addresses."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "group_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "groups.set_limits"
+        },
+        "group_id": {
+          "$ref": "common.schema.json#/$defs/slug_id"
+        },
+        "max_level": {
+          "$ref": "common.schema.json#/$defs/unit"
+        },
+        "max_flash_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3
+        },
+        "idle_dim_min": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 240
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Change only a group's safety limits (no lost updates to its members)."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "banks.swap"
+        },
+        "from": {
+          "type": "object",
+          "required": [
+            "bank",
+            "channel"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bank": {
+              "$ref": "common.schema.json#/$defs/bank"
+            },
+            "channel": {
+              "$ref": "common.schema.json#/$defs/ch"
+            }
+          }
+        },
+        "to": {
+          "type": "object",
+          "required": [
+            "bank",
+            "channel"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bank": {
+              "$ref": "common.schema.json#/$defs/bank"
+            },
+            "channel": {
+              "$ref": "common.schema.json#/$defs/ch"
+            }
+          }
+        }
+      },
+      "description": "Swap two bank cells atomically."
     }
   ],
   "$defs": {

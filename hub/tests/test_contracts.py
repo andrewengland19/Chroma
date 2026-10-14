@@ -30,7 +30,7 @@ SPEC_OPS = {
     "takes.list", "takes.get", "takes.delete", "takes.rename", "takes.export", "takes.set_flag",
     "takes.marker.add", "takes.marker.remove", "rec.arm", "rec.start", "rec.stop",
     "play.start", "play.stop", "play.seek", "take.nudge", "board.pairing",
-    "takes.duplicate", "cues.rename",
+    "takes.duplicate", "cues.rename", "groups.set_limits", "banks.swap",
 }
 SPEC_INTENTS = {"fader", "flash", "assign", "bank", "fader_fn", "hue", "sat", "palette_apply",
                 "palette_store", "cue_recall", "cue_store", "blackout", "who"}

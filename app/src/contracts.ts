@@ -219,6 +219,26 @@ export type IpcRequest =
   | {
       id: number;
       op: "board.pairing";
+    }
+  | {
+      id: number;
+      op: "groups.set_limits";
+      group_id: string;
+      max_level?: number;
+      max_flash_hz?: number;
+      idle_dim_min?: number | null;
+    }
+  | {
+      id: number;
+      op: "banks.swap";
+      from: {
+        bank: "A" | "B" | "C";
+        channel: number;
+      };
+      to: {
+        bank: "A" | "B" | "C";
+        channel: number;
+      };
     };
 /**
  * chromad -> client reply to a request. Echoes `id`. Failures are {ok:false, error}. Successful replies carry op-specific fields (see $defs for the shapes).

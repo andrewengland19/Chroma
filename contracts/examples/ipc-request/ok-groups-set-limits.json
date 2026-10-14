@@ -1,0 +1,6 @@
+{
+  "id": 30,
+  "op": "groups.set_limits",
+  "group_id": "playbill",
+  "max_level": 0.5
+}

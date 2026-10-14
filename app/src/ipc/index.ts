@@ -18,12 +18,12 @@ export async function createBackend(): Promise<Backend> {
   // DEV-only branch: production bundles drop it (and the mock engine) entirely.
   if (import.meta.env.DEV && (import.meta.env.VITE_IPC === "mock" || params.has("mock") || !inTauri)) {
     const { MockEngine } = await import("../mock/engine");
-    const scenario = (params.get("mock") || "live") as "mockup-console" | "live" | "empty";
+    const scenario = (params.get("mock") || "live") as "mockup-console" | "mockup-setup" | "live" | "empty";
     if (!inTauri && !params.has("mock") && import.meta.env.VITE_IPC !== "mock") {
       console.info("CHROMA: not running inside Tauri — using the mock engine (?mock=live)");
     }
     const engine = new MockEngine(scenario);
-    return { ipc: engine, artSrc: (u) => engine.artSrc(u), freeze: freeze || scenario === "mockup-console", mock: true,
+    return { ipc: engine, artSrc: (u) => engine.artSrc(u), freeze: freeze || scenario.startsWith("mockup-"), mock: true,
       dispose: () => engine.dispose() };
   }
   const { tauriIpc } = await import("./tauri");

@@ -54,3 +54,19 @@ describe("ChromaStore", () => {
     vi.useRealTimers();
   });
 });
+
+test("the rig is fetched once per fixtures_rev, even if the reply's rev disagrees", async () => {
+  const f = fakeIpc();
+  const s = new ChromaStore(f.ipc);
+  s.start();
+  f.status(CONNECTED);
+  await vi.waitFor(() => expect(s.getSnapshot().rig).not.toBeNull());
+  const calls = () => (f.ipc.request as ReturnType<typeof vi.fn>).mock.calls.filter((c) => c[0].op === "fixtures.list").length;
+  await new Promise((r) => setTimeout(r, 20));
+  expect(calls()).toBe(1);
+  f.emit({ ev: "patch", patch: { fixtures_rev: 99 } });
+  await vi.waitFor(() => expect(calls()).toBe(2));
+  f.emit({ ev: "patch", patch: { who: "auto" } });
+  await new Promise((r) => setTimeout(r, 20));
+  expect(calls()).toBe(2);
+});

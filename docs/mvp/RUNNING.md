@@ -25,6 +25,8 @@ npm run tauri dev
 - Close the window: the engine keeps running (tray → **Open CHROMA** brings it back).
 - Tray → **Quit CHROMA** (or ⌘Q) stops the app and the engine it started.
 - Engine log: `~/.chroma/dev/chromad.log`.
+- **Setup** tab: the fake rig (5 Living Room bulbs, 3 "not added" bedroom bulbs, planned WLED, a virtual light).
+  Discover, Test, add/remove fixtures, group safety limits and the bank grid all work against the fake engine.
 
 ## 2. The UI in a normal browser (mock engine, no Rust, no Python)
 

@@ -17,8 +17,12 @@ from clock import ClockSample, MonotonicClock, SongClock
 from config import Config
 from console import ConsoleState
 from engine import Engine, LifxController
+from fixtures import FixtureStore
 from ipc import IpcError, IpcServer
+from outputs.lifx import LifxOutput
+from outputs.virtual import VirtualOutput
 from paths import chroma_dir
+from rigsvc import RigService
 from state import ART_MODE_IN, StateAssembler
 
 log = logging.getLogger("chroma-hub")
@@ -35,6 +39,15 @@ class NoLifx(LifxController):
         return 0
 
 
+class _NoLan:
+    def get_lights(self) -> list:
+        return []
+
+
+def _refuse_light(mac, ip):
+    raise OSError("--no-lifx: bulbs are not addressed")
+
+
 class Chromad:
     POLL_S = 1.0          # SongClock resync from the provider's cached state
     TICK_S = 0.25         # publish the interpolated position at 4 Hz while playing
@@ -46,12 +59,16 @@ class Chromad:
         self.clock = clock or MonotonicClock()
         self.fake = fake
         self.fake_provider = None
+        self.fake_bulbs: list = []
         cfg = Config.load()
 
         factory = None
         lifx = None
+        light_factory = None
+        lan_factory = None
         if fake:
-            from testing.fake_lifx import make_fake_lifx_controller
+            from testing.fake_lifx import (FakeLifxLAN, bedroom_bulbs, light_factory_for,
+                                           make_fake_lifx_controller)
             from testing.fake_provider import FakeProvider, default_tracks
             self.fake_provider = FakeProvider(tracks if tracks is not None else default_tracks(),
                                               clock=self.clock)
@@ -60,13 +77,25 @@ class Chromad:
                 self.fake_provider.closed = False
                 return self.fake_provider
             lifx = NoLifx(cfg) if no_lifx else make_fake_lifx_controller(cfg)
+            fake_bulbs = [] if no_lifx else lifx.fake_bulbs + bedroom_bulbs()
+            self.fake_bulbs = fake_bulbs
+            light_factory = light_factory_for(fake_bulbs)
+            lan_factory = lambda: FakeLifxLAN(fake_bulbs)            # noqa: E731
         elif no_lifx:
             lifx = NoLifx(cfg)
+            lan_factory = lambda: _NoLan()                            # noqa: E731
+            light_factory = _refuse_light
 
         self.engine = Engine(loop, install_signals=False, provider_factory=factory, lifx=lifx)
         self.song = SongClock(self.clock, on_event=self._on_song_event)
-        self.console = ConsoleState.default()
-        self.state = StateAssembler(self.engine, self.song, self.console, self.clock)
+        self.virtual = VirtualOutput(self.clock)
+        self.lifx_out = LifxOutput(kelvin=cfg.neutral_kelvin, light_factory=light_factory)
+        self.store = FixtureStore.load(os.path.join(self.home, "fixtures.json"))
+        self.console = ConsoleState.default(self.store.banks)
+        self.rig = RigService(self.engine, self.store, self.lifx_out, self.virtual, loop,
+                              notify=self._rig_changed, toast=lambda lv, t: self.ipc.toast(lv, t),
+                              lan_factory=lan_factory)
+        self.state = StateAssembler(self.engine, self.song, self.console, self.clock, rig=self.rig)
         self.engine.np_listeners.append(self._on_np)
         self.ipc = IpcServer(socket_path or os.path.join(self.home, "chromad.sock"),
                              self.handle, self.state.build)
@@ -91,6 +120,13 @@ class Chromad:
             self.song.update(ClockSample(np.track_id(), bool(np.playing), np.pos_ms, np.dur_ms, anchor))
         self.ipc.mark_dirty()
 
+    def _rig_changed(self) -> None:
+        # banks drive the console's channel -> group binding
+        for b, row in self.store.banks.items():
+            for i, gid in enumerate(row):
+                self.console.channel(b, i + 1).group_id = gid
+        self.ipc.mark_dirty()
+
     def _on_song_event(self, event: str, _song) -> None:
         self.state.force_pos()
         self.ipc.mark_dirty()
@@ -112,6 +148,10 @@ class Chromad:
             return None
         if op == "intent":
             return await self.apply_intent(req.get("intent"), src="ui")
+        if op.split(".")[0] in ("fixtures", "groups", "banks"):
+            res = await self.rig.handle(op, req)
+            if res is not None or op in ("fixtures.test",):
+                return res
         raise IpcError(f"unknown op {op!r}")
 
     async def apply_intent(self, intent, src: str) -> Optional[dict]:
@@ -157,7 +197,9 @@ class Chromad:
         q = self.engine.bus.subscribe()
         try:
             while True:
-                await q.get()
+                ev = await q.get()
+                if ev.get("event") == "colors_pushed":
+                    self._spawn(self.rig.paint_virtual())
                 self.ipc.mark_dirty()
         finally:
             self.engine.bus.unsubscribe(q)
@@ -191,6 +233,9 @@ class Chromad:
         self._tasks = [engine_task] + [self.loop.create_task(c()) for c in
                                        (self._bus_watch, self._poll_position, self._ticker)]
         log.info(f"chromad running (home {self.home}{', fake devices' if self.fake else ''})")
+        if not any(f.type == "lifx" for f in self.store.fixtures.values()):
+            # first start (or an earlier import found nothing): bring the bulbs into the rig
+            self._spawn(self.rig.discover(quiet=True))
         try:
             await self._stop.wait()
         finally:
