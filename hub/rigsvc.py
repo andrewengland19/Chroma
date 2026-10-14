@@ -18,7 +18,7 @@ from typing import Callable, Optional
 from color_pipeline import region_colors
 from fixtures import FixtureStore, RigError
 from outputs.base import HSB
-from outputs.lifx import LifxOutput, discover_bulbs
+from outputs.lifx import BulbOff, LifxOutput, discover_bulbs
 from outputs.virtual import VirtualOutput
 
 log = logging.getLogger("chroma-hub")
@@ -27,7 +27,7 @@ log = logging.getLogger("chroma-hub")
 class RigService:
     def __init__(self, engine, store: FixtureStore, lifx: LifxOutput, virtual: VirtualOutput,
                  loop, notify: Callable[[], None], toast: Callable[[str, str], None],
-                 lan_factory: Optional[Callable] = None):
+                 lan_factory: Optional[Callable] = None, fake: bool = False):
         self.engine = engine
         self.store = store
         self.lifx = lifx
@@ -36,6 +36,7 @@ class RigService:
         self.notify = notify
         self.toast = toast
         self.lan_factory = lan_factory
+        self.fake = fake
         self._discovering = asyncio.Lock()
 
     # ---- ops ---------------------------------------------------------------------
@@ -126,8 +127,12 @@ class RigService:
         if fx.type == "lifx":
             try:
                 await self.loop.run_in_executor(None, self.lifx.blink, fx)
+            except BulbOff as e:
+                raise RigError(str(e)) from None
             except Exception as e:
                 raise RigError(f"could not reach {fx.label}: {e}") from None
+            # a fake engine (dev builds) blinks a stand-in: say so, or a still room looks like a bug
+            self.toast("info", f"Blinked {fx.label}" + (" (fake bulb — no real light changes)" if self.fake else ""))
         elif fx.type == "virtual":
             self.loop.create_task(self._blink_virtual(fx))
         else:

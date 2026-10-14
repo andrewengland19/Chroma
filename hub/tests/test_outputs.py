@@ -47,9 +47,26 @@ def test_lifx_push_errors_are_contained():
 def test_lifx_blink_is_a_gentle_transient_pulse():
     bulbs = living_room_bulbs()
     LifxOutput(light_factory=light_factory_for(bulbs)).blink(lifx_fx())
-    (name, color, period, cycles, waveform, _t), = bulbs[0].calls
+    (name, color, period, cycles, waveform, rapid, _t), = bulbs[0].calls
     assert name == "set_waveform" and period == 1000 and cycles == 2   # 1 Hz, within the 3 Hz cap
     assert color[2] < 0.2 * 65535                          # dim, not a flash to full
+    assert rapid is False                                  # acked: a lost packet is an error, not "ok"
+
+
+def test_lifx_blink_refuses_a_bulb_that_is_off_and_leaves_its_power_alone():
+    from outputs.lifx import BulbOff
+    bulbs = living_room_bulbs()
+    bulbs[0].power = 0
+    with pytest.raises(BulbOff, match="TV Left is switched off"):
+        LifxOutput(light_factory=light_factory_for(bulbs)).blink(lifx_fx())
+    assert bulbs[0].calls == [] and bulbs[0].power == 0
+
+
+def test_lifx_blink_raises_when_the_bulb_does_not_answer():
+    bulbs = living_room_bulbs()
+    bulbs[0].fail = True
+    with pytest.raises(OSError):
+        LifxOutput(light_factory=light_factory_for(bulbs)).blink(lifx_fx())
 
 
 def test_ip_only_fixture_uses_the_zero_mac():

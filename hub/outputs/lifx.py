@@ -64,9 +64,17 @@ class LifxOutput:
 
     def blink(self, f) -> None:
         """Two transient 1 Hz pulses to a dim level; the bulb returns to its own colour
-        afterwards (LIFX waveform, transient=1). Power state is not changed."""
+        afterwards (LIFX waveform, transient=1). Power state is not changed. Blocking:
+        both messages wait for the bulb's ack, so an unreachable bulb raises instead of
+        "succeeding", and a bulb that is off raises BulbOff (a pulse would be invisible)."""
         light = self._light(f)
-        light.set_waveform(1, (0, 0, int(0.15 * 65535), self.kelvin), 1000, 2, 0, 1, rapid=True)   # SINE, no ack wait
+        if not light.get_power():
+            raise BulbOff(f"{f.label} is switched off — turn it on to see the Test blink")
+        light.set_waveform(1, (0, 0, int(0.15 * 65535), self.kelvin), 1000, 2, 0, 1, rapid=False)   # SINE
+
+
+class BulbOff(Exception):
+    """The bulb answered but is powered off."""
 
 
 def discover_bulbs(lan_factory: Optional[Callable] = None) -> list:
