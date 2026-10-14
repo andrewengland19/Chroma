@@ -66,3 +66,22 @@ pgrep -fl "chromad.py --home $HOME/.chroma/dev"      # empty after the self-test
 (cd app && npm run dev:mock -- --port 1430) &
 hub/.venv/bin/python tools/ui_compare.py console /tmp/ui --region 0 0 1178 310
 ```
+
+## M3 — fixtures, groups, banks, outputs, Setup
+
+```bash
+# Engine: rig ops against a fake chromad
+H=$(mktemp -d -t cx); hub/.venv/bin/python hub/chromad.py --fake --home $H &
+CHROMA_HOME=$H python3 tools/chromactl.py op fixtures.list | head -40
+CHROMA_HOME=$H python3 tools/chromactl.py op fixtures.discover
+CHROMA_HOME=$H python3 tools/chromactl.py op fixtures.test fixture_id=couch-left
+CHROMA_HOME=$H python3 tools/chromactl.py op groups.set_limits group_id=playbill max_level=0.5
+CHROMA_HOME=$H python3 tools/chromactl.py op banks.set bank=C channel=1 group_id=fx
+kill %1
+
+# Tests
+(cd hub && .venv/bin/python -m pytest -q tests/test_fixtures.py tests/test_outputs.py tests/test_rig_ops.py)
+(cd app && npx vitest run src/screens/SetupScreen.test.tsx)
+
+# The Setup tab in the app (fake devices): RUNNING.md §1, then click Setup
+```

@@ -13,11 +13,36 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M0 contracts, scaffolding, fakes | `app/m0-contracts` | **done** — merged 072a395 |
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
-| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | in progress |
+| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** (pending-hardware: H3.1–H3.2) |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | — |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
+
+## Hand-off for the next session (start here)
+
+Status on 2026-10-14: **M0–M3 done and merged into local main**; next is **M4 (console, intents, AUTO/BOARD)** on a new
+branch `app/m4-console` from local main. Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
+
+How the build has been run (keep doing it this way):
+- Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
+  from **local** main; small commits; `/code-review high` before merging; merge into `/Users/andy/Code/Chroma` with
+  `git -C /Users/andy/Code/Chroma merge --no-ff app/mN-…` only after checking that checkout is clean and on main.
+  Never push. After a merge: pytest in the user's checkout with the worktree interpreter, the full
+  `tools/test_all.sh` in a temporary **detached** worktree at main (`CARGO_TARGET_DIR` shared), `lite show status`.
+- Tests never touch devices: `hub/tests/conftest.py` sandboxes HOME and blocks lifxlan/pyatv/Keychain. Use the fakes
+  in `hub/testing/` and `chromad --fake`. Keep Unix socket paths short (`mktemp -d -t cx`; macOS limit 104 bytes).
+- UI fidelity: `npx vite --mode mock --port 1430` in `app/`, then `hub/.venv/bin/python tools/ui_compare.py <screen>
+  <outdir> --region …` (headless Chrome at 2x next to the mockup). Mock scenarios: `?mock=mockup-console|mockup-setup|
+  live|empty`; the mockup data lives in `contracts/examples/{state,fixtures}/ok-mockup*.json`.
+- Native app: `CHROMA_DEBUG_IPC=1 CHROMA_SELFTEST=close-quit npm run tauri dev` (debug builds) proves UI → Rust →
+  chromad and the close/quit lifecycle without screen access. The user does not grant Screen Recording; ask them for
+  screenshots in the batched hardware request instead.
+- Contracts first: change `contracts/*.schema.json` + examples, `npm --prefix app run gen:types`, then code.
+
+M4 starting points: `hub/console.py` has the data model; intents arrive in `daemon.apply_intent` (only `who` today);
+outputs are `self.lifx_out` / `self.virtual`; per-fixture limits come from `FixtureStore.limits()` (D8); the strobe
+definition is D7; board seeding is D2; `LifxOutput.forget_power()` should be called when switching to BOARD.
 
 ---
 
@@ -142,4 +167,39 @@ log rotation, slice selectors, mock disposal + excluded from production, Tauri l
 
 ## M3 — fixtures, groups, banks, outputs, Setup
 
-Started 2026-10-11.
+Started 2026-10-11, finished 2026-10-14.
+
+**Done**
+- `hub/fixtures.py`: fixtures (LIFX / virtual / planned WLED; active / not_added / planned), groups (members, UI colour,
+  max level, max flash rate <= 3 Hz, idle auto-dim), 3x8 banks; hand validation; atomic `fixtures.json` with `rev`;
+  default rig from gui-3; discovery import mapping the real bulbs onto the mockup groups (D5); most restrictive limits
+  across groups (D8); `set_limits`, `swap_banks`; corrupt file kept aside instead of crash-looping.
+- `hub/outputs/`: `HSB`, `LifxOutput` (direct MAC/IP or IP-only; power on, never off; 1 Hz transient Test pulse),
+  `VirtualOutput` (current colour + frame log), `discover_bulbs`.
+- `hub/rigsvc.py`: ops `fixtures.list/discover/upsert/remove/test`, `groups.list/upsert/remove/set_limits`,
+  `banks.get/set/swap`; bulbs imported automatically when the rig has none; Room + LIFX health from the rig, linked to
+  the engine's bulbs by MAC; virtual lights get art colours in AUTO; moving a LIFX fixture updates `layout.json`.
+- Console channels follow the bank map; State `fixtures_rev` = rig rev; the UI refetches the rig once per rev.
+- Setup screen per gui-3 (fixtures table, group editor + safety sliders, bank grid with drag-and-drop and keys) and a
+  minimal **+ Add fixture** form (flagged).
+
+**AC**
+| AC | Status | Evidence |
+|---|---|---|
+| Edits persist across restart | **pass** | `test_rig_ops.py::test_edits_persist_across_a_chromad_restart` (two chromad instances, same home) |
+| Discover imports the real bulbs | **pass (fake LAN)** / **pending-hardware** | `test_discover_is_idempotent`, `test_first_start_imports…`; real LAN = H3.1 |
+| Test blinks the right bulb | **pass (fake bulbs)** / **pending-hardware** | `test_test_blinks_the_right_bulb…` (only Couch Left gets the waveform); real bulb = H3.1 |
+| A virtual fixture appears in the Room view | **pass** | `test_virtual_fixture_appears_in_the_room_with_an_art_colour` |
+| Unit tests for group resolution | **pass** | `test_fixtures.py` (members, limits, import mapping, validation) |
+| AUTO painting regression (same colours for a fixed art input) | **pass** | M0 goldens unchanged + `test_auto_painting_path_is_unchanged_by_the_rig` |
+
+Native app: the self-test run shows the UI fetching `get_state` and `fixtures.list` through Rust from a fake chromad,
+which seeded the rig and imported 8 fake bulbs (5 active, 3 not added).
+
+**Visual comparison (gui-3)**: fixtures table, group editor and bank grid line up with the mockup at 2x
+(`tools/ui_compare.py setup`). Deliberate differences: a row "×" (remove, asks to confirm); member dots use the
+fixture's real status (planned = grey; the mockup shows green); the flash-rate track is drawn to 10 Hz with everything
+above the 3 Hz safety cap hatched and unreachable (the mockup puts the 3 Hz knob ~30 % along).
+
+**Code review (high)**: 7 findings, all fixed (MAC linking, corrupt-file recovery, limits-only and atomic-swap ops,
+remove confirmation, import retry, non-blocking blink).
