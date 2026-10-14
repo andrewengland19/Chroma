@@ -94,7 +94,7 @@ class Chromad:
         self.console = ConsoleState.default(self.store.banks)
         self.rig = RigService(self.engine, self.store, self.lifx_out, self.virtual, loop,
                               notify=self._rig_changed, toast=lambda lv, t: self.ipc.toast(lv, t),
-                              lan_factory=lan_factory)
+                              lan_factory=lan_factory, fake=fake)
         self.state = StateAssembler(self.engine, self.song, self.console, self.clock, rig=self.rig)
         self.engine.np_listeners.append(self._on_np)
         self.ipc = IpcServer(socket_path or os.path.join(self.home, "chromad.sock"),

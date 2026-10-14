@@ -64,9 +64,40 @@ class LifxOutput:
 
     def blink(self, f) -> None:
         """Two transient 1 Hz pulses to a dim level; the bulb returns to its own colour
-        afterwards (LIFX waveform, transient=1). Power state is not changed."""
+        afterwards (LIFX waveform, transient=1). Power state is not changed. Blocking:
+        with a known MAC both messages wait for the bulb's ack (retried, UDP drops packets),
+        so an unreachable bulb raises Unreachable instead of "succeeding", and a bulb that
+        is off raises BulbOff (a pulse would be invisible). An IP-only fixture can't be
+        acked (lifxlan matches replies by MAC), so it gets the fire-and-forget pulse."""
         light = self._light(f)
-        light.set_waveform(1, (0, 0, int(0.15 * 65535), self.kelvin), 1000, 2, 0, 1, rapid=True)   # SINE, no ack wait
+        wave = (1, (0, 0, int(0.15 * 65535), self.kelvin), 1000, 2, 0, 1)        # SINE
+        if not f.mac:
+            light.set_waveform(*wave, rapid=True)
+            return
+        if not _with_retries(f, light.get_power):
+            raise BulbOff(f"{f.label} is switched off — turn it on to see the Test blink")
+        _with_retries(f, lambda: light.set_waveform(*wave, rapid=False))
+
+
+ATTEMPTS = 3                                     # lifxlan tries once, 1 s each
+
+
+def _with_retries(f, call):
+    for i in range(ATTEMPTS):
+        try:
+            return call()
+        except Exception as e:
+            if i == ATTEMPTS - 1:
+                log.info(f"LIFX {f.label} at {f.ip}: no reply ({e})")
+                raise Unreachable(f"could not reach {f.label} at {f.ip} (no reply)") from None
+
+
+class Unreachable(Exception):
+    """The bulb did not answer."""
+
+
+class BulbOff(Exception):
+    """The bulb answered but is powered off."""
 
 
 def discover_bulbs(lan_factory: Optional[Callable] = None) -> list:

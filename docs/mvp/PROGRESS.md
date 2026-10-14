@@ -203,3 +203,15 @@ above the 3 Hz safety cap hatched and unreachable (the mockup puts the 3 Hz knob
 
 **Code review (high)**: 7 findings, all fixed (MAC linking, corrupt-file recovery, limits-only and atomic-swap ops,
 remove confirmation, import retry, non-blocking blink).
+
+**Post-merge fix (2026-10-14, `app/fix-test-blink`)**: "Test on TV Left changed nothing although the bulbs were
+discovered" turned out to be the debug app running against the **fake** engine (`config.rs`: debug → `~/.chroma/dev`
++ `--fake`). The discovered bulbs were `hub/testing/fake_lifx.py`'s (TV Left = `192.168.0.31`,
+`d0:73:d5:00:00:01`), and H3.1 (real bulbs via `CHROMA_HOME=/tmp/chroma-hw CHROMAD_ARGS=""`) had not been run.
+Real-mode hardening: `LifxOutput.blink` now checks power and sends the waveform **with ack** (before this it was a
+single fire-and-forget UDP packet, so an unreachable bulb "succeeded"). A switched-off bulb gets "… is switched off",
+an unreachable one gets "could not reach …", and success toasts "Blinked …", plus "(fake bulb …)" in fake mode.
+Tests: 5 new (blink ack/off/unreachable, fake toast, discover refreshes a moved IP). New hardware checks H3.1b/H3.1c.
+Code review (high): 5 findings, all fixed: IP-only fixtures keep the fire-and-forget pulse (lifxlan matches acks by
+MAC); acked calls are retried 3x; the toast is "could not reach X at IP (no reply)" with details logged; a double-click
+doesn't start a second blink; fakes raise lifxlan's WorkflowException.

@@ -94,6 +94,46 @@ async def test_test_blinks_the_right_bulb_and_refuses_what_it_cannot_drive(daemo
             await op(daemon, "fixtures.test", fixture_id=fid)
 
 
+async def test_test_reports_an_unreachable_or_switched_off_bulb(daemon):
+    from ipc import IpcError
+    tv = next(b for b in daemon.fake_bulbs if b.label == "TV Left")
+    tv.fail = True
+    with pytest.raises(IpcError, match="could not reach TV Left"):
+        await op(daemon, "fixtures.test", fixture_id="tv-left")
+    tv.fail = False
+    await asyncio.gather(op(daemon, "fixtures.test", fixture_id="tv-left"),
+                         op(daemon, "fixtures.test", fixture_id="tv-left"))   # double-click
+    assert len([c for c in tv.calls if c[0] == "set_waveform"]) == 1
+    tv.calls.clear()
+    tv.power = 0
+    with pytest.raises(IpcError, match="TV Left is switched off"):
+        await op(daemon, "fixtures.test", fixture_id="tv-left")
+    assert not [c for c in tv.calls if c[0] in ("set_waveform", "set_power")]
+
+
+async def test_test_toast_says_the_bulb_is_fake_in_fake_mode(daemon):
+    toasts = []
+    daemon.rig.toast = lambda lv, t: toasts.append((lv, t))
+    await op(daemon, "fixtures.test", fixture_id="tv-left")
+    assert toasts == [("info", "Blinked TV Left (fake bulb — no real light changes)")]
+    tv = next(b for b in daemon.fake_bulbs if b.label == "TV Left")
+    assert [c[5] for c in tv.calls if c[0] == "set_waveform"] == [False]     # one acked waveform
+
+
+async def test_discover_refreshes_the_ip_of_a_known_bulb(daemon):
+    tv = next(b for b in daemon.fake_bulbs if b.label == "TV Left")
+    before = (await op(daemon, "fixtures.list"))["fixtures"]
+    tv.ip = "192.168.0.131"                                  # DHCP moved it
+    res = await op(daemon, "fixtures.discover")
+    assert res["result"]["updated"] == ["tv-left"] and res["result"]["added"] == []
+    after = {f["id"]: f for f in res["fixtures"]}
+    assert after["tv-left"]["ip"] == "192.168.0.131" and after["tv-left"]["label"] == "TV Left"
+    assert len(res["fixtures"]) == len(before)
+    assert "tv-left" in daemon.store.groups["lr-all"].members
+    await op(daemon, "fixtures.test", fixture_id="tv-left")  # Test follows the new address
+    assert [c for c in tv.calls if c[0] == "set_waveform"]
+
+
 async def test_safety_limits_are_enforced_on_edit(daemon):
     from ipc import IpcError
     g = (await op(daemon, "groups.list"))["groups"]

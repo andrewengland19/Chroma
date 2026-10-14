@@ -38,8 +38,9 @@ class FakeLight:
         return self._clock.monotonic() if self._clock else time.monotonic()
 
     def _maybe_fail(self):
-        if self.fail:
-            raise OSError(f"fake failure on {self.label}")
+        if self.fail:                            # what lifxlan raises when a bulb doesn't answer
+            from lifxlan.errors import WorkflowException
+            raise WorkflowException(f"WorkflowException: Did not receive a reply from {self.mac}")
 
     # lifxlan.Light surface
     def get_label(self) -> str:
@@ -58,6 +59,7 @@ class FakeLight:
         return self.group
 
     def get_power(self) -> int:
+        self._maybe_fail()                       # lifxlan: an acked get times out on an unreachable bulb
         return self.power
 
     def get_color(self) -> tuple:
@@ -76,7 +78,7 @@ class FakeLight:
 
     def set_waveform(self, is_transient, color, period, cycles, duty_cycle, waveform, rapid=False) -> None:
         self._maybe_fail()
-        self.calls.append(("set_waveform", tuple(color), period, cycles, waveform, self._t()))
+        self.calls.append(("set_waveform", tuple(color), period, cycles, waveform, rapid, self._t()))
 
     def colors_set(self) -> list:
         return [c[1] for c in self.calls if c[0] == "set_color"]
@@ -108,9 +110,8 @@ def bedroom_bulbs(clock=None) -> list:
 
 def light_factory_for(bulbs: list):
     """A LifxOutput light factory that resolves (mac, ip) to one of these fake bulbs."""
-    by_ip = {b.ip: b for b in bulbs}
-
     def factory(mac: str, ip: str):
+        by_ip = {b.ip: b for b in bulbs}         # looked up per call: a test may move a bulb's IP
         if ip not in by_ip:
             raise OSError(f"no fake bulb at {ip}")
         return by_ip[ip]

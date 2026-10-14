@@ -18,7 +18,7 @@ from typing import Callable, Optional
 from color_pipeline import region_colors
 from fixtures import FixtureStore, RigError
 from outputs.base import HSB
-from outputs.lifx import LifxOutput, discover_bulbs
+from outputs.lifx import BulbOff, LifxOutput, Unreachable, discover_bulbs
 from outputs.virtual import VirtualOutput
 
 log = logging.getLogger("chroma-hub")
@@ -27,7 +27,7 @@ log = logging.getLogger("chroma-hub")
 class RigService:
     def __init__(self, engine, store: FixtureStore, lifx: LifxOutput, virtual: VirtualOutput,
                  loop, notify: Callable[[], None], toast: Callable[[str, str], None],
-                 lan_factory: Optional[Callable] = None):
+                 lan_factory: Optional[Callable] = None, fake: bool = False):
         self.engine = engine
         self.store = store
         self.lifx = lifx
@@ -36,7 +36,9 @@ class RigService:
         self.notify = notify
         self.toast = toast
         self.lan_factory = lan_factory
+        self.fake = fake
         self._discovering = asyncio.Lock()
+        self._blinking: set = set()
 
     # ---- ops ---------------------------------------------------------------------
     async def handle(self, op: str, req: dict) -> Optional[dict]:
@@ -124,10 +126,20 @@ class RigService:
         if fx.status != "active":
             raise RigError(f"{fx.label} is {fx.status.replace('_', ' ')} — nothing to blink")
         if fx.type == "lifx":
+            if fx.id in self._blinking:              # a double-click: the first pulse is still running
+                return
+            self._blinking.add(fx.id)
             try:
                 await self.loop.run_in_executor(None, self.lifx.blink, fx)
+            except (BulbOff, Unreachable) as e:
+                raise RigError(str(e)) from None
             except Exception as e:
-                raise RigError(f"could not reach {fx.label}: {e}") from None
+                log.warning(f"Test {fx.label} failed: {e!r}")
+                raise RigError(f"could not reach {fx.label}") from None
+            finally:
+                self._blinking.discard(fx.id)
+            # a fake engine (dev builds) blinks a stand-in: say so, or a still room looks like a bug
+            self.toast("info", f"Blinked {fx.label}" + (" (fake bulb — no real light changes)" if self.fake else ""))
         elif fx.type == "virtual":
             self.loop.create_task(self._blink_virtual(fx))
         else:
