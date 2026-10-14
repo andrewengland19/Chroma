@@ -38,8 +38,9 @@ class FakeLight:
         return self._clock.monotonic() if self._clock else time.monotonic()
 
     def _maybe_fail(self):
-        if self.fail:
-            raise OSError(f"fake failure on {self.label}")
+        if self.fail:                            # what lifxlan raises when a bulb doesn't answer
+            from lifxlan.errors import WorkflowException
+            raise WorkflowException(f"WorkflowException: Did not receive a reply from {self.mac}")
 
     # lifxlan.Light surface
     def get_label(self) -> str:

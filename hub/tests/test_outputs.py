@@ -62,11 +62,34 @@ def test_lifx_blink_refuses_a_bulb_that_is_off_and_leaves_its_power_alone():
     assert bulbs[0].calls == [] and bulbs[0].power == 0
 
 
-def test_lifx_blink_raises_when_the_bulb_does_not_answer():
+def test_lifx_blink_retries_then_raises_when_the_bulb_does_not_answer():
+    from outputs.lifx import Unreachable
     bulbs = living_room_bulbs()
     bulbs[0].fail = True
-    with pytest.raises(OSError):
+    with pytest.raises(Unreachable, match=r"could not reach TV Left at 192\.168\.0\.31 \(no reply\)"):
         LifxOutput(light_factory=light_factory_for(bulbs)).blink(lifx_fx())
+
+
+def test_lifx_blink_survives_one_lost_reply():
+    bulbs = living_room_bulbs()
+    real_get = bulbs[0].get_power
+    replies = iter([OSError("dropped"), None])
+
+    def flaky():
+        e = next(replies)
+        if e:
+            raise e
+        return real_get()
+    bulbs[0].get_power = flaky
+    LifxOutput(light_factory=light_factory_for(bulbs)).blink(lifx_fx())
+    assert [c[0] for c in bulbs[0].calls] == ["set_waveform"]
+
+
+def test_ip_only_blink_is_fire_and_forget():
+    bulbs = living_room_bulbs()
+    bulbs[0].power = 0                                     # can't be asked: no MAC to match the reply
+    LifxOutput(light_factory=light_factory_for(bulbs)).blink(lifx_fx(mac=None))
+    assert [(c[0], c[5]) for c in bulbs[0].calls] == [("set_waveform", True)]
 
 
 def test_ip_only_fixture_uses_the_zero_mac():

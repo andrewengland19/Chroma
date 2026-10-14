@@ -212,3 +212,6 @@ Real-mode hardening: `LifxOutput.blink` now checks power and sends the waveform 
 single fire-and-forget UDP packet, so an unreachable bulb "succeeded"). A switched-off bulb gets "… is switched off",
 an unreachable one gets "could not reach …", and success toasts "Blinked …", plus "(fake bulb …)" in fake mode.
 Tests: 5 new (blink ack/off/unreachable, fake toast, discover refreshes a moved IP). New hardware checks H3.1b/H3.1c.
+Code review (high): 5 findings, all fixed: IP-only fixtures keep the fire-and-forget pulse (lifxlan matches acks by
+MAC); acked calls are retried 3x; the toast is "could not reach X at IP (no reply)" with details logged; a double-click
+doesn't start a second blink; fakes raise lifxlan's WorkflowException.

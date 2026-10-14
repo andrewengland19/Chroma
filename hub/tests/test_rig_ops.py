@@ -100,7 +100,12 @@ async def test_test_reports_an_unreachable_or_switched_off_bulb(daemon):
     tv.fail = True
     with pytest.raises(IpcError, match="could not reach TV Left"):
         await op(daemon, "fixtures.test", fixture_id="tv-left")
-    tv.fail, tv.power = False, 0
+    tv.fail = False
+    await asyncio.gather(op(daemon, "fixtures.test", fixture_id="tv-left"),
+                         op(daemon, "fixtures.test", fixture_id="tv-left"))   # double-click
+    assert len([c for c in tv.calls if c[0] == "set_waveform"]) == 1
+    tv.calls.clear()
+    tv.power = 0
     with pytest.raises(IpcError, match="TV Left is switched off"):
         await op(daemon, "fixtures.test", fixture_id="tv-left")
     assert not [c for c in tv.calls if c[0] in ("set_waveform", "set_power")]
