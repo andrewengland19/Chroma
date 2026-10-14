@@ -39,7 +39,8 @@ async def daemon():
     d = Chromad(asyncio.get_running_loop(), fake=True, socket_path=os.path.join(home, "chromad.sock"))
     task = asyncio.create_task(d.run())
     assert await wait_for(lambda: os.path.exists(d.ipc.path))
-    assert await wait_for(lambda: d.engine._last_per_light)          # first paint done
+    assert await wait_for(lambda: d.engine._last_per_light and d.virtual.current
+                          and d.store.active("lifx"))                # first paint + first-run import done
     yield d
     d.request_stop()
     await asyncio.wait_for(task, timeout=5)
@@ -68,8 +69,9 @@ async def test_state_is_schema_valid_and_reflects_the_engine(daemon):
     assert st["now"]["title"] == "Older" and st["now"]["dur_ms"] == 205_000
     assert st["now"]["art_url"] == "chroma-art://current?rev=1"
     assert st["who"] == "auto" and st["art_mode"] == "det"
-    assert [r["label"] for r in st["room"]] == ["TV Left", "TV Right", "Couch Left", "Right couch", "Washer"]
-    assert all(r["hex"] for r in st["room"])
+    assert [r["label"] for r in st["room"]] == ["TV Left", "TV Right", "Couch Left", "Right couch", "Washer",
+                                                "Virtual Light 1"]
+    assert all(r["hex"] for r in st["room"])       # the virtual light gets an art colour in AUTO
     assert st["health"] == {"atv": "up", "lifx": {"found": 5, "total": 5}, "board": "none"}
 
 

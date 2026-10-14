@@ -74,8 +74,20 @@ class FakeLight:
         self.power = 65535 if on else 0
         self.calls.append(("set_power", self.power, duration, rapid, self._t()))
 
+    def set_waveform(self, is_transient, color, period, cycles, duty_cycle, waveform, rapid=False) -> None:
+        self._maybe_fail()
+        self.calls.append(("set_waveform", tuple(color), period, cycles, waveform, self._t()))
+
     def colors_set(self) -> list:
         return [c[1] for c in self.calls if c[0] == "set_color"]
+
+
+# Discovered but not in the rig by default (shown as "not added yet").
+BEDROOM = [
+    ("Bright Light", "192.168.0.60", "d0:73:d5:00:00:06"),
+    ("Cedar Chest", "192.168.0.61", "d0:73:d5:00:00:07"),
+    ("Desk 2", "192.168.0.62", "d0:73:d5:00:00:08"),
+]
 
 
 class FakeLifxLAN:
@@ -88,6 +100,21 @@ class FakeLifxLAN:
 
 def living_room_bulbs(clock=None) -> list:
     return [FakeLight(lbl, ip, mac, clock=clock) for lbl, ip, mac in LIVING_ROOM]
+
+
+def bedroom_bulbs(clock=None) -> list:
+    return [FakeLight(lbl, ip, mac, group="Bedroom", clock=clock) for lbl, ip, mac in BEDROOM]
+
+
+def light_factory_for(bulbs: list):
+    """A LifxOutput light factory that resolves (mac, ip) to one of these fake bulbs."""
+    by_ip = {b.ip: b for b in bulbs}
+
+    def factory(mac: str, ip: str):
+        if ip not in by_ip:
+            raise OSError(f"no fake bulb at {ip}")
+        return by_ip[ip]
+    return factory
 
 
 def install_fake_bulbs(controller, bulbs: Optional[list] = None) -> list:

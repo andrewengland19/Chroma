@@ -27,8 +27,9 @@ def slugify(label: str) -> str:
 
 
 class StateAssembler:
-    def __init__(self, engine, song, console, clock, pos_interval_s: float = 0.25):
+    def __init__(self, engine, song, console, clock, pos_interval_s: float = 0.25, rig=None):
         self.engine = engine
+        self.rig = rig
         self.song = song
         self.console = console
         self.clock = clock
@@ -98,13 +99,14 @@ class StateAssembler:
             "who": "auto" if eng.enabled else "board",
             "art_mode": ART_MODE_OUT.get(eng.cfg.mode, "det"),
             **self.console.to_state_fields(),
-            "room": self._room(),
+            "room": self.rig.room() if self.rig else self._room(),
             "rec": dict(self.rec),
             "play": dict(self.play),
             "health": {"atv": "up" if eng.provider is not None else "down",
-                       "lifx": {"found": eng.lifx.count, "total": eng.lifx.count},
+                       "lifx": self.rig.lifx_health() if self.rig
+                       else {"found": eng.lifx.count, "total": eng.lifx.count},
                        "board": self.board_health},
-            "fixtures_rev": self.fixtures_rev,
+            "fixtures_rev": self.rig.store.rev if self.rig else self.fixtures_rev,
             "takes_rev": self.takes_rev,
         }
         return state
