@@ -14,7 +14,7 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
-| M4 console, intents, AUTO/BOARD | `app/m4-console` | next — branch created from 8b29256 |
+| M4 console, intents, AUTO/BOARD | `app/m4-console` | **in progress** — rebased onto 79de99f |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
@@ -218,3 +218,18 @@ Tests: 5 new (blink ack/off/unreachable, fake toast, discover refreshes a moved 
 Code review (high): 5 findings, all fixed: IP-only fixtures keep the fire-and-forget pulse (lifxlan matches acks by
 MAC); acked calls are retried 3x; the toast is "could not reach X at IP (no reply)" with details logged; a double-click
 doesn't start a second blink; fakes raise lifxlan's WorkflowException.
+
+---
+
+## M4 — console, intents, AUTO/BOARD
+
+Started 2026-10-14 (branch rebased onto main 79de99f, after the Test-blink fix).
+
+**Contracts audit (no schema change needed)**: every §5.2 intent has a schema def and ok/bad examples
+(`contracts/intent.schema.json`, 19 ok + 8 bad). State already carries `master`, `blackout`, `last_touched`,
+`cue_active`, `cues[]{id,name,stored}`, `palette[8]` and per-channel `level/hue/sat/flash/engaged`. The ghost marker
+is drawn at the stored `level` when `engaged=false`, so the raw board position stays out of State. `console.json` is
+`contracts/console.schema.json` (24 look channels, 8 palette, 8 cues with optional `fade_ms`, default 0 per D16).
+Cue names go through the existing `cues.rename` op. `contracts.ts` is up to date.
+
+Next: §5.3 as pure functions in `hub/console.py` + `hub/tests/test_console.py`.
