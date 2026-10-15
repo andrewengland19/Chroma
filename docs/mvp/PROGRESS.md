@@ -232,4 +232,23 @@ is drawn at the stored `level` when `engaged=false`, so the raw board position s
 `contracts/console.schema.json` (24 look channels, 8 palette, 8 cues with optional `fade_ms`, default 0 per D16).
 Cue names go through the existing `cues.rename` op. `contracts.ts` is up to date.
 
-Next: §5.3 as pure functions in `hub/console.py` + `hub/tests/test_console.py`.
+**§5.3 console logic (pure, `hub/console.py` + `hub/oklab.py`)**: `apply(state, intent, src)` handles all 12
+console intents (`who` stays with the daemon) and returns effects for the daemon: `("assign", bank, ch, gid)` to
+persist in the rig's banks, `("recall", i, fade_ms)`. `resolve(state, members, limits)` → HSB per fixture: HTP level
+(flash = 1.0), LTP hue/sat by touch order (cue-recall ties go to the brighter channel), × master, blackout → 0 (beats
+flash), then the D8 `max_level` cap (flash can't exceed it). Fixtures in no bound group are absent (they hold, D16).
+`seed_from_art` = D2: after it, each fixture keeps its art colour / brightness until one of its channels moves
+colour / level. Channels show the OKLab mean hue/sat and the mean brightness. `StrobeLimiter` = D7 per fixture: an
+edge is |Δlevel| ≥ 0.10 or an OKLab jump ≥ 0.10 with both ends ≥ 0.10. The budget is `floor(2·hz)` edges per
+`n/(2·hz)` s (3 Hz = 6 per 1 s; never above 3 Hz). The newest held value goes out via `poll`/`next_due_ms`.
+`to_file`/`from_file` = console.json.
+Pickup: the engaged state describes the physical fader. Board moves apply only after reaching (±0.02) or crossing
+the stored value. The first sight of a fader that is far away is ignored (no jump on connect). A bank/fn switch
+disengages, then re-engages the faders that already match. UI/cue/palette/encoder changes apply at once and
+disengage a board fader that no longer matches. With no board seen, everything stays engaged (no ghost markers
+without a board). Encoders: 5° / 2 % per detent.
+Tests: `hub/tests/test_console.py`, 50 cases (validation, HTP/LTP, master/blackout, caps, flash, pickup incl. hue/sat
+functions, encoders, palette, assign, cues, D2 seed, D7 sliding window). `tools/test_all.sh`: 308 + 21 + 14 passed.
+
+Next: step 3, wiring. `daemon.apply_intent` → `console.apply` → output scheduler (coalesce per fixture, LIFX ≤ 20
+msg/s, virtual 60 Hz, StrobeLimiter, latency logging) and console.json persistence.
