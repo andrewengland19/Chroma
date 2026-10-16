@@ -100,7 +100,7 @@ async def test_level_moves_keep_the_art_colour_until_colour_is_touched(daemon):
     assert await wait_for(lambda: _hsb_of(colors(tv)[-1][1])[0] == pytest.approx(200, abs=0.01))
 
 
-async def test_flash_holds_and_releases_and_blackout_wins(daemon):
+async def test_flash_holds_and_releases_and_punches_through_blackout(daemon):
     d = daemon
     await board(d)
     tv = bulb(d, "TV Left")
@@ -116,9 +116,12 @@ async def test_flash_holds_and_releases_and_blackout_wins(daemon):
     await intent(d, intent="blackout", on=True)
     assert await wait_for(lambda: colors(tv)[-1][1][2] == 0)
     assert not [c for c in tv.calls if c[0] == "set_power" and c[1] == 0]   # D15: never powered off
-    await intent(d, intent="flash", ch=1, down=True)
+    await intent(d, intent="flash", ch=8, down=True)            # FX (virtual light) only
+    assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 1.0)
     await asyncio.sleep(0.2)
-    assert colors(tv)[-1][1][2] == 0                            # blackout beats flash
+    assert colors(tv)[-1][1][2] == 0                            # the rest stays dark
+    await intent(d, intent="flash", ch=8, down=False)
+    assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 0.0)
 
 
 async def test_auto_shows_console_changes_but_pushes_nothing_and_back_to_auto_repaints(daemon):

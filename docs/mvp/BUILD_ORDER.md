@@ -202,7 +202,7 @@ Unknown intents are rejected with an error; they are never silently dropped.
 - **Channel state:** each of the 24 channels (3 banks x 8) has `level`, `hue`, `sat`, bound to one group.
 - **Group -> fixtures:** a fixture may be in several groups. For each fixture: **level = max (HTP)** across
   the contributing groups' levels; **hue/sat = last touched wins (LTP)**. Then multiply by master; blackout
-  forces 0 and overrides flash.
+  forces 0, except that a held flash punches through it (changed by the user 2026-10-16, DECISIONS.md).
 - **Flash:** while down, the group's level is 1.0 at the channel's hue/sat; on release it returns to the fader
   level. Flash ignores the fader but respects master, safety caps and the strobe limit (§8).
 - **Pickup (required for the physical board):** faders are not motorized. When bank or `fader_fn` changes, each

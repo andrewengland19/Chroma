@@ -120,17 +120,32 @@ def test_level_moves_do_not_steal_ltp_colour():
     assert out(st)["tv-l"].h == 120
 
 
-def test_master_scales_and_blackout_forces_zero_even_over_flash():
+def test_master_scales_and_flash_punches_through_blackout():
     st = st_()
     fader(st, 3, 0.8)
+    fader(st, 1, 0.6)
     fader(st, "master", 0.5)
     assert out(st)["couch"].b == pytest.approx(0.4)
-    go(st, intent="flash", ch=3, down=True)
-    assert out(st)["couch"].b == pytest.approx(0.5)      # flash = 1.0, then x master
     go(st, intent="blackout", on=True)
     assert all(v.b == 0 for v in out(st).values())
+    go(st, intent="flash", ch=3, down=True)               # hold blackout, flash a few lights
+    o = out(st)
+    assert o["couch"].b == pytest.approx(0.5)             # flash = 1.0, then x master
+    assert o["tv-l"].b == 0 and o["tv-r"].b == 0          # LR ALL is up at 0.6 but blacked out
+    go(st, intent="flash", ch=3, down=False)
+    assert all(v.b == 0 for v in out(st).values())        # release: dark again
     go(st, intent="blackout", on=False)
-    assert out(st)["couch"].b == pytest.approx(0.5)
+    assert out(st)["couch"].b == pytest.approx(0.4)
+
+
+def test_a_flash_through_blackout_respects_the_group_cap_and_its_colour():
+    st = st_()
+    go(st, intent="assign", ch=3)
+    go(st, intent="hue", v=200)
+    go(st, intent="blackout", on=True)
+    go(st, intent="flash", ch=3, down=True)
+    o = out(st, limits=lambda f: (0.7, 3.0))
+    assert o["couch"].b == pytest.approx(0.7) and o["couch"].h == pytest.approx(200)
 
 
 def test_unbound_fixtures_and_channels_hold():

@@ -453,7 +453,9 @@ def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> 
     Level = HTP (flash = 1.0) across the fixture's channels, hue/sat = LTP. After D2
     seeding the art colour / brightness stand until a channel moves colour / level, and
     only channels moved since the seed take part (seeded values are display/pickup only).
-    Then x master, blackout -> 0 (beats flash), capped at max_level (flash cannot exceed)."""
+    Then x master, capped at max_level (flash cannot exceed). Blackout -> 0, except that a
+    held FLASH punches through it: its fixtures go to full x master (capped) in the flashing
+    channel's colour (user decision 2026-10-16: hold blackout, flash a few lights)."""
     by_fixture: dict = {}
     for c in st.channels:
         for fid in (members.get(c.group_id, ()) if c.group_id else ()):
@@ -472,7 +474,14 @@ def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> 
             src = max(chans, key=lambda c: (c.color_seq, 1.0 if c.flash else c.level))
             h, s = src.hue, src.sat
         max_level, _hz = limits(fid)
-        level = 0.0 if st.blackout else min(level * st.master, max_level)
+        if st.blackout:
+            flashing = [c for c in chans if c.flash]
+            if flashing:
+                src = max(flashing, key=lambda c: c.color_seq)
+                h, s = src.hue, src.sat
+            level = min(st.master, max_level) if flashing else 0.0
+        else:
+            level = min(level * st.master, max_level)
         out[fid] = HSB(h % 360.0, s, level)
     return out
 

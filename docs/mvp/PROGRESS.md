@@ -24,7 +24,8 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 Status on 2026-10-16: **M0–M4 merged into local main (b88d544); M5 (recorder, replay, Takes) is done on
 `app/m5-takes`**, all suites green, code review fixed; the merge waits for the user's OK because their `tauri dev`
 runs from the main checkout (a merge rebuilds and restarts it). Hardware checks: `HARDWARE_CHECKLIST.md` (none run
-yet; H5.1–H5.4 added). The BLACKOUT decision is made: going dark bypasses the D7 hold, the edge still counts.
+yet; H5.1–H5.4 added). BLACKOUT decisions made: going dark bypasses the D7 hold (the edge still counts), and a held FLASH punches through
+BLACKOUT.
 
 How the build has been run (keep doing it this way):
 - Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
@@ -348,7 +349,7 @@ already stopped before the merge; not started by the builder).
 ## M5 — recorder, replay, Takes
 
 Started 2026-10-16 (branch `app/m5-takes` on main aa7bc38). First commit: the user's BLACKOUT decision (going dark
-bypasses the D7 hold, the edge still counts; DECISIONS 2026-10-16).
+bypasses the D7 hold, the edge still counts; DECISIONS 2026-10-16). Later: FLASH punches through BLACKOUT (user).
 
 **Plan**
 1. Contracts (mostly in place since M0: take header/event, `takes.*`, `rec.*`, `play.*`, `take.nudge`, State
