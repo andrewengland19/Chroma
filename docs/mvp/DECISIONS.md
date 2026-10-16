@@ -34,6 +34,7 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 | X4 | Board snapshots older than the newest applied are never applied; within 8 of the newest they are dropped quietly, older ones count as replays. |
 | X5 | Fader fill = channel's live colour; Takes lanes and bank bars = group UI colour. |
 | X6 | `now.pos_ms` patched at <= 4 Hz; the UI interpolates. |
+| X7 | (M5, builder) Schema additions: take header `art_hex`; State `activity` {source, dur_ms, lanes[{group_id, color, spans}]} for the Console strip; response shapes `takes_list`, `take_full`, `take_export`. |
 
 ## Builder decisions (log)
 
