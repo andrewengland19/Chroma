@@ -85,3 +85,31 @@ kill %1
 
 # The Setup tab in the app (fake devices): RUNNING.md §1, then click Setup
 ```
+
+## M5 — recorder, replay, Takes
+
+```bash
+# Engine: record a take and replay it against a fake chromad (Older plays from 0)
+H=$(mktemp -d -t cx); hub/.venv/bin/python hub/chromad.py --fake --home $H &
+export CHROMA_HOME=$H
+python3 tools/chromactl.py op rec.start                      # switches to BOARD, new take
+python3 tools/chromactl.py intent fader ch=8 v=0.3; sleep 0.5
+python3 tools/chromactl.py intent flash ch=8 down=true; sleep 0.3
+python3 tools/chromactl.py intent flash ch=8 down=false
+python3 tools/chromactl.py op rec.stop                       # saved in $H/takes/<id>_older.jsonl
+python3 tools/chromactl.py op takes.list
+python3 tools/chromactl.py op play.seek pos_ms=0
+python3 tools/chromactl.py op play.start take_id=<id>        # replays on the SongClock
+python3 tools/chromactl.py op take.nudge take_id=<id> ms=40  # plays 40 ms later
+python3 tools/chromactl.py op play.stop
+kill %1; unset CHROMA_HOME
+
+# Tests (incl. the ±20 ms replay AC on a fake clock and on the real loop)
+(cd hub && .venv/bin/python -m pytest -q tests/test_takes.py tests/test_takes_daemon.py)
+(cd app && npx vitest run src/screens/TakesScreen.test.tsx)
+
+# Mock UI + side-by-side with gui-2 / gui-1 strip
+(cd app && npm run dev:mock -- --port 1430) &
+hub/.venv/bin/python tools/ui_compare.py takes /tmp/ui
+hub/.venv/bin/python tools/ui_compare.py console /tmp/ui --region 0 600 1178 691
+```
