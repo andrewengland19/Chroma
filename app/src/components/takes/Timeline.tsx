@@ -1,7 +1,7 @@
 // Takes timeline (gui-2 middle): ruler with markers, one lane per group (level curve +
 // flash blocks), playhead. Click = seek (when the take's song is playing); double-click
 // the ruler or press M = add a marker; click a marker flag = remove it.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel } from "../ui";
 import { laneSubtitle, markerColor, takeLanes, type Lane } from "../../lib/takes";
 import type { TakeEvent, TakeHeader } from "../../contracts";
@@ -30,7 +30,8 @@ export function Timeline({ header, events, pos, canSeek }: {
   const store = useStore();
   const dur = Math.max(1, header?.dur_ms ?? Math.max(1, ...events.map((e) => e.p)));
   const lanes = useMemo(() => (header ? takeLanes(header, events, dur) : []), [header, events, dur]);
-  const xr = (p: number) => (Math.min(dur, Math.max(0, p)) / dur) * PW;      // within the plot
+  // stable per take length, so lanes re-render only when the take changes (not per playhead tick)
+  const xr = useCallback((p: number) => (Math.min(dur, Math.max(0, p)) / dur) * PW, [dur]);
   const [adding, setAdding] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -47,16 +48,16 @@ export function Timeline({ header, events, pos, canSeek }: {
     return () => window.removeEventListener("keydown", onKey);
   }, [header, pos]);
 
-  const posAt = (clientX: number) => {
+  const posAt = useCallback((clientX: number) => {
     const r = ref.current!.getBoundingClientRect();
     const zoom = r.width / PANEL.width || 1;
     return Math.round(Math.min(1, Math.max(0, (clientX - r.left) / zoom - X0) / PW) * dur);
-  };
-  const seek = (clientX: number) => {
+  }, [dur]);
+  const seek = useCallback((clientX: number) => {
     if (!header || !canSeek) return;
     const p = posAt(clientX);
     if (p >= 0) void store.op("play.seek", { pos_ms: p });
-  };
+  }, [header, canSeek, posAt, store]);
   const addMarker = (label: string) => {
     if (header && adding != null && label.trim()) {
       void store.op("takes.marker.add", { take_id: header.id, p_ms: adding, label: label.trim().slice(0, 16) });
@@ -148,7 +149,7 @@ export function Timeline({ header, events, pos, canSeek }: {
   );
 }
 
-function LaneRow({ lane, top, xr, onSeek, canSeek }: {
+const LaneRow = memo(function LaneRow({ lane, top, xr, onSeek, canSeek }: {
   lane: Lane; top: number; xr: (p: number) => number; onSeek: (clientX: number) => void; canSeek: boolean;
 }) {
   const empty = lane.events === 0;
@@ -178,4 +179,4 @@ function LaneRow({ lane, top, xr, onSeek, canSeek }: {
       </div>
     </div>
   );
-}
+});

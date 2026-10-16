@@ -223,6 +223,14 @@ def test_store_round_trip_list_rename_flags_markers_duplicate_delete(tmp_path):
         s.get(new)
 
 
+def test_delete_never_overwrites_an_earlier_deleted_copy(tmp_path):
+    s = TakeStore(str(tmp_path))
+    for _ in range(2):
+        s.save(header(), [])
+        s.delete("20261016-120000")
+    assert sorted(os.listdir(tmp_path / ".deleted")) == ["20261016-120000_older.2.jsonl", "20261016-120000_older.jsonl"]
+
+
 def test_new_ids_never_collide(tmp_path):
     s = TakeStore(str(tmp_path))
     a = s.new_id(1_791_600_000)

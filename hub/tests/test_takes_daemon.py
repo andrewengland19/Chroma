@@ -12,6 +12,7 @@ import tempfile
 import pytest
 
 from conftest import assert_valid
+from outputs.base import HSB
 from testing.clock import FakeClock
 from test_rig_ops import op, start, stop
 
@@ -279,11 +280,15 @@ async def test_real_time_replay_through_the_running_loop_stays_within_20ms():
         d.poll_now()
         since = len(d.virtual.frames)
         await op(d, "play.start", take_id=tid)
+        t_play = d.clock.monotonic()
         await asyncio.sleep(2.0)
-        frames = [(t, round(h.b, 2)) for t, fid, h, _f in list(d.virtual.frames)[since:] if fid == VL]
+        frames = [(t, round(h.b, 2)) for t, fid, h, _f in list(d.virtual.frames)[since:]
+                  if fid == VL and t >= t_play + 0.3]           # the first event is due 0.5 s in
         errs = []
+        k = 0
         for e in evs:
-            hit = next(t for t, b in frames if b == round(e["v"], 2))
+            k = next(j for j in range(k, len(frames)) if frames[j][1] == round(e["v"], 2))
+            hit = frames[k][0]
             song_at = d.song.pos_ms() - (d.clock.monotonic() - hit) * 1000.0
             errs.append(song_at - e["p"])
         assert max(abs(x) for x in errs) <= 20, errs
@@ -291,3 +296,69 @@ async def test_real_time_replay_through_the_running_loop_stays_within_20ms():
         await d.handle({"op": "play.stop"})
         await d.handle({"op": "intent", "intent": {"intent": "who", "who": "auto"}})
         await stop(d, task)
+
+
+# ---- code-review regressions ---------------------------------------------------------------
+
+async def test_overdub_keeps_a_live_flash_and_releases_only_replayed_ones():
+    d, fc = fake_daemon()
+    tid = await record_script(d, fc)                       # old take flashes A8 at 1333..1601 ms
+    d.fake_provider.seek(0)
+    d.poll_now()
+    await op(d, "rec.start", take_id=tid, mode="overdub")
+    await d.apply_intent({"intent": "flash", "ch": 1, "down": True}, "ui")    # live, not in the old take
+    assert d.console.channel("A", 1).flash                 # not released by the overdub logic
+    advance(d, fc, 1400)
+    assert d.console.channel("A", 8).flash                 # replay holds A8 down
+    await d.apply_intent({"intent": "fader", "ch": 8, "v": 0.4}, "ui")       # live takes A8
+    assert not d.console.channel("A", 8).flash             # the replayed flash lets go
+    await d.apply_intent({"intent": "flash", "ch": 1, "down": False}, "ui")
+    await op(d, "rec.stop")
+    await d.shutdown()
+
+
+async def test_recording_into_a_nudged_take_is_stored_in_take_time():
+    d, fc = fake_daemon()
+    tid = await record_script(d, fc)
+    await op(d, "take.nudge", take_id=tid, ms=200)
+    d.fake_provider.seek(0)
+    d.poll_now()
+    await op(d, "rec.start", take_id=tid, mode="merge")
+    advance(d, fc, 3000)
+    await d.apply_intent({"intent": "blackout", "on": True}, "ui")
+    await op(d, "rec.stop")
+    ev = next(e for e in d.takes.store.get(tid)[1] if e.get("a") == "blackout")
+    assert ev["p"] == 2800                                 # heard at 3.0 s = take time 2.8 s
+    await d.shutdown()
+
+
+async def test_merge_rec_stops_a_running_playback_and_init_is_the_seeded_look():
+    d, fc = fake_daemon()
+    tid = await record_script(d, fc)
+    d.fake_provider.seek(0)
+    d.poll_now()
+    await op(d, "play.start", take_id=tid)
+    await op(d, "rec.start", take_id=tid, mode="merge")
+    assert d.takes.play_take is None and d.takes.replayer is None
+    await op(d, "rec.stop")
+    await d.shutdown()
+    # init is taken after the AUTO -> BOARD seed (D2)
+    d, fc = fake_daemon()
+    d.engine.enabled = True
+    d._leave_board()
+    d.art_look = lambda: {VL: HSB(200, 0.8, 0.66)}
+    await op(d, "rec.start")
+    assert d.takes.rec.header["init"]["channels"][7]["level"] == pytest.approx(0.66)
+    await op(d, "rec.stop")
+    await d.shutdown()
+
+
+async def test_a_refused_arm_is_not_left_armed():
+    d, fc = fake_daemon()
+    tid = await record_script(d, fc)
+    d.fake_provider.skip(1)                                # another song plays
+    d.poll_now()
+    with pytest.raises(Exception, match="play that song"):
+        await op(d, "rec.arm", take_id=tid, mode="merge")
+    assert d.takes.armed is None and d.state.build()["rec"]["state"] == "idle"
+    await d.shutdown()

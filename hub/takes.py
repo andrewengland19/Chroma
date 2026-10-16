@@ -241,7 +241,12 @@ class TakeStore:
         p = self.path(take_id)
         trash = os.path.join(self.root, ".deleted")
         os.makedirs(trash, exist_ok=True)
-        os.replace(p, os.path.join(trash, os.path.basename(p)))
+        dest = os.path.join(trash, os.path.basename(p))
+        n = 2
+        while os.path.exists(dest):                  # never overwrite an earlier deleted copy
+            dest = os.path.join(trash, f"{os.path.basename(p)[:-6]}.{n}.jsonl")
+            n += 1
+        os.replace(p, dest)
         self._cache.pop(p, None)
 
     def duplicate(self, take_id: str, now_s: float) -> str:
@@ -266,6 +271,7 @@ class Recorder:
     spans: dict = field(default_factory=dict)       # touch key -> [[p0, p1], ...] (OVERDUB)
     start_p: int = 0
     start_mono: float = 0.0
+    groups: set = field(default_factory=set)        # groups touched in this pass
 
     def add(self, p_ms: float, w_ms: int, intent: dict, resolved: dict) -> dict:
         ev = {"p": max(0, int(round(p_ms))), "w": int(w_ms), "i": intent}
@@ -273,6 +279,8 @@ class Recorder:
         if ev.get("g", "") is None:
             ev.pop("g")
         self.events.append(ev)
+        if ev.get("g") and ev.get("a") not in ("select", "assign"):
+            self.groups.add(ev["g"])
         k = touch_key(ev)
         sp = self.spans.setdefault(k, [])
         p0, p1 = ev["p"], ev["p"] + TOUCH_MS
@@ -290,7 +298,7 @@ class Recorder:
         return False
 
     def groups_touched(self) -> int:
-        return len({e.get("g") for e in self.events if e.get("g")})
+        return len(self.groups)
 
     def finish(self) -> list:
         """The take's events after this pass (D10)."""
@@ -419,6 +427,7 @@ class TakeService:
         self.loop = False
         self._kick = asyncio.Event()
         self._activity_cache: Optional[tuple] = None
+        self._replay_flash: set = set()               # channels whose FLASH the replay holds down
 
     # ---- State -------------------------------------------------------------------------
     def state_fields(self) -> dict:
@@ -512,7 +521,12 @@ class TakeService:
             name = self.store.get(take_id)[0].get("name", "")
         self.armed = {"take_id": take_id, "mode": mode, "name": name}
         if self._playing_track():
-            self.start(take_id, mode)
+            try:
+                self.start(take_id, mode)
+            except TakeError:
+                self.armed = None                     # refused now: not left armed to fail again
+                self.changed()
+                raise
         else:
             self.changed()
 
@@ -541,13 +555,15 @@ class TakeService:
             header, old = self.store.get(take_id)
             if not self._matches(header):
                 raise TakeError(f"this take is for “{header.get('title')}”; play that song to record into it")
+        if mode != "overdub" and self.play_take is not None:
+            self.stop_play()                          # REPLACE / MERGE never play the old take (§5.4)
+        d.ensure_board("recording")                   # D2 seed first: init = the look the room shows
         if mode == "replace" or not old:
             header["init"] = C.snapshot_init(d.console)
             header["groups"] = self._groups_meta()
         else:
             header.setdefault("groups", {}).update({k: v for k, v in self._groups_meta().items()
                                                     if k not in header["groups"]})
-        d.ensure_board("recording")
         d.song.reset_error_stats()
         self.armed = None
         self.rec = Recorder(header=header, mode=mode, old=old, start_p=int(d.song.pos_ms() or 0),
@@ -567,9 +583,16 @@ class TakeService:
         pos = self.d.song.pos_ms()
         if pos is None:
             return
-        ev = r.add(pos, int(self.d.clock.time() * 1000), {k: v for k, v in intent.items() if k != "src"}, resolved)
+        # take time: replay plays p at p + nudge + offset, so what the performer did at song
+        # position `pos` is stored at pos - (nudge + offset), aligned with the events heard
+        shift = int(r.header.get("nudge_ms") or 0) + self.offset_ms
+        ev = r.add(pos - shift, int(self.d.clock.time() * 1000), {k: v for k, v in intent.items() if k != "src"}, resolved)
         if r.mode == "overdub" and self.replayer is not None:
-            self._release_replayed_flash(touch_key(ev))
+            key = touch_key(ev)
+            if ev.get("a") == "flash":
+                self._replay_flash.discard(key)       # live input owns this FLASH now
+            else:
+                self._release_replayed_flash(key)
         self.changed()
 
     def stop_rec(self, reason: str = "") -> Optional[str]:
@@ -631,6 +654,7 @@ class TakeService:
         d, h = self.d, self.play_take
         if h.get("init"):
             C.load_init(d.console, h["init"])
+        self._replay_flash.clear()
         for ev in self.replayer.seek(pos_ms or 0):
             if not self._skip(ev):
                 self._apply(ev, drive=False)
@@ -684,10 +708,14 @@ class TakeService:
             self.d.apply_replay(ev, drive=drive)
         except Exception as e:                       # a bad event never stops the show
             log.debug(f"replay event skipped ({e}): {ev}")
+            return
+        if ev.get("a") == "flash":
+            key = touch_key(ev)
+            (self._replay_flash.add if ev.get("v") is True else self._replay_flash.discard)(key)
 
     def _release_replayed_flash(self, key) -> None:
         """OVERDUB: live input takes a channel; a flash the old take holds there lets go."""
-        if not isinstance(key, tuple):
+        if not isinstance(key, tuple) or key not in self._replay_flash:
             return
         c = self.d.console.channel(*key)
         if c.flash:
