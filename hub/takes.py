@@ -716,22 +716,27 @@ class TakeService:
             return self.TICK_MAX_S
         return min(self.TICK_MAX_S, max(0.0, (nxt - pos) / 1000.0))
 
+    async def run_once(self) -> Optional[float]:
+        """One pass of the loop: replay what is due, start an armed take once playing."""
+        delay = None
+        try:
+            delay = self.tick()
+        except Exception as e:
+            log.warning(f"replay tick failed: {e}")
+        if self.armed is not None and self.rec is None and self._playing_track():
+            try:
+                self.start(self.armed["take_id"], self.armed["mode"])
+            except TakeError as e:
+                self.armed = None
+                self.d.ipc.toast("warn", str(e))
+                self.changed()
+        if self.rec is not None:
+            self.changed()                            # elapsed time
+        return delay
+
     async def run(self) -> None:
         while True:
-            delay = None
-            try:
-                delay = self.tick()
-            except Exception as e:
-                log.warning(f"replay tick failed: {e}")
-            if self.armed is not None and self.rec is None and self._playing_track():
-                try:
-                    self.start(self.armed["take_id"], self.armed["mode"])
-                except TakeError as e:
-                    self.armed = None
-                    self.d.ipc.toast("warn", str(e))
-                    self.changed()
-            if self.rec is not None:
-                self.changed()                        # elapsed time
+            delay = await self.run_once()
             try:
                 await asyncio.wait_for(self._kick.wait(), delay if delay is not None else 0.25)
             except asyncio.TimeoutError:
