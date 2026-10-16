@@ -19,6 +19,8 @@
     "markers": { "type": "array", "items": { "$ref": "#/$defs/marker" } },
     "created_ms": { "type": "integer", "minimum": 0, "description": "Wall-clock ms when recording started." },
     "performer": { "type": "string" },
+    "art_hex": { "oneOf": [{ "$ref": "common.schema.json#/$defs/hex" }, { "type": "null" }],
+                 "description": "Dominant album-art colour when recording started (library thumbnail)." },
     "sync_err_ms": { "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }],
                      "description": "Largest SongClock resync correction seen while recording." },
     "init": { "$ref": "#/$defs/init" },

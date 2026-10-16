@@ -264,6 +264,9 @@ export interface ChromaContracts {
   takeEvent?: TakeEvent;
   fixturesFile?: FixturesFile;
   consoleFile?: ConsoleFile;
+  takesList?: TakesList;
+  takeFull?: TakeFull;
+  takeExport?: TakeExport;
 }
 /**
  * Full console/engine state sent by chromad (BUILD_ORDER §5.1). Patches are RFC 7386 merge patches against it.
@@ -310,6 +313,7 @@ export interface State {
    * Bumps when the take library changes; the UI refetches takes.list.
    */
   takes_rev: number;
+  activity: Activity;
 }
 export interface NowPlayingState {
   /**
@@ -394,6 +398,24 @@ export interface Health {
    * none = never paired; virtual = board_sim is the source; online/offline = physical board.
    */
   board: "none" | "virtual" | "online" | "offline";
+}
+/**
+ * Console activity strip (gui-1 bottom): one lane per group with event spans of the take being recorded or played (song ms).
+ */
+export interface Activity {
+  source: "rec" | "play" | null;
+  dur_ms: number | null;
+  /**
+   * @maxItems 24
+   */
+  lanes: {
+    group_id: string;
+    color: string;
+    /**
+     * @maxItems 200
+     */
+    spans: number[][];
+  }[];
 }
 /**
  * Raw fader position. Board-sourced values go through pickup (§5.3).
@@ -578,6 +600,10 @@ export interface TakeHeader {
   created_ms?: number;
   performer?: string;
   /**
+   * Dominant album-art colour when recording started (library thumbnail).
+   */
+  art_hex?: string | null;
+  /**
    * Largest SongClock resync correction seen while recording.
    */
   sync_err_ms?: number | null;
@@ -716,6 +742,30 @@ export interface Cue {
    * Snapshot of all 24 channels (not master / who / bank); null = empty.
    */
   look: LookChannel[] | null;
+}
+export interface TakesList {
+  takes: TakeSummary[];
+}
+export interface TakeSummary {
+  id: string;
+  name: string;
+  title: string;
+  artist: string;
+  album: string;
+  dur_ms: number | null;
+  created_ms: number;
+  events: number;
+  groups_used: string[];
+  training: boolean;
+  art_hex?: string | null;
+}
+export interface TakeFull {
+  header: TakeHeader;
+  events: TakeEvent[];
+}
+export interface TakeExport {
+  jsonl: string;
+  filename: string;
 }
 
 export type Channel = ChannelState;

@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["now", "who", "art_mode", "bank", "fader_fn", "master", "blackout", "channels",
                "last_touched", "room", "cues", "cue_active", "palette", "rec", "play", "health",
-               "fixtures_rev", "takes_rev"],
+               "fixtures_rev", "takes_rev", "activity"],
   "additionalProperties": false,
   "properties": {
     "now": { "$ref": "#/$defs/now" },
@@ -26,7 +26,8 @@
     "play": { "$ref": "#/$defs/play" },
     "health": { "$ref": "#/$defs/health" },
     "fixtures_rev": { "type": "integer", "minimum": 0, "description": "Bumps when fixtures/groups/banks change; the UI refetches them." },
-    "takes_rev": { "type": "integer", "minimum": 0, "description": "Bumps when the take library changes; the UI refetches takes.list." }
+    "takes_rev": { "type": "integer", "minimum": 0, "description": "Bumps when the take library changes; the UI refetches takes.list." },
+    "activity": { "$ref": "#/$defs/activity" }
   },
   "$defs": {
     "now": {
@@ -93,6 +94,22 @@
         "mode": { "$ref": "common.schema.json#/$defs/record_mode" },
         "name": { "type": "string" },
         "groups_touched": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "activity": {
+      "type": "object", "title": "Activity",
+      "description": "Console activity strip (gui-1 bottom): one lane per group with event spans of the take being recorded or played (song ms).",
+      "required": ["source", "dur_ms", "lanes"], "additionalProperties": false,
+      "properties": {
+        "source": { "enum": ["rec", "play", null] },
+        "dur_ms": { "oneOf": [{ "$ref": "common.schema.json#/$defs/ms" }, { "type": "null" }] },
+        "lanes": { "type": "array", "maxItems": 24, "items": {
+          "type": "object", "required": ["group_id", "color", "spans"], "additionalProperties": false,
+          "properties": {
+            "group_id": { "$ref": "common.schema.json#/$defs/slug_id" },
+            "color": { "$ref": "common.schema.json#/$defs/hex" },
+            "spans": { "type": "array", "maxItems": 200, "items": {
+              "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "common.schema.json#/$defs/ms" } } } } } }
       }
     },
     "play": {

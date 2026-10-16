@@ -20,6 +20,9 @@ const files = {
   takeEvent: "take-event.schema.json",
   fixturesFile: "fixtures.schema.json",
   consoleFile: "console.schema.json",
+  takesList: "ipc-response.schema.json#/$defs/takes_list",
+  takeFull: "ipc-response.schema.json#/$defs/take_full",
+  takeExport: "ipc-response.schema.json#/$defs/take_export",
 };
 
 // One synthetic root so shared definitions are declared exactly once.

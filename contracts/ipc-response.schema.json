@@ -26,6 +26,19 @@
         "art_hex": { "oneOf": [{ "$ref": "common.schema.json#/$defs/hex" }, { "type": "null" }] }
       }
     },
+    "takes_list": {
+      "type": "object", "title": "TakesList", "required": ["takes"],
+      "properties": { "takes": { "type": "array", "items": { "$ref": "#/$defs/take_summary" } } }
+    },
+    "take_full": {
+      "type": "object", "title": "TakeFull", "required": ["header", "events"],
+      "properties": { "header": { "$ref": "take-header.schema.json" },
+                      "events": { "type": "array", "items": { "$ref": "take-event.schema.json" } } }
+    },
+    "take_export": {
+      "type": "object", "title": "TakeExport", "required": ["jsonl", "filename"],
+      "properties": { "jsonl": { "type": "string" }, "filename": { "type": "string" } }
+    },
     "pairing": {
       "type": "object", "title": "BoardPairing", "required": ["key", "port", "hosts"], "additionalProperties": false,
       "properties": { "key": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "port": { "type": "integer" },
