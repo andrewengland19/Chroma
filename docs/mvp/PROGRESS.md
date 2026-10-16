@@ -14,15 +14,17 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
-| M4 console, intents, AUTO/BOARD | `app/m4-console` | **in progress** — rebased onto 79de99f |
-| M5 recorder, replay, Takes | `app/m5-takes` | — |
+| M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
+| M5 recorder, replay, Takes | `app/m5-takes` | next — branch created from b88d544 |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-14: **M0–M3 done and merged into local main (8b29256)**; next is **M4 (console, intents,
-AUTO/BOARD)** on branch `app/m4-console` (already created from 8b29256 in the worktree; it only holds this note). Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
+Status on 2026-10-16: **M0–M4 done and merged into local main (b88d544)**; next is **M5 (recorder, replay, Takes)**
+on branch `app/m5-takes` (created from b88d544 in the worktree; it only holds this note). Hardware checks are collected
+in `HARDWARE_CHECKLIST.md` (none run yet). Open user decision: should BLACKOUT bypass the D7 strobe hold? (see the M4
+code-review notes).
 
 How the build has been run (keep doing it this way):
 - Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
@@ -40,9 +42,11 @@ How the build has been run (keep doing it this way):
   screenshots in the batched hardware request instead.
 - Contracts first: change `contracts/*.schema.json` + examples, `npm --prefix app run gen:types`, then code.
 
-M4 starting points: `hub/console.py` has the data model; intents arrive in `daemon.apply_intent` (only `who` today);
-outputs are `self.lifx_out` / `self.virtual`; per-fixture limits come from `FixtureStore.limits()` (D8); the strobe
-definition is D7; board seeding is D2; `LifxOutput.forget_power()` should be called when switching to BOARD.
+M5 starting points: every console change enters through `daemon.apply_intent(intent, src)` (src `ui|board|replay|cli`)
+and `console.apply` returns the resolved effects. That is the recorder's hook (D9: store resolved `b/c/a/v` beside the
+verbatim intent). Replay = `apply_intent(..., src="replay")` driven by the SongClock (`self.song`). The output path
+(`OutputScheduler`) already coalesces and logs latency per fixture (use it for the ±20 ms replay check on the
+virtual output). `console.to_file` gives the take header's `init` snapshot. Fake-clock testing: `scheduler.step(now)`.
 
 ---
 
@@ -323,3 +327,7 @@ virtual light went to full, and `console.json` was written at shutdown with the 
   is an edge too. Letting blackout bypass the limit would let blackout toggling strobe above 3 Hz (§8.1), so it is
   unchanged.
 `tools/test_all.sh`: 328 + 34 + 14 passed.
+
+**Merged** into main as b88d544 (2026-10-16). Re-test on main: pytest in the user's checkout 328 passed; full
+`tools/test_all.sh` in a detached worktree passed (328 + 34 vitest + 14 cargo); `lite show status` → stopped (it was
+already stopped before the merge; not started by the builder).
