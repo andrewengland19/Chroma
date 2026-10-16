@@ -62,6 +62,9 @@ function olderEvents(dur: number): TakeEvent[] {
       out.push(ev(t * 1000, "level", +v.toFixed(3)));
       out.push(ev(t * 1000 + 350, "level", +Math.min(1, v + 0.01).toFixed(3)));
     }
+    for (const at of [30, 118]) {                        // a colour change per section
+      out.push({ p: at * 1000, w: w0 + at * 1000, i: { intent: "hue", v: (k * 45 + at) % 360 }, g, b: "A", c: ch, a: "hue", v: (k * 45 + at) % 360 });
+    }
     if (g === "counter" || g === "lr-l" || g === "fx") {
       for (const at of [72, 76, 80, 84, 150, 154, 158]) {
         out.push(ev(at * 1000, "flash", true));

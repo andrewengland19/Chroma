@@ -69,6 +69,41 @@ async fn chromad_request(shell: tauri::State<'_, Shell>, req: Value) -> Result<V
     reply
 }
 
+/// Take export (Takes screen): `filename` reduced to a safe basename, written into
+/// ~/Downloads without overwriting (" 2", " 3", … before the extension). Returns the path.
+#[tauri::command]
+fn save_export(filename: String, text: String) -> Result<String, String> {
+    let home = std::env::var_os("HOME").ok_or("HOME is not set")?;
+    let dir = std::path::Path::new(&home).join("Downloads");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = export_path(&dir, &filename);
+    std::fs::write(&path, text).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+fn export_path(dir: &std::path::Path, filename: &str) -> std::path::PathBuf {
+    let base: String = filename
+        .rsplit('/')
+        .next()
+        .unwrap_or("")
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+        .collect();
+    let base = base.trim_start_matches('.');
+    let base = if base.is_empty() { "take.jsonl" } else { base };
+    let (stem, ext) = match base.rfind('.') {
+        Some(i) if i > 0 => (&base[..i], &base[i..]),
+        _ => (base, ""),
+    };
+    let mut path = dir.join(base);
+    let mut n = 2;
+    while path.exists() {
+        path = dir.join(format!("{stem} {n}{ext}"));
+        n += 1;
+    }
+    path
+}
+
 #[tauri::command]
 fn engine_status(shell: tauri::State<'_, Shell>) -> EngineStatus {
     shell.sup.status()
@@ -192,7 +227,7 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![chromad_request, engine_status])
+        .invoke_handler(tauri::generate_handler![chromad_request, engine_status, save_export])
         .build(tauri::generate_context!())
         .expect("error while building the CHROMA app")
         .run(|app, event| match event {
@@ -227,5 +262,22 @@ mod tests {
         assert_eq!(status_line(&s), "Engine: running");
         s.phase = "restarting".into();
         assert_eq!(status_line(&s), "Engine: restarting…");
+    }
+}
+
+#[cfg(test)]
+mod export_tests {
+    use super::export_path;
+
+    #[test]
+    fn export_path_is_a_safe_basename_and_never_overwrites() {
+        let dir = std::env::temp_dir().join(format!("chroma-export-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = export_path(&dir, "../../etc/20261009-214800_older.jsonl");
+        assert_eq!(p, dir.join("20261009-214800_older.jsonl"));
+        std::fs::write(&p, "x").unwrap();
+        assert_eq!(export_path(&dir, "20261009-214800_older.jsonl"), dir.join("20261009-214800_older 2.jsonl"));
+        assert_eq!(export_path(&dir, "..."), dir.join("take.jsonl"));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

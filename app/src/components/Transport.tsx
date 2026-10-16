@@ -19,8 +19,9 @@ function Btn({ style, children, title, testId, onClick, pressed }: {
 /** REC / PLAY / STOP. REC lit = recording (outlined = idle, dimmed fill = armed); PLAY lit =
  *  a take is playing. `takeId`: the take the buttons act on (Takes screen); without it REC
  *  records a new take and PLAY plays the newest take of the song now playing (Console). */
-export function RecPlayStop({ left, top, takeId, mode, loop }: {
+export function RecPlayStop({ left, top, takeId, mode, loop, stopBorder = "var(--color-fg)" }: {
   left: number; top: number; takeId?: string | null; mode?: "replace" | "merge" | "overdub"; loop?: boolean;
+  stopBorder?: string;
 }) {
   const store = useStore();
   const rec = useSelect((s) => s.state?.rec);
@@ -47,7 +48,7 @@ export function RecPlayStop({ left, top, takeId, mode, loop }: {
   };
   const recStyle: CSSProperties = recording
     ? { background: "var(--color-rec)", color: "#fff", border: "1.5px solid var(--color-rec)" }
-    : { background: armed ? "#5a2930" : "#2b1d21", color: "var(--color-rec)", border: "1.5px solid var(--color-rec)" };
+    : { background: armed ? "#5a2930" : "#3a2328", color: "var(--color-rec)", border: "1.5px solid var(--color-rec)" };
   const playStyle: CSSProperties = playing
     ? { background: "var(--color-go)", color: "#0d1f15", border: "1.5px solid var(--color-go)" }
     : { background: "#222a28", color: "var(--color-go)", border: "1.5px solid var(--color-go)" };
@@ -65,7 +66,7 @@ export function RecPlayStop({ left, top, takeId, mode, loop }: {
         <svg width="8" height="9" viewBox="0 0 8 9"><path d="M0 0 L8 4.5 L0 9 Z" fill="currentColor" /></svg>PLAY
       </Btn>
       <Btn testId="btn-stop" onClick={onStop} title="Stop recording / playback"
-        style={{ left: left + 147, top, width: 68, background: "var(--color-ctl)", border: "1.5px solid var(--color-fg)", color: "var(--color-fg)" }}>
+        style={{ left: left + 147, top, width: 68, background: "var(--color-ctl)", border: `1.5px solid ${stopBorder}`, color: "var(--color-fg)" }}>
         <span style={{ width: 5, height: 5, background: "currentColor", display: "inline-block" }} />STOP
       </Btn>
     </>
