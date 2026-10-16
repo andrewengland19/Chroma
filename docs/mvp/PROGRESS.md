@@ -281,5 +281,27 @@ coalesced, D8 cap incl. flash, assign persistence, restart persistence, corrupt 
 path to the socket: p50 0.13 ms on single moves; during a 100-moves/s drag p50 4.7 / p95 11.7 / max 12.0 ms. That
 includes waiting for the 50 ms slot. The real bulb number is H4.1.
 
-Next: step 5, the Console screen per gui-1 (faders + ghost markers, FLASH, ASSIGN picker, hue/sat knobs, palette, cue
-pads, bank tabs, FADER FUNCTION, master, BLACKOUT, scribble strips).
+**Step 5, Console screen (gui-1)**: `app/src/components/console/BankPanel.tsx` (BANK tabs, FADER FUNCTION, 8 strips,
+MASTER) and `ColorCues.tsx` (COLOR, CUES), wired into `ConsoleScreen`. The top BLACKOUT is live too. Everything
+shown comes from the State; controls only send intents.
+- Strips: scribble strip = group name from the rig (green mono, "—" when unbound). ASSIGN = select (X2) + group picker
+  (D11, incl. None). Fader: drag or click anywhere on the track, arrow keys; fill = the channel's live colour (X5);
+  scale 100/50/0, or 360/180/0 in HUE. A disengaged channel shows its cap as a dashed **ghost marker** with a "not
+  picked up" tooltip. Value text follows the fader function. FLASH is momentary (pointer down/up/cancel/lost capture),
+  lit and glowing while the State says `flash`. Channel number.
+- MASTER fader + BLACKOUT, both blackout buttons show the state (filled red when on).
+- COLOR: hue/sat knobs (270° arc, 4 px of vertical drag = 1 encoder detent, wheel, arrows) show the last-touched
+  channel ("—" when none). Palette swatches: tap = apply, hold 600 ms or shift = store (D12). The swatch matching the
+  last-touched colour gets the white ring.
+- CUES: tap = recall, shift + tap or hold = store; the active cue is filled; empty cues are dashed.
+- Mock engine mirrors the console intents (no pickup/arbitration) so the browser mock responds.
+- Visual check (`tools/ui_compare.py console`, 2x headless Chrome): strips, scribble strips, ASSIGN, tracks, caps, values,
+  FLASH rings and numbers within about 1 px of gui-1; COLOR and CUES within about 1–2 px. Known differences: headless
+  Chrome renders SF slightly wider (the palette hint is set at 6.5 px to stay on one line), and the recording strip
+  stays a placeholder until M5.
+Tests: `ConsoleControls.test.tsx` 10 (strips + live colours, fader drag + master, FLASH press/release, bank/fn + ghost
+markers + hue scale, ASSIGN picker, both BLACKOUTs, knobs + detents + wheel, palette tap/hold, cue recall/store,
+engine error toast). `tools/test_all.sh`: 326 + 31 + 14 passed.
+
+Remaining for M4: native self-test of the window, `/code-review high`, merge, H4 hardware request (H4.1 + a
+screenshot of the Console in fake mode).

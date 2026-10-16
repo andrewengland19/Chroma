@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
+import { BlackoutButton } from "./console/BankPanel";
 import { Chip } from "./ui";
 import { useSelect } from "../store";
 
 function Btn({ style, children, title, testId }: { style: CSSProperties; children: ReactNode; title: string; testId: string }) {
-  // Rendered per the mockup; recording/playback arrive in M5, blackout in M4.
+  // Rendered per the mockup; recording/playback arrive in M5.
   return (
     <button aria-disabled="true" title={title} data-testid={testId}
       className="absolute flex items-center justify-center rounded-[6px] font-bold"
@@ -14,6 +15,7 @@ function Btn({ style, children, title, testId }: { style: CSSProperties; childre
 }
 
 export function TransportButtons() {
+  const blackout = useSelect((s) => s.state?.blackout) ?? false;
   return (
     <>
       <Btn testId="btn-rec" title="Record (arrives in M5)" style={{ left: 791, width: 68, background: "var(--color-rec)", color: "#fff" }}>
@@ -27,10 +29,8 @@ export function TransportButtons() {
         style={{ left: 938, width: 68, background: "var(--color-ctl)", border: "1.5px solid var(--color-fg)", color: "var(--color-fg)" }}>
         <span style={{ width: 5, height: 5, background: "currentColor", display: "inline-block" }} />STOP
       </Btn>
-      <Btn testId="btn-blackout" title="Blackout (arrives in M4)"
-        style={{ left: 1013, width: 75, border: "1.5px solid var(--color-red)", color: "var(--color-red)" }}>
-        BLACKOUT
-      </Btn>
+      <BlackoutButton testId="btn-blackout" on={blackout}
+        style={{ left: 1013, top: 52, width: 75, height: 29, fontSize: 9.5, borderRadius: 6 }} />
     </>
   );
 }
