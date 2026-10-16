@@ -6,7 +6,8 @@
 // Real engine semantics live in hub/ (tested with pytest); this only mirrors enough
 // of them for the UI to be exercised by hand and by component tests.
 import mockupState from "../../../contracts/examples/state/ok-mockup-console.json";
-import type { IpcEvent, State } from "../contracts";
+import type { ChannelState, IpcEvent, State } from "../contracts";
+import { hexToHsv, hsvToHex } from "../lib/color";
 import { applyMergePatch } from "../lib/mergePatch";
 import type { EngineStatus, IpcClient, Reply } from "../ipc/types";
 import { MOCK_ART } from "./art";
@@ -96,11 +97,107 @@ export class MockEngine implements IpcClient {
           this.patch({ who: i.who });
           return { ok: true };
         }
-        return { ok: false, error: `mock: intent ${String(i?.intent)} not handled yet` };
+        return this.console(i);
       }
       default:
         if (typeof req.op === "string" && /^(fixtures|groups|banks)\./.test(req.op)) return this.rig.handle(req);
         return { ok: false, error: `unknown op '${String(req.op)}'` };
+    }
+  }
+
+  /** A small mirror of hub/console.py's intent rules (no pickup, no arbitration). */
+  private looks = new Map<number, ChannelState[]>();
+
+  private console(i: { intent: string; [k: string]: unknown }): Reply {
+    const s = this.state;
+    const chans = s.channels.map((c) => ({ ...c }));
+    const find = (bank: string, ch: number) => chans.find((c) => c.bank === bank && c.ch === ch)!;
+    const touched = () => {
+      const lt = s.last_touched;
+      return lt ? find(lt.bank, lt.ch) : null;
+    };
+    const patchChans = (extra: Record<string, unknown> = {}) => this.patch({ channels: chans, ...extra });
+    switch (i.intent) {
+      case "fader": {
+        const v = Number(i.v);
+        if (!(v >= 0 && v <= 1)) return { ok: false, error: "v must be 0..1" };
+        if (i.ch === "master") {
+          this.patch({ master: v });
+          return { ok: true };
+        }
+        const c = find(s.bank, Number(i.ch));
+        if (s.fader_fn === "level") c.level = v;
+        else if (s.fader_fn === "hue") c.hue = Math.min(v * 360, 359.9);
+        else c.sat = v;
+        patchChans({ last_touched: { bank: c.bank, ch: c.ch }, cue_active: null });
+        return { ok: true };
+      }
+      case "flash": {
+        const c = find(s.bank, Number(i.ch));
+        c.flash = !!i.down;
+        patchChans(i.down ? { last_touched: { bank: c.bank, ch: c.ch } } : {});
+        return { ok: true };
+      }
+      case "assign": {
+        const c = find(s.bank, Number(i.ch));
+        if ("group_id" in i) c.group_id = (i.group_id as string | null) ?? null;
+        patchChans({ last_touched: { bank: c.bank, ch: c.ch } });
+        return { ok: true };
+      }
+      case "bank":
+        chans.forEach((c) => { c.engaged = false; });
+        patchChans({ bank: i.bank });
+        return { ok: true };
+      case "fader_fn":
+        chans.forEach((c) => { c.engaged = false; });
+        patchChans({ fader_fn: i.fn });
+        return { ok: true };
+      case "hue":
+      case "sat": {
+        const c = touched();
+        if (!c) return { ok: false, error: "touch a channel first (fader, FLASH or ASSIGN)" };
+        if (i.intent === "hue") c.hue = typeof i.delta === "number" ? (((c.hue + i.delta * 5) % 360) + 360) % 360 : Number(i.v);
+        else c.sat = typeof i.delta === "number" ? Math.min(1, Math.max(0, c.sat + i.delta * 0.02)) : Number(i.v);
+        patchChans({ cue_active: null });
+        return { ok: true };
+      }
+      case "palette_apply": {
+        const c = touched();
+        if (!c) return { ok: false, error: "touch a channel first (fader, FLASH or ASSIGN)" };
+        const p = hexToHsv(s.palette[Number(i.i)]);
+        c.hue = p.h;
+        c.sat = p.s;
+        patchChans({ cue_active: null });
+        return { ok: true };
+      }
+      case "palette_store": {
+        const c = touched();
+        if (!c) return { ok: false, error: "touch a channel first (fader, FLASH or ASSIGN)" };
+        const palette = [...s.palette];
+        palette[Number(i.i)] = hsvToHex(c.hue, c.sat, 1);
+        this.patch({ palette });
+        return { ok: true };
+      }
+      case "cue_store": {
+        const n = Number(i.i);
+        this.looks.set(n, chans);
+        this.patch({ cues: s.cues.map((c) => (c.id === n ? { ...c, stored: true } : c)), cue_active: n });
+        return { ok: true };
+      }
+      case "cue_recall": {
+        const n = Number(i.i);
+        const cue = s.cues[n];
+        if (!cue?.stored) return { ok: false, error: `cue ${n + 1} (${cue?.name}) is empty` };
+        const look = this.looks.get(n);
+        if (look) look.forEach((l, k) => Object.assign(chans[k], { level: l.level, hue: l.hue, sat: l.sat }));
+        patchChans({ cue_active: n });
+        return { ok: true };
+      }
+      case "blackout":
+        this.patch({ blackout: !!i.on });
+        return { ok: true };
+      default:
+        return { ok: false, error: `unknown intent '${String(i?.intent)}'` };
     }
   }
 

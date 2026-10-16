@@ -114,7 +114,7 @@ async def test_ops_art_mode_who_refresh_and_errors(daemon):
     assert res[3]["ok"] and res[3]["result"]["message"] in ("refreshed, but painting is disabled",
                                                            "lights refreshed")
     assert res[4]["error"] == "unknown intent 'strobe'"
-    assert "M4" in res[5]["error"]
+    assert res[5]["ok"]                      # the console drives in BOARD (M4)
     assert res[6]["error"] == "unknown op 'format_disk'"
     # back to AUTO repaints at once from cached art (DECISIONS X3)
     before = len(daemon.engine.lifx.fake_bulbs[0].calls)
@@ -229,9 +229,11 @@ async def test_who_intent_never_blocks_the_connection(daemon, monkeypatch):
     res, _ = await ipc(daemon.ipc.path, {"op": "intent", "intent": {"intent": "who", "who": "board"}},
                        {"op": "get_state"})
     assert time.monotonic() - t0 < 1.0 and res[0]["ok"] and res[1]["ok"]
-    assert daemon.engine.enabled is True               # still pending
+    assert res[1]["state"]["who"] == "board"           # flips at once: later intents see BOARD
+    from config import Config
+    assert Config.load().enabled is True               # the slow part (save, repaint) still pending
     gate.set()
-    assert await wait_for(lambda: daemon.engine.enabled is False)
+    assert await wait_for(lambda: Config.load().enabled is False)
 
 
 def test_guard_also_protects_the_live_hub_on_the_default_home(tmp_path):

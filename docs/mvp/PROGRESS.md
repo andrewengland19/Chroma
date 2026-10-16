@@ -13,16 +13,16 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M0 contracts, scaffolding, fakes | `app/m0-contracts` | **done** — merged 072a395 |
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
-| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** (pending-hardware: H3.1–H3.2) |
-| M4 console, intents, AUTO/BOARD | `app/m4-console` | — |
+| M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
+| M4 console, intents, AUTO/BOARD | `app/m4-console` | **in progress** — rebased onto 79de99f |
 | M5 recorder, replay, Takes | `app/m5-takes` | — |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-14: **M0–M3 done and merged into local main**; next is **M4 (console, intents, AUTO/BOARD)** on a new
-branch `app/m4-console` from local main. Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
+Status on 2026-10-14: **M0–M3 done and merged into local main (8b29256)**; next is **M4 (console, intents,
+AUTO/BOARD)** on branch `app/m4-console` (already created from 8b29256 in the worktree; it only holds this note). Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
 
 How the build has been run (keep doing it this way):
 - Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
@@ -201,6 +201,9 @@ which seeded the rig and imported 8 fake bulbs (5 active, 3 not added).
 fixture's real status (planned = grey; the mockup shows green); the flash-rate track is drawn to 10 Hz with everything
 above the 3 Hz safety cap hatched and unreachable (the mockup puts the 3 Hz knob ~30 % along).
 
+**Merged** into main as 8b29256 (2026-10-14). Re-test on main: pytest in the user's checkout 251 passed; full
+`tools/test_all.sh` in a detached worktree passed (251 + 21 vitest + 14 cargo); `lite show status` → running.
+
 **Code review (high)**: 7 findings, all fixed (MAC linking, corrupt-file recovery, limits-only and atomic-swap ops,
 remove confirmation, import retry, non-blocking blink).
 
@@ -215,3 +218,108 @@ Tests: 5 new (blink ack/off/unreachable, fake toast, discover refreshes a moved 
 Code review (high): 5 findings, all fixed: IP-only fixtures keep the fire-and-forget pulse (lifxlan matches acks by
 MAC); acked calls are retried 3x; the toast is "could not reach X at IP (no reply)" with details logged; a double-click
 doesn't start a second blink; fakes raise lifxlan's WorkflowException.
+
+---
+
+## M4 — console, intents, AUTO/BOARD
+
+Started 2026-10-14 (branch rebased onto main 79de99f, after the Test-blink fix).
+
+**Contracts audit (no schema change needed)**: every §5.2 intent has a schema def and ok/bad examples
+(`contracts/intent.schema.json`, 19 ok + 8 bad). State already carries `master`, `blackout`, `last_touched`,
+`cue_active`, `cues[]{id,name,stored}`, `palette[8]` and per-channel `level/hue/sat/flash/engaged`. The ghost marker
+is drawn at the stored `level` when `engaged=false`, so the raw board position stays out of State. `console.json` is
+`contracts/console.schema.json` (24 look channels, 8 palette, 8 cues with optional `fade_ms`, default 0 per D16).
+Cue names go through the existing `cues.rename` op. `contracts.ts` is up to date.
+
+**§5.3 console logic (pure, `hub/console.py` + `hub/oklab.py`)**: `apply(state, intent, src)` handles all 12
+console intents (`who` stays with the daemon) and returns effects for the daemon: `("assign", bank, ch, gid)` to
+persist in the rig's banks, `("recall", i, fade_ms)`. `resolve(state, members, limits)` → HSB per fixture: HTP level
+(flash = 1.0), LTP hue/sat by touch order (cue-recall ties go to the brighter channel), × master, blackout → 0 (beats
+flash), then the D8 `max_level` cap (flash can't exceed it). Fixtures in no bound group are absent (they hold, D16).
+`seed_from_art` = D2: after it, each fixture keeps its art colour / brightness until one of its channels moves
+colour / level. Channels show the OKLab mean hue/sat and the mean brightness. `StrobeLimiter` = D7 per fixture: an
+edge is |Δlevel| ≥ 0.10 or an OKLab jump ≥ 0.10 with both ends ≥ 0.10. The budget is `floor(2·hz)` edges per
+`n/(2·hz)` s (3 Hz = 6 per 1 s; never above 3 Hz). The newest held value goes out via `poll`/`next_due_ms`.
+`to_file`/`from_file` = console.json.
+Pickup: the engaged state describes the physical fader. Board moves apply only after reaching (±0.02) or crossing
+the stored value. The first sight of a fader that is far away is ignored (no jump on connect). A bank/fn switch
+disengages, then re-engages the faders that already match. UI/cue/palette/encoder changes apply at once and
+disengage a board fader that no longer matches. With no board seen, everything stays engaged (no ghost markers
+without a board). Encoders: 5° / 2 % per detent.
+Tests: `hub/tests/test_console.py`, 50 cases (validation, HTP/LTP, master/blackout, caps, flash, pickup incl. hue/sat
+functions, encoders, palette, assign, cues, D2 seed, D7 sliding window). `tools/test_all.sh`: 308 + 21 + 14 passed.
+
+**Step 3, wiring (`hub/daemon.py`, `hub/scheduler.py`)**: `apply_intent` → `console.apply` for every non-`who` intent.
+`ConsoleError` → IPC error. An unknown `group_id` is rejected before apply. An `assign` effect is persisted with
+`store.set_bank`. In BOARD (`Engine.enabled == False`), `resolve` → `OutputScheduler.submit`. In AUTO the console
+state changes and is shown, but nothing is pushed.
+- `OutputScheduler`: the newest value per fixture, no backlog. LIFX ≥ 50 ms apart (≤ 20 msg/s per bulb), virtual
+  60 Hz, then the D7 `StrobeLimiter` (held values are released by the timer). Debug log line per output with
+  `t_intent_received` / `t_output_sent`; p50/p95/max per class, logged at shutdown. `step(now)` is synchronous
+  (fake-clock tests).
+- AUTO→BOARD (`set_who` or the first console intent after an external disable, D3): `seed_from_art` from the art
+  painter's last HSBK per bulb (matched by MAC) and the virtual lights' colours. The scheduler is primed with that
+  look, so nothing is pushed until something changes (D2). `LifxOutput.forget_power()`. BOARD→AUTO: the scheduler is
+  reset and the engine repaints from cached art (X3). The seed runs *before* the first intent is applied, so the move
+  is not overwritten.
+- **Fix to step 2 (found by the wiring tests)**: after the seed, untouched channels still joined the HTP at their
+  seeded art brightness, so pulling LR ALL down did nothing (LR-L / TV held the bulbs up). Seeded levels are
+  display/pickup only (D2): only channels moved since the seed take part.
+- Room view in BOARD shows what the console last sent to each LIFX bulb (`RigService.live`); virtual lights already
+  show their output.
+- `console.json`: loaded at start (unreadable → `.bad`, defaults), saved 0.5 s after the last change and at shutdown.
+  `cues.rename` op. Who, blackout and flash are not restored.
+
+Tests: `test_board.py` 13 (through chromad with fake bulbs: D2 no push / no jump, UI fader → bulb + virtual, art
+colour kept until colour is touched, FLASH hold/release, blackout beats flash and never powers off, AUTO pushes
+nothing, back to AUTO repaints, external disable, 20 Hz flash hammering ≤ 6 edges in any 1 s, LIFX ≥ 50 ms apart and
+coalesced, D8 cap incl. flash, assign persistence, restart persistence, corrupt console.json),
+`test_scheduler.py` 5 (fake clock). `tools/test_all.sh`: 326 + 21 + 14 passed.
+
+**Latency (fake devices, in-process)**: virtual p50 0.08 ms / max 0.08 ms (AC < 20 ms; the test asserts it). LIFX
+path to the socket: p50 0.13 ms on single moves; during a 100-moves/s drag p50 4.7 / p95 11.7 / max 12.0 ms. That
+includes waiting for the 50 ms slot. The real bulb number is H4.1.
+
+**Step 5, Console screen (gui-1)**: `app/src/components/console/BankPanel.tsx` (BANK tabs, FADER FUNCTION, 8 strips,
+MASTER) and `ColorCues.tsx` (COLOR, CUES), wired into `ConsoleScreen`. The top BLACKOUT is live too. Everything
+shown comes from the State; controls only send intents.
+- Strips: scribble strip = group name from the rig (green mono, "—" when unbound). ASSIGN = select (X2) + group picker
+  (D11, incl. None). Fader: drag or click anywhere on the track, arrow keys; fill = the channel's live colour (X5);
+  scale 100/50/0, or 360/180/0 in HUE. A disengaged channel shows its cap as a dashed **ghost marker** with a "not
+  picked up" tooltip. Value text follows the fader function. FLASH is momentary (pointer down/up/cancel/lost capture),
+  lit and glowing while the State says `flash`. Channel number.
+- MASTER fader + BLACKOUT, both blackout buttons show the state (filled red when on).
+- COLOR: hue/sat knobs (270° arc, 4 px of vertical drag = 1 encoder detent, wheel, arrows) show the last-touched
+  channel ("—" when none). Palette swatches: tap = apply, hold 600 ms or shift = store (D12). The swatch matching the
+  last-touched colour gets the white ring.
+- CUES: tap = recall, shift + tap or hold = store; the active cue is filled; empty cues are dashed.
+- Mock engine mirrors the console intents (no pickup/arbitration) so the browser mock responds.
+- Visual check (`tools/ui_compare.py console`, 2x headless Chrome): strips, scribble strips, ASSIGN, tracks, caps, values,
+  FLASH rings and numbers within about 1 px of gui-1; COLOR and CUES within about 1–2 px. Known differences: headless
+  Chrome renders SF slightly wider (the palette hint is set at 6.5 px to stay on one line), and the recording strip
+  stays a placeholder until M5.
+Tests: `ConsoleControls.test.tsx` 10 (strips + live colours, fader drag + master, FLASH press/release, bank/fn + ghost
+markers + hue scale, ASSIGN picker, both BLACKOUTs, knobs + detents + wheel, palette tap/hold, cue recall/store,
+engine error toast). `tools/test_all.sh`: 326 + 31 + 14 passed.
+
+**Native self-test** (isolated temp home, port 1440, so the user's running dev app was left alone): the UI fetched
+`get_state` + `fixtures.list` through Rust, close hid the window with the engine alive and connected, Quit stopped
+the engine it spawned. While it ran, chromactl drove `who board`, `fader ch=1 v=0.3`, `flash ch=8`, `cue_store i=1`
+at the same engine: the State showed them, the Room hexes dropped to 30 % brightness on the Living Room bulbs, the
+virtual light went to full, and `console.json` was written at shutdown with the cue's look.
+
+**Code review (high)**: 8 findings, 7 fixed, 1 left for the user:
+- FLASH held while the bank changes: the strip now releases on unmount (a flash could stay stuck on).
+- The ASSIGN button now closes its own picker (it reopened).
+- No console push once AUTO resumes outside `set_who` (`_push` drops frames in AUTO; the scheduler is reset when
+  AUTO is detected).
+- `who` flips Engine.enabled at once (seed included). Only the save/repaint runs in the background, so an intent
+  right after BOARD is driven, not seeded over. `test_who_intent_never_blocks_the_connection` now checks this.
+- Knob wheel: deltaY 0 is ignored; 40 px of delta = one detent (a mouse notch = 1, trackpads don't flood).
+- A HUE fader at the top stays at 359.9° (it wrapped to 0 and the cap jumped).
+- Knobs send nothing without a touched channel (it spammed error toasts).
+- **Open (user decision):** the D7 limiter can hold BLACKOUT for up to ~1 s after heavy flashing, because going dark
+  is an edge too. Letting blackout bypass the limit would let blackout toggling strobe above 3 Hz (§8.1), so it is
+  unchanged.
+`tools/test_all.sh`: 328 + 34 + 14 passed.
