@@ -23,6 +23,7 @@
         "dur_ms": { "oneOf": [{ "type": "integer" }, { "type": "null" }] },
         "created_ms": { "type": "integer" }, "events": { "type": "integer" },
         "groups_used": { "type": "array", "items": { "type": "string" } }, "training": { "type": "boolean" },
+        "track_id": { "type": "string" },
         "art_hex": { "oneOf": [{ "$ref": "common.schema.json#/$defs/hex" }, { "type": "null" }] }
       }
     },

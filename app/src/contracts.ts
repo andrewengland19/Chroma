@@ -757,6 +757,7 @@ export interface TakeSummary {
   events: number;
   groups_used: string[];
   training: boolean;
+  track_id?: string;
   art_hex?: string | null;
 }
 export interface TakeFull {

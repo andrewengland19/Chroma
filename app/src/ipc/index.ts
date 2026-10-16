@@ -18,7 +18,7 @@ export async function createBackend(): Promise<Backend> {
   // DEV-only branch: production bundles drop it (and the mock engine) entirely.
   if (import.meta.env.DEV && (import.meta.env.VITE_IPC === "mock" || params.has("mock") || !inTauri)) {
     const { MockEngine } = await import("../mock/engine");
-    const scenario = (params.get("mock") || "live") as "mockup-console" | "mockup-setup" | "live" | "empty";
+    const scenario = (params.get("mock") || "live") as "mockup-console" | "mockup-setup" | "mockup-takes" | "live" | "empty";
     if (!inTauri && !params.has("mock") && import.meta.env.VITE_IPC !== "mock") {
       console.info("CHROMA: not running inside Tauri — using the mock engine (?mock=live)");
     }

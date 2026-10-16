@@ -1,23 +1,15 @@
 // Console (gui-1): the live header (WHO DRIVES, ART MODE, Now Playing, transport,
-// status chips), Room, COLOR, CUES and the fader bank (M4). The recording activity
-// strip arrives in M5.
+// status chips), Room, COLOR, CUES, the fader bank (M4) and the recording activity
+// strip (M5).
 import type { ArtMode, Who } from "../contracts";
 import { NowPlayingCard } from "../components/NowPlayingCard";
+import { ActivityStrip } from "../components/console/ActivityStrip";
 import { BankPanel } from "../components/console/BankPanel";
 import { ColorPanel, CuesPanel } from "../components/console/ColorCues";
 import { RoomView } from "../components/RoomView";
 import { StatusChips, TransportButtons } from "../components/Transport";
-import { Panel, Segmented } from "../components/ui";
+import { Segmented } from "../components/ui";
 import { useSelect, useStore } from "../store";
-
-function Pending({ label, note }: { label: string; note: string }) {
-  return (
-    <>
-      <div className="label absolute" style={{ left: 11, top: 8 }}>{label}</div>
-      <div className="absolute inset-0 flex items-center justify-center text-label" style={{ fontSize: 9 }}>{note}</div>
-    </>
-  );
-}
 
 export function ConsoleScreen() {
   const store = useStore();
@@ -42,9 +34,7 @@ export function ConsoleScreen() {
       <ColorPanel />
       <CuesPanel />
       <BankPanel />
-      <Panel style={{ left: 19, top: 618, width: 1140, height: 57 }}>
-        <Pending label="" note="recording activity — M5" />
-      </Panel>
+      <ActivityStrip />
     </div>
   );
 }
