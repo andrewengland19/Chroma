@@ -494,6 +494,33 @@ def test_a_non_edge_value_replaces_a_held_one():
     assert lim.pending == {}
 
 
+def test_blackout_goes_dark_over_budget_but_coming_back_up_waits():
+    lim = StrobeLimiter()
+    for i in range(8):                                    # budget used up, "off" held
+        lim.offer("f", on_off(i), i * 10, 3.0)
+    assert lim.offer("f", HSB(0, 1, 0.0), 100, 3.0) is None          # plain dark: held
+    assert lim.offer("f", HSB(0, 1, 0.0), 100, 3.0, dark=True) == HSB(0, 1, 0.0)
+    assert lim.pending == {}
+    assert lim.offer("f", on_off(0), 110, 3.0) is None    # back up: held until the window frees
+    assert lim.offer("f", HSB(0, 1, 0.4), 110, 3.0, dark=True) is None   # dark only bypasses at 0
+
+
+def test_blackout_toggling_stays_near_3hz():
+    lim = StrobeLimiter()
+    lim.offer("f", on_off(0), 0, 3.0)
+    sent = [(0, on_off(0))]
+    for i in range(1, 200):                               # blackout on/off at 20 Hz for 10 s
+        t = i * 50
+        dark = i % 2 == 1
+        if (v := lim.offer("f", on_off(i), t, 3.0, dark=dark)) is not None:
+            sent.append((t, v))
+        sent += [(t, v) for v in lim.poll(t).values()]
+    edges = edge_times(sent)
+    assert len(edges) >= 50
+    for a in edges:                                       # 6 edges + at most one bypassing "dark"
+        assert len([b for b in edges if a <= b < a + 1000]) <= 7
+
+
 # ---- State + console.json -------------------------------------------------------------------------
 
 def test_state_fields_and_console_file_validate_and_round_trip():

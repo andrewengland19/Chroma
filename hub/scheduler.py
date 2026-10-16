@@ -34,7 +34,7 @@ class OutputScheduler:
         self.klass = klass            # fixture id -> "slow" | "fast"
         self.limits = limits          # fixture id -> (max_level, max_flash_hz)
         self.limiter = StrobeLimiter()
-        self.pending: dict = {}       # fid -> (HSB, t_intent_ms, fade_ms)
+        self.pending: dict = {}       # fid -> (HSB, t_intent_ms, fade_ms, dark)
         self.held_t: dict = {}        # fid -> t_intent_ms of a value the strobe limit holds
         self.last_ms: dict = {}       # fid -> when it was last sent
         self.latency: dict = {"slow": deque(maxlen=500), "fast": deque(maxlen=500)}
@@ -42,10 +42,11 @@ class OutputScheduler:
         self._wake = asyncio.Event()
 
     # ---- inputs -----------------------------------------------------------------------
-    def submit(self, targets: dict, t_intent_ms: float, fade_ms: int = 0) -> None:
-        """Newest value per fixture replaces whatever is still waiting."""
+    def submit(self, targets: dict, t_intent_ms: float, fade_ms: int = 0, dark: bool = False) -> None:
+        """Newest value per fixture replaces whatever is still waiting. `dark` = BLACKOUT is
+        on: going dark is never held by the strobe limit (it still counts as an edge)."""
         for fid, hsb in targets.items():
-            self.pending[fid] = (hsb, t_intent_ms, int(fade_ms))
+            self.pending[fid] = (hsb, t_intent_ms, int(fade_ms), dark)
         self._wake.set()
 
     def prime(self, showing: dict) -> None:
@@ -65,14 +66,14 @@ class OutputScheduler:
         """Send everything that is due; return when to run again (ms) or None."""
         now = self.now_ms() if now is None else now
         wake = []
-        for fid, (hsb, t, fade) in list(self.pending.items()):
+        for fid, (hsb, t, fade, dark) in list(self.pending.items()):
             last = self.last_ms.get(fid)
             gap = MIN_INTERVAL_MS.get(self.klass(fid), MIN_INTERVAL_MS["slow"])
             if last is not None and now - last < gap:
                 wake.append(last + gap)          # stays pending; newer values keep replacing it
                 continue
             del self.pending[fid]
-            v = self.limiter.offer(fid, hsb, now, self.limits(fid)[1])
+            v = self.limiter.offer(fid, hsb, now, self.limits(fid)[1], dark)
             if v is not None:
                 self.held_t.pop(fid, None)
                 self._send(fid, v, fade, t, now)

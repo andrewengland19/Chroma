@@ -68,5 +68,5 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 - 2026-10-15 — Output scheduler: LIFX ≥ 50 ms apart per bulb, virtual 60 Hz, newest value wins; latency p50/p95/max per class logged at shutdown ("console output latency").
 - 2026-10-16 — `who` flips `Engine.enabled` (and seeds BOARD) inline, so intents after it on a connection see the new mode; config save and repaint stay in the background, FIFO. The console never pushes while the engine paints (`_push` checks).
 - 2026-10-16 — A HUE fader at the top is 359.9° (no wrap to 0). Knob: 4 px drag or 40 px wheel delta = one detent; knobs send nothing without a touched channel. Palette swatch "selected" = within 8° hue / 0.12 sat of the last-touched colour.
-- 2026-10-16 — OPEN (user): the D7 limiter can hold BLACKOUT for up to ~1 s after heavy flashing. A bypass would allow > 3 Hz strobing via blackout toggles (§8.1), so it is unchanged pending a decision.
+- 2026-10-16 — USER DECISION (was open): BLACKOUT ON is never held by the D7 limiter; the brightness-0 value goes out at once and still counts as an edge, so coming back up (BLACKOUT off) waits for the budget. Worst case with blackout toggling: 7 edges in a sliding second (≈3.5 Hz) instead of 6. Only blackout bypasses; a fader pulled to 0 is still limited.
 

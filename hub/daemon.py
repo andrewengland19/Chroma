@@ -244,7 +244,7 @@ class Chromad:
 
     def _drive(self, t_intent_ms: float, fade_ms: int = 0) -> None:
         targets = console_logic.resolve(self.console, self._members(), self.store.limits)
-        self.scheduler.submit(targets, t_intent_ms, fade_ms)
+        self.scheduler.submit(targets, t_intent_ms, fade_ms, dark=self.console.blackout)
 
     def art_look(self) -> dict:
         """fixture id -> HSB the room shows from the art painter right now."""

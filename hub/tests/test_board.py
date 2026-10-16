@@ -203,6 +203,26 @@ async def test_flash_hammering_is_held_to_3hz_on_every_fixture(daemon):
         assert len([b for b in edges if a <= b < a + 1.0]) <= 6
 
 
+async def test_blackout_is_not_delayed_by_the_strobe_hold(daemon):
+    d = daemon
+    await board(d)
+    await intent(d, intent="fader", ch=8, v=0.0)
+    vl = "virtual-light-1"
+    for _ in range(80):                                          # flash until "off" is held while lit
+        lit = d.virtual.current[vl].b > 0.5
+        await intent(d, intent="flash", ch=8, down=not lit)      # toggle away from what shows
+        await asyncio.sleep(0.03)
+        if vl in d.scheduler.limiter.pending and d.virtual.current[vl].b > 0.5:
+            break
+    assert vl in d.scheduler.limiter.pending and d.virtual.current[vl].b > 0.5
+    t0 = time.monotonic()
+    await intent(d, intent="blackout", on=True)
+    assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 0.0, timeout=0.5)
+    assert time.monotonic() - t0 < 0.1
+    await intent(d, intent="flash", ch=8, down=False)
+    await intent(d, intent="blackout", on=False)
+
+
 async def test_lifx_gets_at_most_20_messages_a_second_and_the_newest_value(daemon):
     d = daemon
     await board(d)

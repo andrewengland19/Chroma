@@ -428,14 +428,17 @@ def edge_budget(max_hz: float) -> tuple:
 
 class StrobeLimiter:
     """Per fixture, after caps and master. A value that would exceed the edge budget is
-    held; the newest held value goes out as soon as the budget allows (`poll`)."""
+    held; the newest held value goes out as soon as the budget allows (`poll`).
+    `dark=True` (BLACKOUT on) sends a brightness-0 value at once even over budget; the edge
+    still counts, so coming back up waits (user decision 2026-10-16: never delay dark)."""
 
     def __init__(self):
         self.sent: dict = {}          # fid -> last HSB sent
         self.edges: dict = {}         # fid -> deque of edge times (ms)
         self.pending: dict = {}       # fid -> (HSB, max_hz)
 
-    def offer(self, fid: str, hsb: HSB, now_ms: float, max_hz: float) -> Optional[HSB]:
+    def offer(self, fid: str, hsb: HSB, now_ms: float, max_hz: float,
+              dark: bool = False) -> Optional[HSB]:
         """The value to send now, or None: held (see `pending`) or already showing."""
         if hsb == self.sent.get(fid):
             self.pending.pop(fid, None)
@@ -445,7 +448,7 @@ class StrobeLimiter:
             q = self.edges.setdefault(fid, deque())
             while q and q[0] <= now_ms - window:
                 q.popleft()
-            if len(q) >= n:
+            if len(q) >= n and not (dark and hsb.b <= 0.0):
                 self.pending[fid] = (hsb, max_hz)
                 return None
             q.append(now_ms)
