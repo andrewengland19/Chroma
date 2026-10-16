@@ -142,7 +142,9 @@ fn selftest(app: AppHandle, sup: Arc<Supervisor>) {
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        tokio::time::sleep(Duration::from_secs(3)).await; // let the UI fetch state
+        // let the UI fetch state (CHROMA_SELFTEST_HOLD_S: longer, to drive the engine meanwhile)
+        let hold = std::env::var("CHROMA_SELFTEST_HOLD_S").ok().and_then(|v| v.parse().ok()).unwrap_or(3u64);
+        tokio::time::sleep(Duration::from_secs(hold)).await;
         let st = sup.status();
         eprintln!("[selftest] connected={} supervised={} pid={:?}", st.connected, st.supervised, st.pid);
         if let Some(w) = app.get_webview_window("main") {
