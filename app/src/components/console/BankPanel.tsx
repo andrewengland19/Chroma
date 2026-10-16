@@ -92,15 +92,20 @@ function Fader({ value, color, ghost, onChange, cx, testId, label, scale }: {
   );
 }
 
-function AssignPicker({ ch, current, onClose }: { ch: number; current: string | null; onClose: () => void }) {
+function AssignPicker({ ch, current, onClose, anchor }: {
+  ch: number; current: string | null; onClose: () => void; anchor: React.RefObject<HTMLElement | null>;
+}) {
   const store = useStore();
   const groups = useSelect((s) => s.rig?.groups) ?? [];
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const off = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); };
+    const off = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !anchor.current?.contains(t)) onClose();   // its own button toggles
+    };
     window.addEventListener("pointerdown", off, true);
     return () => window.removeEventListener("pointerdown", off, true);
-  }, [onClose]);
+  }, [onClose, anchor]);
   const pick = (group_id: string | null) => {
     void store.intent({ intent: "assign", ch, group_id } as Intent);
     onClose();
@@ -128,6 +133,11 @@ function Strip({ c, index, fn }: { c: ChannelState; index: number; fn: FaderFn }
   const ring = liveColor(c.hue, c.sat, 0.93);
   const flashDown = (down: boolean) => void store.intent({ intent: "flash", ch: c.ch, down });
   const holding = useRef(false);
+  const assignBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => () => {
+    // the strip goes away (bank switch) while FLASH is held: never leave a flash stuck on
+    if (holding.current) void store.intent({ intent: "flash", ch: c.ch, down: false });
+  }, [store, c.ch]);
   const release = () => {
     if (holding.current) {
       holding.current = false;
@@ -142,7 +152,7 @@ function Strip({ c, index, fn }: { c: ChannelState; index: number; fn: FaderFn }
         style={{ left: 6.5, top: 7.5, width: 68, height: 24.5, fontSize: 10, letterSpacing: "0.04em", color: group ? "#a8e6bd" : "#4b5a50" }}>
         {group ? group.name.toUpperCase() : "—"}
       </div>
-      <button aria-label={`Assign channel ${c.ch}`} data-testid={`assign-${c.ch}`} aria-expanded={picking}
+      <button ref={assignBtn} aria-label={`Assign channel ${c.ch}`} data-testid={`assign-${c.ch}`} aria-expanded={picking}
         className="absolute flex items-center" style={{ left: 18, top: 43.5, gap: 5 }}
         onClick={() => {
           if (!picking) void store.intent({ intent: "assign", ch: c.ch });   // select (X2)
@@ -151,7 +161,7 @@ function Strip({ c, index, fn }: { c: ChannelState; index: number; fn: FaderFn }
         <span className="rounded-full" style={{ width: 16.5, height: 16.5, border: "1.3px solid #6a6a76", background: picking ? "var(--color-accent)" : "transparent" }} />
         <span className="font-bold text-label" style={{ fontSize: 6, letterSpacing: "0.03em" }}>ASSIGN</span>
       </button>
-      {picking && <AssignPicker ch={c.ch} current={c.group_id} onClose={() => setPicking(false)} />}
+      {picking && <AssignPicker ch={c.ch} current={c.group_id} anchor={assignBtn} onClose={() => setPicking(false)} />}
       <Fader value={fnValue(c, fn)} color={color} ghost={!c.engaged} cx={cx} testId={`fader-${c.ch}`}
         label={`Channel ${c.ch} ${fn}`} scale={fn === "hue" ? ["360", "180", "0"] : ["100", "50", "0"]}
         onChange={(v) => void store.intent({ intent: "fader", ch: c.ch, v })} />

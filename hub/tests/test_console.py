@@ -253,10 +253,10 @@ def test_hue_and_sat_fader_functions():
     assert st.channel("A", 2).sat == 0.25
     go(st, intent="fader_fn", fn="hue")
     fader(st, 2, 1.0)
-    assert st.channel("A", 2).hue == 0                   # 360 wraps to 0
+    assert st.channel("A", 2).hue == C.HUE_TOP           # the top stays at the top (no wrap to 0)
     fader(st, 2, 0.5, "board")                           # pickup compares in the fn's units
-    assert st.channel("A", 2).hue == 0 and not st.channel("A", 2).engaged
-    fader(st, 2, 0.01, "board")
+    assert st.channel("A", 2).hue == C.HUE_TOP and not st.channel("A", 2).engaged
+    fader(st, 2, 0.995, "board")
     assert st.channel("A", 2).engaged
 
 

@@ -151,6 +151,33 @@ async def test_disabled_elsewhere_seeds_on_the_first_console_intent(daemon):
     assert d._board_ready
 
 
+async def test_an_intent_right_after_who_board_is_driven_not_seeded_over(daemon):
+    d = daemon
+    tv = bulb(d, "TV Left")
+    n = len(colors(tv))
+    await intent(d, intent="who", who="board")                  # no await of the background part
+    await intent(d, intent="fader", ch=1, v=0.25)
+    assert d.console.channel("A", 1).level == 0.25
+    assert await wait_for(lambda: len(colors(tv)) > n and colors(tv)[-1][1][2] == round(0.25 * 65535))
+    await asyncio.sleep(0.3)                                     # the queued set_who must not reseed
+    assert d.console.channel("A", 1).level == 0.25 and d.engine.enabled is False
+
+
+async def test_nothing_is_pushed_once_auto_resumes_elsewhere(daemon):
+    d = daemon
+    await board(d)
+    await intent(d, intent="fader", ch=8, v=0.0)
+    for i in range(12):                                          # use up the strobe budget: values get held
+        await intent(d, intent="flash", ch=8, down=i % 2 == 0)
+        await asyncio.sleep(0.02)
+    await d.engine.set_enabled(True)                             # /agent or /lights/set
+    since = len(d.virtual.frames)
+    await asyncio.sleep(1.3)                                     # the hold would have expired by now
+    assert vframes(d, since) == [] or all(f[2] == d.virtual.current["virtual-light-1"] for f in vframes(d, since))
+    await intent(d, intent="fader", ch=8, v=0.9)                 # AUTO: display only
+    assert not d._board_ready and d.scheduler.pending == {} and d.scheduler.limiter.pending == {}
+
+
 # ---- safety and pacing ---------------------------------------------------------------------------
 
 async def test_flash_hammering_is_held_to_3hz_on_every_fixture(daemon):

@@ -127,7 +127,7 @@ export class MockEngine implements IpcClient {
         }
         const c = find(s.bank, Number(i.ch));
         if (s.fader_fn === "level") c.level = v;
-        else if (s.fader_fn === "hue") c.hue = (v * 360) % 360;
+        else if (s.fader_fn === "hue") c.hue = Math.min(v * 360, 359.9);
         else c.sat = v;
         patchChans({ last_touched: { bank: c.bank, ch: c.ch }, cue_active: null });
         return { ok: true };

@@ -8,6 +8,7 @@ import { Panel } from "../ui";
 import { useHold } from "./useHold";
 
 const PX_PER_DETENT = 4;                 // knob drag: 4 px = one encoder detent (5° / 2 %)
+const WHEEL_PER_DETENT = 40;             // wheel/trackpad delta per detent
 // Cue pad colours by slot (gui-1); fixed, unlike the editable palette.
 export const CUE_COLORS = ["#e5484d", "#f5a05b", "#f2c94c", "#4ade80", "#2dd4bf", "#3b82f6", "#a855f7", "#f472b6"];
 
@@ -23,7 +24,9 @@ function Knob({ cx, value, label, text, onDetents, testId }: {
   onDetents: (n: number) => void; testId: string;
 }) {
   const acc = useRef(0);
+  const wheel = useRef(0);
   const lastY = useRef<number | null>(null);
+  const turn = (n: number) => { if (value !== null) onDetents(n); };   // no channel: nothing to turn
   const R = 28.8, r = 22.8, cy = 55;
   const a0 = -135, sweep = 270;
   const a = a0 + sweep * (value ?? 0);
@@ -55,14 +58,21 @@ function Knob({ cx, value, label, text, onDetents, testId }: {
           const n = Math.trunc(acc.current / PX_PER_DETENT);
           if (n) {
             acc.current -= n * PX_PER_DETENT;
-            onDetents(n);
+            turn(n);
           }
         }}
         onPointerUp={() => { lastY.current = null; }}
-        onWheel={(e) => onDetents(e.deltaY < 0 ? 1 : -1)}
+        onWheel={(e) => {
+          if (!e.deltaY) return;
+          wheel.current -= e.deltaY;
+          if (Math.abs(wheel.current) >= WHEEL_PER_DETENT) {      // a mouse notch = one detent
+            turn(Math.sign(wheel.current));
+            wheel.current = 0;
+          }
+        }}
         onKeyDown={(e) => {
-          if (e.key === "ArrowUp" || e.key === "ArrowRight") onDetents(e.shiftKey ? 5 : 1);
-          if (e.key === "ArrowDown" || e.key === "ArrowLeft") onDetents(e.shiftKey ? -5 : -1);
+          if (e.key === "ArrowUp" || e.key === "ArrowRight") turn(e.shiftKey ? 5 : 1);
+          if (e.key === "ArrowDown" || e.key === "ArrowLeft") turn(e.shiftKey ? -5 : -1);
         }}>
         <svg width={size} height={size} className="pointer-events-none">
           <path d={arc(a0, a0 + sweep)} stroke="#3a3a44" strokeWidth={2.4} fill="none" strokeLinecap="round" />

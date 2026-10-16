@@ -185,6 +185,14 @@ class Chromad:
             who = intent.get("who")
             if who not in ("auto", "board"):
                 raise IpcError("who must be 'auto' or 'board'")
+            # Who drives changes now, so intents after this one on the connection see it;
+            # the slower part (config save, repaint) runs in the background, FIFO.
+            if who == "board":
+                self.engine.enabled = False
+                self._ensure_board()
+            else:
+                self._leave_board()
+                self.engine.enabled = True
             self._spawn(self._serialized_who(who))   # never stall the IPC connection
             return None
         t_intent = self.clock.monotonic() * 1000.0
@@ -194,8 +202,8 @@ class Chromad:
         board = not self.engine.enabled
         if board:
             self._ensure_board()                    # before apply: the seed must not undo this move
-        else:
-            self._board_ready = False               # AUTO (or re-enabled elsewhere): display only
+        elif self._board_ready:
+            self._leave_board()                     # re-enabled elsewhere (/agent, /lights/set)
         try:
             effects = console_logic.apply(self.console, intent, src)
         except ConsoleError as e:
@@ -222,6 +230,8 @@ class Chromad:
         return "slow" if f is None or f.type == "lifx" else "fast"
 
     def _push(self, fid: str, hsb: HSB, fade_ms: int) -> None:
+        if self.engine.enabled:                     # AUTO: the art painter owns the fixtures
+            return
         f = self.store.fixtures.get(fid)
         if f is None or f.status != "active":
             return
@@ -265,6 +275,11 @@ class Chromad:
         self.rig.live = dict((k, v) for k, v in art.items() if self._klass(k) == "slow")
         self.lifx_out.forget_power()        # bulbs may have been switched off elsewhere
         self._board_ready = True
+
+    def _leave_board(self) -> None:
+        self._board_ready = False
+        self.scheduler.reset()
+        self.rig.live.clear()
 
     # ---- console.json -----------------------------------------------------------
     def _load_console(self) -> ConsoleState:
@@ -317,9 +332,7 @@ class Chromad:
         """AUTO = the art painter drives (Engine.enabled); BOARD = the console drives.
         Switching to AUTO repaints from cached art (DECISIONS X3)."""
         if who == "auto":
-            self._board_ready = False
-            self.scheduler.reset()
-            self.rig.live.clear()
+            self._leave_board()
             await self.engine.set_enabled(True)
             if self.engine._last_art is None:
                 await self.engine.refresh()

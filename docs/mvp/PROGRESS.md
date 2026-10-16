@@ -303,5 +303,23 @@ Tests: `ConsoleControls.test.tsx` 10 (strips + live colours, fader drag + master
 markers + hue scale, ASSIGN picker, both BLACKOUTs, knobs + detents + wheel, palette tap/hold, cue recall/store,
 engine error toast). `tools/test_all.sh`: 326 + 31 + 14 passed.
 
-Remaining for M4: native self-test of the window, `/code-review high`, merge, H4 hardware request (H4.1 + a
-screenshot of the Console in fake mode).
+**Native self-test** (isolated temp home, port 1440, so the user's running dev app was left alone): the UI fetched
+`get_state` + `fixtures.list` through Rust, close hid the window with the engine alive and connected, Quit stopped
+the engine it spawned. While it ran, chromactl drove `who board`, `fader ch=1 v=0.3`, `flash ch=8`, `cue_store i=1`
+at the same engine: the State showed them, the Room hexes dropped to 30 % brightness on the Living Room bulbs, the
+virtual light went to full, and `console.json` was written at shutdown with the cue's look.
+
+**Code review (high)**: 8 findings, 7 fixed, 1 left for the user:
+- FLASH held while the bank changes: the strip now releases on unmount (a flash could stay stuck on).
+- The ASSIGN button now closes its own picker (it reopened).
+- No console push once AUTO resumes outside `set_who` (`_push` drops frames in AUTO; the scheduler is reset when
+  AUTO is detected).
+- `who` flips Engine.enabled at once (seed included). Only the save/repaint runs in the background, so an intent
+  right after BOARD is driven, not seeded over. `test_who_intent_never_blocks_the_connection` now checks this.
+- Knob wheel: deltaY 0 is ignored; 40 px of delta = one detent (a mouse notch = 1, trackpads don't flood).
+- A HUE fader at the top stays at 359.9° (it wrapped to 0 and the cap jumped).
+- Knobs send nothing without a touched channel (it spammed error toasts).
+- **Open (user decision):** the D7 limiter can hold BLACKOUT for up to ~1 s after heavy flashing, because going dark
+  is an edge too. Letting blackout bypass the limit would let blackout toggling strobe above 3 Hz (§8.1), so it is
+  unchanged.
+`tools/test_all.sh`: 328 + 34 + 14 passed.

@@ -64,6 +64,26 @@ describe("Fader bank (gui-1)", () => {
     expect(intents(engine).filter((i) => (i as { intent: string }).intent === "flash")).toHaveLength(2);
   });
 
+  test("a FLASH held while the bank changes is released, not left stuck on", async () => {
+    const { engine } = await renderApp();
+    await act(async () => fireEvent.pointerDown(screen.getByTestId("flash-2"), { button: 0 }));
+    await act(async () => fireEvent.click(screen.getByTestId("bank-B")));
+    expect(intents(engine).filter((i) => (i as { intent: string }).intent === "flash"))
+      .toEqual([{ intent: "flash", ch: 2, down: true }, { intent: "flash", ch: 2, down: false }]);
+  });
+
+  test("the ASSIGN button closes its own picker", async () => {
+    await renderApp();
+    const b = screen.getByTestId("assign-4");
+    await act(async () => fireEvent.click(b));
+    expect(screen.getByTestId("assign-picker-4")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.pointerDown(b);
+      fireEvent.click(b);
+    });
+    expect(screen.queryByTestId("assign-picker-4")).toBeNull();
+  });
+
   test("bank tabs and FADER FUNCTION switch the strips; ghost markers show disengaged faders", async () => {
     const { engine } = await renderApp();
     expect(screen.getByTestId("fader-1-cap")).not.toHaveAttribute("data-ghost");
@@ -120,7 +140,7 @@ describe("COLOR and CUES (gui-1)", () => {
     });
     expect(intents(engine)).toContainEqual({ intent: "hue", delta: 2 });
     expect(screen.getByTestId("knob-hue-value")).toHaveTextContent("232°");
-    await act(async () => fireEvent.wheel(screen.getByTestId("knob-sat"), { deltaY: 10 }));
+    await act(async () => fireEvent.wheel(screen.getByTestId("knob-sat"), { deltaY: 100 }));
     expect(intents(engine)).toContainEqual({ intent: "sat", delta: -1 });
     expect(screen.getByTestId("knob-sat-value")).toHaveTextContent("76%");
   });
@@ -157,11 +177,28 @@ describe("COLOR and CUES (gui-1)", () => {
     expect(intents(engine).at(-1)).toEqual({ intent: "cue_store", i: 6 });
   });
 
+  test("knobs do nothing without a touched channel; wheel needs a real delta", async () => {
+    const { engine } = await renderApp();
+    const k = screen.getByTestId("knob-hue");
+    await act(async () => fireEvent.wheel(k, { deltaY: 0, deltaX: 30 }));      // horizontal swipe
+    await act(async () => fireEvent.wheel(k, { deltaY: 10 }));                 // small trackpad step
+    expect(intents(engine).filter((i) => (i as { intent: string }).intent === "hue")).toHaveLength(0);
+    await act(async () => fireEvent.wheel(k, { deltaY: 35 }));                 // 45 px in total: one detent
+    expect(intents(engine).at(-1)).toEqual({ intent: "hue", delta: -1 });
+    act(() => engine.patch({ last_touched: null }));
+    expect(screen.getByTestId("knob-hue-value")).toHaveTextContent("—");
+    const n = engine.requests.length;
+    await act(async () => fireEvent.wheel(k, { deltaY: -100 }));
+    expect(engine.requests.length).toBe(n);
+  });
+
   test("an engine error from an intent is shown as a toast", async () => {
     const { engine } = await renderApp();
     act(() => engine.patch({ last_touched: null }));
-    expect(screen.getByTestId("knob-hue-value")).toHaveTextContent("—");
-    await act(async () => fireEvent.wheel(screen.getByTestId("knob-hue"), { deltaY: -10 }));
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId("swatch-0"), { button: 0 });
+      fireEvent.pointerUp(screen.getByTestId("swatch-0"));
+    });
     expect(screen.getByRole("status")).toHaveTextContent("touch a channel first");
   });
 });

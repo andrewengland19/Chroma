@@ -34,6 +34,7 @@ PICKUP_TOLERANCE = 0.02       # §5.3: engage within 0.02 of the stored value
 EDGE_LEVEL = 0.10             # D7 strobe edge: |Δlevel| >= 0.10 ...
 EDGE_COLOR = 0.10             # ... or an OKLab jump >= 0.10 while level >= 0.10
 MAX_FLASH_HZ = 3.0            # §8.1
+HUE_TOP = 359.9               # a hue fader at the top stays at the top
 
 # gui-1 palette swatches and cue names (editable; persisted in console.json from M4).
 DEFAULT_PALETTE = ["#e5484d", "#f5a05b", "#f2c94c", "#4ade80", "#2dd4bf", "#3b82f6", "#a855f7", "#f472b6"]
@@ -220,7 +221,7 @@ def _fader(st: ConsoleState, intent: dict, src: str) -> None:
     if fn == "level":
         c.level = v
     elif fn == "hue":
-        c.hue = (v * 360.0) % 360.0
+        c.hue = min(v * 360.0, HUE_TOP)            # the top of the fader is 359.9°, not 0°
     else:
         c.sat = v
     _touch(st, c, level=fn == "level", color=fn != "level")
