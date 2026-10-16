@@ -15,14 +15,14 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
-| M5 recorder, replay, Takes | `app/m5-takes` | next — branch created from b88d544 |
+| M5 recorder, replay, Takes | `app/m5-takes` | next — branch on main aa7bc38 |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
 Status on 2026-10-16: **M0–M4 done and merged into local main (b88d544)**; next is **M5 (recorder, replay, Takes)**
-on branch `app/m5-takes` (created from b88d544 in the worktree; it only holds this note). Hardware checks are collected
+on branch `app/m5-takes` (on main aa7bc38 in the worktree; it only holds these notes). Hardware checks are collected
 in `HARDWARE_CHECKLIST.md` (none run yet). Open user decision: should BLACKOUT bypass the D7 strobe hold? (see the M4
 code-review notes).
 
@@ -49,8 +49,8 @@ How the build has been run (keep doing it this way):
   main hot-reloads the UI of a `tauri dev` running from the main checkout, but its engine keeps the old code until
   they restart. A stale fake engine on `~/.chroma/dev` gets *adopted* by the next fake-mode app, so tell the user to
   stop it rather than testing against old code.
-- The main checkout holds the user's own uncommitted work (a hardware SVG edit, a stray `app/app/`). Never commit or
-  discard it; merges don't touch it.
+- If the main checkout has uncommitted work of the user's, never commit or discard it without asking (on 2026-10-16
+  the user had their hardware SVG edit committed as aa7bc38 and a stray `app/app/` lockfile removed; main was clean).
 - Contracts first: change `contracts/*.schema.json` + examples, `npm --prefix app run gen:types`, then code.
 
 M5 starting points: every console change enters through `daemon.apply_intent(intent, src)` (src `ui|board|replay|cli`)
