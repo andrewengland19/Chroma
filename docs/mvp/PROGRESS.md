@@ -342,3 +342,36 @@ virtual light went to full, and `console.json` was written at shutdown with the 
 **Merged** into main as b88d544 (2026-10-16). Re-test on main: pytest in the user's checkout 328 passed; full
 `tools/test_all.sh` in a detached worktree passed (328 + 34 vitest + 14 cargo); `lite show status` → stopped (it was
 already stopped before the merge; not started by the builder).
+
+---
+
+## M5 — recorder, replay, Takes
+
+Started 2026-10-16 (branch `app/m5-takes` on main aa7bc38). First commit: the user's BLACKOUT decision (going dark
+bypasses the D7 hold, the edge still counts; DECISIONS 2026-10-16).
+
+**Plan**
+1. Contracts (mostly in place since M0: take header/event, `takes.*`, `rec.*`, `play.*`, `take.nudge`, State
+   `rec`/`play`/`takes_rev`). Additions: header `art_hex` (library thumbnail); State `activity` (lanes of recent
+   event spans for the Console strip); response shapes for `takes.list/get/export`; examples; `gen:types`.
+2. `hub/takes.py`, pure where possible:
+   - `TakeStore`: `$CHROMA_HOME/takes/<id>_<slug>.jsonl`, atomic rewrites, list (headers cached by mtime),
+     get/delete (moved to `takes/.deleted/`, never unlinked)/rename/duplicate/set_flag/markers/nudge/export.
+   - `resolve_event(before, after, intent)` → D9 `b/c/a/v` + `g` from the console state after apply. Not recorded:
+     `who`, `palette_store`, `cue_store` (editing, not performing) and board moves that did not pick up.
+   - `Recorder`: SongClock-stamped events, `init` snapshot, D10 modes at stop: REPLACE = new only; MERGE = old + new;
+     OVERDUB = old minus each channel's events inside its touch spans (live input + 750 ms) + new, and a flash the
+     old take held into a span is released at the span start.
+   - `Replayer`: `step(pos_ms)` applies every due event (pos − nudge − global offset), `seek(pos)` rebuilds the
+     console from `init` + events up to pos without output, skip predicate for OVERDUB touch spans.
+     Replay goes through `console.apply(..., src="replay", at=ev)`: the resolved `b/c/a/v` targets the channel, so
+     replay never depends on the live bank, fader function or last-touched channel. Replay skips `bank`,
+     `fader_fn`, `select` and `assign` (they would move the user's view / rewrite the rig).
+3. Daemon: recorder hook in `apply_intent` (src ≠ replay), replay loop on the SongClock (sleeps to the next due
+   event, ≤ 50 ms), stop on track change, follow seeks, REC/PLAY switch to BOARD, `rec.arm` starts on play,
+   recording stops (and saves) on track change and at shutdown. Ops per §5.1.
+4. UI: Console REC/PLAY/STOP + activity strip (gui-1 bottom); Takes screen (gui-2): library + search, transport,
+   mode, nudge, loop, ruler + markers (M key / button), one lane per group (level curve + flash blocks), playhead,
+   details, training toggle, export/duplicate/delete. `tools/ui_compare.py takes`.
+5. AC tests: schema-valid recorded take; ±20 ms replay on the virtual output (fake clock + `scheduler.step`);
+   mode tests; nudge; track change stops replay; restart survival. Real Apple TV drift = H5.
