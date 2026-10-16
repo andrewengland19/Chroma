@@ -39,7 +39,18 @@ How the build has been run (keep doing it this way):
   live|empty`; the mockup data lives in `contracts/examples/{state,fixtures}/ok-mockup*.json`.
 - Native app: `CHROMA_DEBUG_IPC=1 CHROMA_SELFTEST=close-quit npm run tauri dev` (debug builds) proves UI → Rust →
   chromad and the close/quit lifecycle without screen access. The user does not grant Screen Recording; ask them for
-  screenshots in the batched hardware request instead.
+  screenshots in the batched hardware request instead. **Always use a temp home** (`CHROMA_HOME=$(mktemp -d -t cxst)`)
+  and run it in the background (macOS has no `timeout`; the self-test quits itself). If port 1420 is taken (the
+  user's own `tauri dev` from the main checkout), add `--config '{"build":{"devUrl":"http://localhost:1440",
+  "beforeDevCommand":"npm run dev -- --port 1440 --strictPort"}}'` (`npx tauri dev …`). While it runs, drive
+  intents with `CHROMA_HOME=<temp> hub/.venv/bin/python tools/chromactl.py intent …`.
+- The user runs hardware checks on their own (e.g. on `/tmp/chroma-hw` with `lite show` stopped). Before any
+  self-test or merge, check `pgrep -fl chromad.py` and leave the user's engines and apps alone. Note that a merge into
+  main hot-reloads the UI of a `tauri dev` running from the main checkout, but its engine keeps the old code until
+  they restart. A stale fake engine on `~/.chroma/dev` gets *adopted* by the next fake-mode app, so tell the user to
+  stop it rather than testing against old code.
+- The main checkout holds the user's own uncommitted work (a hardware SVG edit, a stray `app/app/`). Never commit or
+  discard it; merges don't touch it.
 - Contracts first: change `contracts/*.schema.json` + examples, `npm --prefix app run gen:types`, then code.
 
 M5 starting points: every console change enters through `daemon.apply_intent(intent, src)` (src `ui|board|replay|cli`)
