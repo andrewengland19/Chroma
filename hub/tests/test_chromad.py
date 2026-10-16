@@ -114,7 +114,7 @@ async def test_ops_art_mode_who_refresh_and_errors(daemon):
     assert res[3]["ok"] and res[3]["result"]["message"] in ("refreshed, but painting is disabled",
                                                            "lights refreshed")
     assert res[4]["error"] == "unknown intent 'strobe'"
-    assert "M4" in res[5]["error"]
+    assert res[5]["ok"]                      # the console drives in BOARD (M4)
     assert res[6]["error"] == "unknown op 'format_disk'"
     # back to AUTO repaints at once from cached art (DECISIONS X3)
     before = len(daemon.engine.lifx.fake_bulbs[0].calls)

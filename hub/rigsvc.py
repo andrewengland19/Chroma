@@ -39,6 +39,7 @@ class RigService:
         self.fake = fake
         self._discovering = asyncio.Lock()
         self._blinking: set = set()
+        self.live: dict = {}          # BOARD: fixture id -> HSB the console last sent to a LIFX bulb
 
     # ---- ops ---------------------------------------------------------------------
     async def handle(self, op: str, req: dict) -> Optional[dict]:
@@ -214,6 +215,8 @@ class RigService:
             if f.type == "lifx":
                 lbl = self.engine_label(f, bulbs)
                 hexc, online = per_light.get(lbl) if lbl else None, lbl is not None
+                if not self.engine.enabled and f.id in self.live:      # BOARD: what the console sent
+                    hexc = self.live[f.id].hex()
             elif f.type == "virtual":
                 hexc, online = self.virtual.hex_for(f.id), True
             else:

@@ -250,5 +250,36 @@ without a board). Encoders: 5° / 2 % per detent.
 Tests: `hub/tests/test_console.py`, 50 cases (validation, HTP/LTP, master/blackout, caps, flash, pickup incl. hue/sat
 functions, encoders, palette, assign, cues, D2 seed, D7 sliding window). `tools/test_all.sh`: 308 + 21 + 14 passed.
 
-Next: step 3, wiring. `daemon.apply_intent` → `console.apply` → output scheduler (coalesce per fixture, LIFX ≤ 20
-msg/s, virtual 60 Hz, StrobeLimiter, latency logging) and console.json persistence.
+**Step 3, wiring (`hub/daemon.py`, `hub/scheduler.py`)**: `apply_intent` → `console.apply` for every non-`who` intent.
+`ConsoleError` → IPC error. An unknown `group_id` is rejected before apply. An `assign` effect is persisted with
+`store.set_bank`. In BOARD (`Engine.enabled == False`), `resolve` → `OutputScheduler.submit`. In AUTO the console
+state changes and is shown, but nothing is pushed.
+- `OutputScheduler`: the newest value per fixture, no backlog. LIFX ≥ 50 ms apart (≤ 20 msg/s per bulb), virtual
+  60 Hz, then the D7 `StrobeLimiter` (held values are released by the timer). Debug log line per output with
+  `t_intent_received` / `t_output_sent`; p50/p95/max per class, logged at shutdown. `step(now)` is synchronous
+  (fake-clock tests).
+- AUTO→BOARD (`set_who` or the first console intent after an external disable, D3): `seed_from_art` from the art
+  painter's last HSBK per bulb (matched by MAC) and the virtual lights' colours. The scheduler is primed with that
+  look, so nothing is pushed until something changes (D2). `LifxOutput.forget_power()`. BOARD→AUTO: the scheduler is
+  reset and the engine repaints from cached art (X3). The seed runs *before* the first intent is applied, so the move
+  is not overwritten.
+- **Fix to step 2 (found by the wiring tests)**: after the seed, untouched channels still joined the HTP at their
+  seeded art brightness, so pulling LR ALL down did nothing (LR-L / TV held the bulbs up). Seeded levels are
+  display/pickup only (D2): only channels moved since the seed take part.
+- Room view in BOARD shows what the console last sent to each LIFX bulb (`RigService.live`); virtual lights already
+  show their output.
+- `console.json`: loaded at start (unreadable → `.bad`, defaults), saved 0.5 s after the last change and at shutdown.
+  `cues.rename` op. Who, blackout and flash are not restored.
+
+Tests: `test_board.py` 13 (through chromad with fake bulbs: D2 no push / no jump, UI fader → bulb + virtual, art
+colour kept until colour is touched, FLASH hold/release, blackout beats flash and never powers off, AUTO pushes
+nothing, back to AUTO repaints, external disable, 20 Hz flash hammering ≤ 6 edges in any 1 s, LIFX ≥ 50 ms apart and
+coalesced, D8 cap incl. flash, assign persistence, restart persistence, corrupt console.json),
+`test_scheduler.py` 5 (fake clock). `tools/test_all.sh`: 326 + 21 + 14 passed.
+
+**Latency (fake devices, in-process)**: virtual p50 0.08 ms / max 0.08 ms (AC < 20 ms; the test asserts it). LIFX
+path to the socket: p50 0.13 ms on single moves; during a 100-moves/s drag p50 4.7 / p95 11.7 / max 12.0 ms. That
+includes waiting for the 50 ms slot. The real bulb number is H4.1.
+
+Next: step 5, the Console screen per gui-1 (faders + ghost markers, FLASH, ASSIGN picker, hue/sat knobs, palette, cue
+pads, bank tabs, FADER FUNCTION, master, BLACKOUT, scribble strips).

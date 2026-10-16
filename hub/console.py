@@ -363,8 +363,9 @@ _HANDLERS: dict = {
 def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> dict:
     """fixture id -> HSB for every fixture in a group bound to a channel (others hold — D16).
     `members`: group id -> [fixture ids]; `limits(fid)` -> (max_level, max_flash_hz) (D8).
-    Level = HTP (flash = 1.0) across the fixture's channels, hue/sat = LTP; after D2
-    seeding the art colour / brightness stand until a channel moves colour / level.
+    Level = HTP (flash = 1.0) across the fixture's channels, hue/sat = LTP. After D2
+    seeding the art colour / brightness stand until a channel moves colour / level, and
+    only channels moved since the seed take part (seeded values are display/pickup only).
     Then x master, blackout -> 0 (beats flash), capped at max_level (flash cannot exceed)."""
     by_fixture: dict = {}
     for c in st.channels:
@@ -373,10 +374,11 @@ def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> 
     out = {}
     for fid, chans in by_fixture.items():
         art = st.art.get(fid)
-        if art is not None and not any(c.level_seq > st.board_seq or c.flash for c in chans):
-            level = art.b
-        else:
+        if art is None:
             level = max(1.0 if c.flash else c.level for c in chans)
+        else:                                      # seeded levels are display-only (D2)
+            moved = [c for c in chans if c.level_seq > st.board_seq or c.flash]
+            level = max(1.0 if c.flash else c.level for c in moved) if moved else art.b
         if art is not None and not any(c.color_seq > st.board_seq for c in chans):
             h, s = art.h, art.s
         else:

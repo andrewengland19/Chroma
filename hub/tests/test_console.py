@@ -396,9 +396,14 @@ def test_after_seed_a_level_move_takes_over_level_but_keeps_art_colour():
     C.seed_from_art(st, ART, MEMBERS)
     fader(st, 3, 0.2)                                     # couch level
     o = out(st)
-    assert o["couch"].b == pytest.approx(0.6)             # HTP: lr-all's seeded mean (0.6) wins
+    assert o["couch"].b == pytest.approx(0.2)             # seeded lr-all (0.6) is display-only
+    fader(st, 1, 0.5)                                     # lr-all moved: now it counts (HTP)
+    assert out(st)["couch"].b == pytest.approx(0.5)
+    fader(st, 1, 0.1)
+    assert out(st)["couch"].b == pytest.approx(0.2)
     assert o["couch"].h == pytest.approx(120)             # colour still art
     assert o["tv-l"].b == pytest.approx(0.6)              # untouched groups keep art brightness
+    go(st, intent="assign", ch=3)
     go(st, intent="hue", v=30)                            # couch colour now LTP
     assert out(st)["couch"].h == 30 and out(st)["tv-l"].h == 0
 
