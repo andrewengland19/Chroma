@@ -59,13 +59,6 @@ impl EngineConfig {
         EngineConfig { socket: home.join("chromad.sock"), home, program, args: full_args, supervise, fake }
     }
 
-    pub fn from_env() -> EngineConfig {
-        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let repo_root = repo_root.canonicalize().unwrap_or(repo_root);
-        let user_home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"));
-        Self::resolve(|k| std::env::var(k).ok(), cfg!(debug_assertions), &repo_root, &user_home)
-    }
-
     pub fn artwork(&self) -> PathBuf {
         self.home.join("current_artwork.jpg")
     }

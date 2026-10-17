@@ -77,4 +77,5 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 - 2026-10-16 — `chromad --replay-offset-ms` (default 0) is the global replay offset; `CHROMA_SELFTEST_HOLD_S` (debug builds) lengthens the self-test.
 - 2026-10-16 — USER DECISION: FLASH punches through BLACKOUT (was: blackout beats flash, §5.3). With BLACKOUT on, everything is dark except the fixtures of a channel whose FLASH is held: full × master, capped by max level (D8), in the flashing channel's colour; the strobe limit still applies. Releasing the flash goes dark again (instantly, per the blackout bypass above).
 - 2026-10-16 — USER REQUEST: Force Update in the tray and the Chroma app menu (RUNNING.md). Ends all CHROMA processes including engines on other homes (e.g. `/tmp/chroma-hw`) and a `tauri dev` started in a terminal; relaunches from local main without pulling (the repo is never pushed, so origin is behind).
-
+- 2026-10-17 — USER REQUEST: Chroma → Devices → Fake | Real (also in the tray). Fake = `~/.chroma/dev --fake`, Real = `~/.chroma` (a launch `CHROMA_HOME` is kept for its mode). Real stops `lite show` first. The choice persists in the app's config dir; an explicit `CHROMA_HOME`/`CHROMAD_ARGS` wins. Switching stops only an engine the app started.
+\n

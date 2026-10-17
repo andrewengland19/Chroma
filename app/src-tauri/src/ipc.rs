@@ -12,7 +12,7 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::unix::OwnedWriteHalf;
 use tokio::net::UnixStream;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{oneshot, Mutex, Notify};
 
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 /// Same cap as chromad (hub/ipc.py): a line longer than this is a protocol error.
@@ -27,11 +27,19 @@ pub struct IpcClient {
     writer: Mutex<Option<OwnedWriteHalf>>,
     pending: Mutex<HashMap<u64, oneshot::Sender<Value>>>,
     next_id: AtomicU64,
+    hangup: Notify,
+    hangup_gen: AtomicU64,
 }
 
 impl IpcClient {
     pub fn new() -> Arc<Self> {
         Arc::new(IpcClient { next_id: AtomicU64::new(1), ..Default::default() })
+    }
+
+    /// End the current connection (`serve` returns); used when switching engines.
+    pub fn disconnect(&self) {
+        self.hangup_gen.fetch_add(1, Ordering::SeqCst);
+        self.hangup.notify_waiters(); // no stored permit: a later connection is unaffected
     }
 
     #[cfg(test)]
@@ -77,9 +85,20 @@ impl IpcClient {
         let _ = self.write(&json!({"id": 0, "op": "subscribe"})).await;
         let mut reader = BufReader::new(read);
         let mut buf = Vec::with_capacity(4096);
+        let generation = self.hangup_gen.load(Ordering::SeqCst);
         loop {
             buf.clear();
-            match read_line(&mut reader, &mut buf).await {
+            let hangup = self.hangup.notified();
+            tokio::pin!(hangup);
+            hangup.as_mut().enable(); // registered before the check below: no lost wake-up
+            if self.hangup_gen.load(Ordering::SeqCst) != generation {
+                break;
+            }
+            let line = tokio::select! {
+                r = read_line(&mut reader, &mut buf) => r,
+                _ = &mut hangup => break,
+            };
+            match line {
                 Ok(true) => {}
                 Ok(false) | Err(_) => break,
             }
