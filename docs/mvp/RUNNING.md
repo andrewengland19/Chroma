@@ -68,6 +68,17 @@ Separate home + `--no-lifx`: real now-playing / artwork / position, no bulbs, th
 
 A packaged `.app` (double-click to open, engine at login) arrives in M7.
 
+## Force Update (tray menu, or Chroma → Force Update)
+
+Quits the app, stops `lite show` if it runs, ends every CHROMA process (all chromad engines whatever their home, app
+binaries, `tauri dev` / Vite of any Chroma checkout, the old Electron app; SIGTERM first so engines save, SIGKILL
+after 5 s), then relaunches the latest dev version: `npm run tauri dev` in the main checkout
+(`/Users/andy/Code/Chroma`, found from the git worktree; `CHROMA_DEV_CHECKOUT` overrides), running `npm install`
+first if `package-lock.json` changed. "Latest" = whatever local `main` (or the checked-out branch) has: nothing is
+pulled, no branch is switched. `CHROMA_HOME` / `CHROMAD_ARGS` / `CHROMAD_CMD` / `CHROMA_SUPERVISE` carry over. The
+relaunched app runs detached (no terminal); its output and the steps go to `~/Library/Logs/CHROMA/force-update.log`.
+Plan only, kills nothing: `FORCE_UPDATE_DRY_RUN=1 bash app/src-tauri/force_update.sh 0 /Users/andy/Code/Chroma`.
+
 ## Tests
 
 ```bash

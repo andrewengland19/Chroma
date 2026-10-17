@@ -3,12 +3,15 @@
 //! - Supervises / attaches to chromad over its Unix socket (supervisor.rs, ipc.rs).
 //! - `chromad_request` proxies one request from the UI; events arrive as
 //!   `chromad://event`, connection changes as `chromad://status`.
+//! - Tray (and the CHROMA app menu): Force Update (force_update.rs) quits, ends every
+//!   CHROMA process, stops `lite show` and relaunches the latest dev version.
 //! - Tray: status, Open, Restart engine, Quit. Closing the window only hides it;
 //!   the engine keeps running. Quit (tray or ⌘Q) stops an engine the app spawned.
 //! - `chroma-art://` serves the current artwork (art.rs).
 
 mod art;
 mod config;
+mod force_update;
 mod ipc;
 mod supervisor;
 
@@ -17,7 +20,7 @@ use ipc::EventSink;
 use serde_json::Value;
 use std::sync::Arc;
 use supervisor::{EngineStatus, StatusSink, Supervisor};
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{Menu, MenuItem, MenuItemKind, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent, Wry};
 
@@ -117,6 +120,31 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+/// CHROMA → Force Update: start the detached helper, then quit like Quit does.
+fn force_update(app: &AppHandle) {
+    // a tray click may reach both the tray and the app-wide menu handler: run once
+    static STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let checkout = force_update::dev_checkout(&repo_root);
+    let log = force_update::log_path();
+    eprintln!("[chroma] force update: relaunching from {} (log {})", checkout.display(), log.display());
+    // nothing is ended unless the relaunch can work
+    let started = force_update::preflight(&checkout)
+        .map_err(|e| e.to_string())
+        .and_then(|()| force_update::launch(std::process::id(), &checkout, &log).map_err(|e| e.to_string()));
+    match started {
+        Ok(()) => quit(app),
+        Err(e) => {
+            STARTED.store(false, std::sync::atomic::Ordering::SeqCst);
+            let _ = app.emit("chromad://event", serde_json::json!({
+                "ev": "toast", "level": "error", "text": format!("Force Update could not start: {e}")}));
+        }
+    }
+}
+
 fn quit(app: &AppHandle) {
     let app = app.clone();
     let sup = app.state::<Shell>().sup.clone();
@@ -188,6 +216,7 @@ pub fn run() {
                     &MenuItem::with_id(app, "open", "Open CHROMA", true, None::<&str>)?,
                     &MenuItem::with_id(app, "restart", "Restart engine", true, None::<&str>)?,
                     &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?,
                     &MenuItem::with_id(app, "quit", "Quit CHROMA", true, None::<&str>)?,
                 ],
             )?;
@@ -206,10 +235,24 @@ pub fn run() {
                             sup.restart().await;
                         });
                     }
+                    "force_update" => force_update(app),
                     "quit" => quit(app),
                     _ => {}
                 })
                 .build(app)?;
+
+            // the same item in the app menu (Chroma → Force Update), after "About"
+            let app_menu = Menu::default(app.handle())?;
+            if let Some(MenuItemKind::Submenu(first)) = app_menu.items()?.into_iter().next() {
+                first.insert(&PredefinedMenuItem::separator(app)?, 1)?;
+                first.insert(&MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?, 2)?;
+            }
+            app.set_menu(app_menu)?;
+            app.on_menu_event(|app, event| {
+                if event.id.as_ref() == "force_update" {
+                    force_update(app);
+                }
+            });
 
             let sup = Supervisor::new(
                 cfg.clone(),
