@@ -68,6 +68,26 @@ Separate home + `--no-lifx`: real now-playing / artwork / position, no bulbs, th
 
 A packaged `.app` (double-click to open, engine at login) arrives in M7.
 
+## Devices: Fake | Real (Chroma → Devices, or the tray)
+
+Switches the engine at once, no relaunch: the app stops the engine it started (an engine started elsewhere keeps
+running), then starts or attaches to the other one; the window reloads its state from it.
+
+- **Fake**: FakeProvider + fake bulbs, home `~/.chroma/dev` (`--fake`). Nothing real is touched.
+- **Real**: the Apple TV and the LIFX bulbs, home `~/.chroma` (the live hub's home: credentials, layout). If
+  `lite show` is running it is stopped first (a real chromad refuses to drive the bulbs next to it; toast says so).
+
+A home given at launch is kept for the mode it was launched in (e.g. `CHROMA_HOME=/tmp/chroma-hw CHROMAD_ARGS=""`
+makes Real use `/tmp/chroma-hw`); other `CHROMAD_ARGS` (`--no-lifx`, `--log-level …`) carry over. The choice is saved
+(`~/Library/Application Support/com.chroma.console/devices.json`) and used at the next launch, including Force
+Update relaunches, **unless `CHROMA_HOME` or `CHROMAD_ARGS` is set** (an explicit environment wins). So after picking
+Real, a plain `npm run tauri dev` starts on real devices; pick Fake to go back.
+Starting in a saved Real choice also stops `lite show` first.
+
+Caveat (M4 design): AUTO/BOARD is `enabled` in the home's `config.json`. Real shares `~/.chroma` with `lite show`, so
+if you leave the app in BOARD (or REC/PLAY switched it), a later `lite show start` comes up with painting off. Click
+AUTO before switching back to Fake (or switch to Real again and click AUTO).
+
 ## Force Update (tray menu, or Chroma → Force Update)
 
 Quits the app, stops `lite show` if it runs, ends every CHROMA process (all chromad engines whatever their home, app

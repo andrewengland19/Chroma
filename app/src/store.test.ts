@@ -70,3 +70,29 @@ test("the rig is fetched once per fixtures_rev, even if the reply's rev disagree
   await new Promise((r) => setTimeout(r, 20));
   expect(calls()).toBe(2);
 });
+
+test("switching engines (Devices → Fake | Real) drops the old state, rig and takes and refetches", async () => {
+  const calls: string[] = [];
+  const f = fakeIpc({
+    request: vi.fn(async (req: Record<string, unknown>) => {
+      calls.push(String(req.op));
+      if (req.op === "get_state") return { ok: true, state: new MockEngine("mockup-console").state };
+      if (req.op === "fixtures.list") return { ok: true, v: 1, rev: 3, fixtures: [], groups: [], banks: {}, online: {} };
+      if (req.op === "takes.list") return { ok: true, takes: [] };
+      return { ok: true };
+    }),
+  });
+  const s = new ChromaStore(f.ipc);
+  s.start();
+  f.status({ ...CONNECTED, socket: "/a/chromad.sock" });
+  await vi.waitFor(() => expect(s.getSnapshot().rig).not.toBeNull());
+  await vi.waitFor(() => expect(s.getSnapshot().takes).not.toBeNull());
+  f.status({ ...CONNECTED, phase: "connecting", connected: false, fake: false, socket: "/b/chromad.sock" });
+  expect(s.getSnapshot().state).toBeNull();
+  expect(s.getSnapshot().rig).toBeNull();
+  expect(s.getSnapshot().takes).toBeNull();
+  calls.length = 0;
+  f.status({ ...CONNECTED, fake: false, socket: "/b/chromad.sock" });
+  // same fixtures_rev / takes_rev as before, but another engine: fetched again
+  await vi.waitFor(() => expect(calls).toEqual(expect.arrayContaining(["get_state", "fixtures.list", "takes.list"])));
+});

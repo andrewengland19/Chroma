@@ -66,6 +66,16 @@ export class ChromaStore {
 
   private onStatus(s: EngineStatus) {
     const wasConnected = this.snap.status?.connected;
+    const prev = this.snap.status;
+    if (prev && (prev.socket !== s.socket || prev.fake !== s.fake)) {
+      // another engine (Devices → Fake | Real): nothing of the old one may linger,
+      // even when its fixtures_rev / takes_rev happen to be equal
+      this.rigFetchedFor = undefined;
+      this.takesFetchedFor = undefined;
+      this.set({ state: null, rig: null, takes: null, status: s });
+      if (s.connected) void this.refreshState();
+      return;
+    }
     this.set({ status: s });
     if (s.connected && !wasConnected) void this.refreshState();
   }

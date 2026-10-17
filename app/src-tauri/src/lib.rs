@@ -3,6 +3,8 @@
 //! - Supervises / attaches to chromad over its Unix socket (supervisor.rs, ipc.rs).
 //! - `chromad_request` proxies one request from the UI; events arrive as
 //!   `chromad://event`, connection changes as `chromad://status`.
+//! - Tray and the Chroma app menu: Devices → Fake | Real (devices.rs) switches the
+//!   engine between fake devices (~/.chroma/dev) and the real ones (~/.chroma); saved.
 //! - Tray (and the CHROMA app menu): Force Update (force_update.rs) quits, ends every
 //!   CHROMA process, stops `lite show` and relaunches the latest dev version.
 //! - Tray: status, Open, Restart engine, Quit. Closing the window only hides it;
@@ -11,16 +13,19 @@
 
 mod art;
 mod config;
+mod devices;
 mod force_update;
 mod ipc;
 mod supervisor;
 
-use config::EngineConfig;
 use ipc::EventSink;
 use serde_json::Value;
 use std::sync::Arc;
 use supervisor::{EngineStatus, StatusSink, Supervisor};
-use tauri::menu::{Menu, MenuItem, MenuItemKind, PredefinedMenuItem};
+use devices::{DeviceModes, Devices};
+use std::path::PathBuf;
+use std::sync::Mutex as StdMutex;
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent, Wry};
 
@@ -59,6 +64,67 @@ fn status_line(s: &EngineStatus) -> String {
 
 struct Shell {
     sup: Arc<Supervisor>,
+    modes: DeviceModes,
+    choice_path: PathBuf,
+    user_home: PathBuf,
+    /// the device mode last asked for (menu clicks are serialized by `switch_lock`)
+    target: StdMutex<Devices>,
+    switch_lock: tokio::sync::Mutex<()>,
+    checks: StdMutex<Vec<(CheckMenuItem<Wry>, Devices)>>,
+}
+
+fn toast(app: &AppHandle, level: &str, text: impl Into<String>) {
+    let _ = app.emit("chromad://event", serde_json::json!({"ev": "toast", "level": level, "text": text.into()}));
+}
+
+fn devices_submenu(app: &tauri::App, current: Devices) -> tauri::Result<(Submenu<Wry>, Vec<(CheckMenuItem<Wry>, Devices)>)> {
+    let fake = CheckMenuItem::with_id(app, "devices_fake", "Fake", true, current == Devices::Fake, None::<&str>)?;
+    let real = CheckMenuItem::with_id(app, "devices_real", "Real", true, current == Devices::Real, None::<&str>)?;
+    let sub = Submenu::with_items(app, "Devices", true, &[&fake, &real])?;
+    Ok((sub, vec![(fake, Devices::Fake), (real, Devices::Real)]))
+}
+
+fn sync_checks(shell: &Shell, mode: Devices) {
+    for (item, m) in shell.checks.lock().unwrap().iter() {
+        let _ = item.set_checked(*m == mode);
+    }
+}
+
+/// Chroma → Devices → Fake | Real.
+fn set_devices(app: &AppHandle, mode: Devices) {
+    let shell = app.state::<Shell>();
+    {
+        let mut target = shell.target.lock().unwrap();
+        sync_checks(&shell, mode); // a click toggles the check itself: always show the truth
+        if *target == mode {
+            return;
+        }
+        *target = mode;
+    }
+    if let Err(e) = devices::save_choice(&shell.choice_path, mode) {
+        eprintln!("[chroma] could not save the device choice: {e}");
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let shell = app.state::<Shell>();
+        let _one_at_a_time = shell.switch_lock.lock().await;
+        if *shell.target.lock().unwrap() != mode {
+            return; // a newer click wins
+        }
+        if mode == Devices::Real {
+            let home = shell.user_home.clone();
+            match tauri::async_runtime::spawn_blocking(move || devices::stop_lite_show(&home)).await {
+                Ok(Ok(true)) => toast(&app, "info", "Stopped lite show: the app drives the real lights now"),
+                Ok(Err(e)) => toast(&app, "warn", e),
+                _ => {}
+            }
+        }
+        let new = shell.modes.config_for(mode);
+        let home = new.home.display().to_string();
+        shell.sup.switch(new).await;
+        let what = if mode == Devices::Fake { "Fake devices (test)" } else { "Real devices" };
+        toast(&app, "info", format!("{what}: engine in {home}"));
+    });
 }
 
 #[tauri::command]
@@ -190,11 +256,16 @@ fn selftest(app: AppHandle, sup: Arc<Supervisor>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let cfg = EngineConfig::from_env();
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let repo_root = repo_root.canonicalize().unwrap_or(repo_root);
+    let user_home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"));
+    let modes = DeviceModes::new(|k| std::env::var(k).ok(), cfg!(debug_assertions), &repo_root, &user_home);
+    let env_pinned = std::env::var_os("CHROMA_HOME").is_some() || std::env::var_os("CHROMAD_ARGS").is_some();
     tauri::Builder::default()
         .register_uri_scheme_protocol("chroma-art", {
-            let art_path = cfg.artwork();
-            move |_ctx, _req| {
+            move |ctx, _req| {
+                // the current engine's home (it changes with Devices → Fake | Real)
+                let art_path = ctx.app_handle().try_state::<Shell>().map(|s| s.sup.cfg().artwork()).unwrap_or_default();
                 let (status, ctype, body) = art::load(&art_path);
                 tauri::http::Response::builder()
                     .status(status)
@@ -207,6 +278,10 @@ pub fn run() {
         })
         .setup(move |app| {
             let handle = app.handle().clone();
+            let choice_path = app.path().app_config_dir()?.join("devices.json");
+            let cfg = devices::initial(&modes, env_pinned, devices::load_choice(&choice_path));
+            let current = Devices::of(&cfg);
+            let (tray_devices, mut checks) = devices_submenu(app, current)?;
             let status_item = MenuItem::with_id(app, "status", "Engine: connecting…", false, None::<&str>)?;
             let menu = Menu::with_items(
                 app,
@@ -215,6 +290,7 @@ pub fn run() {
                     &PredefinedMenuItem::separator(app)?,
                     &MenuItem::with_id(app, "open", "Open CHROMA", true, None::<&str>)?,
                     &MenuItem::with_id(app, "restart", "Restart engine", true, None::<&str>)?,
+                    &tray_devices,
                     &PredefinedMenuItem::separator(app)?,
                     &MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?,
                     &MenuItem::with_id(app, "quit", "Quit CHROMA", true, None::<&str>)?,
@@ -236,6 +312,8 @@ pub fn run() {
                         });
                     }
                     "force_update" => force_update(app),
+                    "devices_fake" => set_devices(app, Devices::Fake),
+                    "devices_real" => set_devices(app, Devices::Real),
                     "quit" => quit(app),
                     _ => {}
                 })
@@ -244,14 +322,18 @@ pub fn run() {
             // the same item in the app menu (Chroma → Force Update), after "About"
             let app_menu = Menu::default(app.handle())?;
             if let Some(MenuItemKind::Submenu(first)) = app_menu.items()?.into_iter().next() {
+                let (app_devices, more) = devices_submenu(app, current)?;
+                checks.extend(more);
                 first.insert(&PredefinedMenuItem::separator(app)?, 1)?;
-                first.insert(&MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?, 2)?;
+                first.insert(&app_devices, 2)?;
+                first.insert(&MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?, 3)?;
             }
             app.set_menu(app_menu)?;
-            app.on_menu_event(|app, event| {
-                if event.id.as_ref() == "force_update" {
-                    force_update(app);
-                }
+            app.on_menu_event(|app, event| match event.id.as_ref() {
+                "force_update" => force_update(app),
+                "devices_fake" => set_devices(app, Devices::Fake),
+                "devices_real" => set_devices(app, Devices::Real),
+                _ => {}
             });
 
             let sup = Supervisor::new(
@@ -259,8 +341,32 @@ pub fn run() {
                 Arc::new(UiEvents(handle.clone())),
                 Arc::new(UiStatus { app: handle.clone(), item: status_item }),
             );
-            app.manage(Shell { sup: sup.clone() });
-            tauri::async_runtime::spawn(sup.clone().run());
+            app.manage(Shell {
+                sup: sup.clone(),
+                modes: modes.clone(),
+                choice_path,
+                user_home: user_home.clone(),
+                target: StdMutex::new(current),
+                switch_lock: tokio::sync::Mutex::new(()),
+                checks: StdMutex::new(checks),
+            });
+            // a saved Real choice drives the real bulbs: the old hub must not run next to it
+            // (chromad would refuse to start); an explicit environment is left as given
+            let stop_hub = !env_pinned && current == Devices::Real;
+            let (run_sup, run_app, home) = (sup.clone(), handle.clone(), user_home.clone());
+            tauri::async_runtime::spawn(async move {
+                if stop_hub {
+                    match tauri::async_runtime::spawn_blocking(move || devices::stop_lite_show(&home)).await {
+                        Ok(Ok(true)) => {
+                            eprintln!("[chroma] real devices: stopped lite show");
+                            toast(&run_app, "info", "Stopped lite show: the app drives the real lights now");
+                        }
+                        Ok(Err(e)) => toast(&run_app, "warn", e),
+                        _ => {}
+                    }
+                }
+                run_sup.run().await;
+            });
             #[cfg(debug_assertions)]
             selftest(handle.clone(), sup);
             Ok(())

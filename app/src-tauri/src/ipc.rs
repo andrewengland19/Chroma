@@ -12,7 +12,7 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::unix::OwnedWriteHalf;
 use tokio::net::UnixStream;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{oneshot, Mutex, Notify};
 
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 /// Same cap as chromad (hub/ipc.py): a line longer than this is a protocol error.
@@ -27,11 +27,19 @@ pub struct IpcClient {
     writer: Mutex<Option<OwnedWriteHalf>>,
     pending: Mutex<HashMap<u64, oneshot::Sender<Value>>>,
     next_id: AtomicU64,
+    hangup: Notify,
+    hangup_gen: AtomicU64,
 }
 
 impl IpcClient {
     pub fn new() -> Arc<Self> {
         Arc::new(IpcClient { next_id: AtomicU64::new(1), ..Default::default() })
+    }
+
+    /// End the current connection (`serve` returns); used when switching engines.
+    pub fn disconnect(&self) {
+        self.hangup_gen.fetch_add(1, Ordering::SeqCst);
+        self.hangup.notify_waiters(); // no stored permit: a later connection is unaffected
     }
 
     #[cfg(test)]
@@ -71,7 +79,18 @@ impl IpcClient {
 
     /// Own `stream` until it closes: subscribe, then route replies and events.
     /// Pending requests fail when the connection ends.
+    /// The current hangup generation: read it before connecting and pass it to
+    /// `serve_from`, so a `disconnect()` in between is not lost.
+    pub fn generation(&self) -> u64 {
+        self.hangup_gen.load(Ordering::SeqCst)
+    }
+
+    #[cfg(test)]
     pub async fn serve(&self, stream: UnixStream, sink: Arc<dyn EventSink>) {
+        self.serve_from(stream, sink, self.generation()).await
+    }
+
+    pub async fn serve_from(&self, stream: UnixStream, sink: Arc<dyn EventSink>, generation: u64) {
         let (read, write) = stream.into_split();
         *self.writer.lock().await = Some(write);
         let _ = self.write(&json!({"id": 0, "op": "subscribe"})).await;
@@ -79,7 +98,17 @@ impl IpcClient {
         let mut buf = Vec::with_capacity(4096);
         loop {
             buf.clear();
-            match read_line(&mut reader, &mut buf).await {
+            let hangup = self.hangup.notified();
+            tokio::pin!(hangup);
+            hangup.as_mut().enable(); // registered before the check below: no lost wake-up
+            if self.hangup_gen.load(Ordering::SeqCst) != generation {
+                break;
+            }
+            let line = tokio::select! {
+                r = read_line(&mut reader, &mut buf) => r,
+                _ = &mut hangup => break,
+            };
+            match line {
                 Ok(true) => {}
                 Ok(false) | Err(_) => break,
             }
@@ -194,6 +223,47 @@ mod tests {
         let r = client.request(json!({"op": "fail"})).await.unwrap();
         assert_eq!(r, json!({"id": r["id"], "ok": false, "error": "nope"}));
         assert_eq!(sink.0.lock().unwrap()[0], json!({"ev": "state", "state": {"n": 1}}));
+    }
+
+    /// A disconnect between connect() and serve_from() is not lost, and a disconnect
+    /// with nobody connected does not end the next connection.
+    #[tokio::test]
+    async fn disconnect_ends_the_connection_and_is_never_lost_or_stored() {
+        let (_d, path) = sock();
+        let listener = UnixListener::bind(&path).unwrap();
+        tokio::spawn(async move {
+            loop {
+                let (s, _) = listener.accept().await.unwrap();
+                tokio::spawn(async move {
+                    let mut r = BufReader::new(s);
+                    let mut b = Vec::new();
+                    while read_line(&mut r, &mut b).await.unwrap_or(false) {
+                        b.clear();
+                    }
+                });
+            }
+        });
+        let client = IpcClient::new();
+        let sink: Arc<dyn EventSink> = Arc::new(Collect(StdMutex::new(vec![])));
+        client.disconnect(); // nobody connected: must not affect the next connection
+        let generation = client.generation();
+        let stream = UnixStream::connect(&path).await.unwrap();
+        let (c2, s2) = (client.clone(), sink.clone());
+        let serving = tokio::spawn(async move { c2.serve_from(stream, s2, generation).await });
+        while !client.connected().await {
+            tokio::task::yield_now().await;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(!serving.is_finished(), "an earlier disconnect must not end a new connection");
+        client.disconnect();
+        tokio::time::timeout(Duration::from_secs(2), serving).await.expect("disconnect ends serve").unwrap();
+        // the race: disconnect after the generation is read, before serve starts
+        let generation = client.generation();
+        let stream = UnixStream::connect(&path).await.unwrap();
+        client.disconnect();
+        tokio::time::timeout(Duration::from_secs(2), client.serve_from(stream, sink, generation))
+            .await
+            .expect("a disconnect before serve_from is not lost");
     }
 
     #[tokio::test]
