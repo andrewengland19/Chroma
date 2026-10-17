@@ -1,6 +1,7 @@
 // In-browser stand-in for chromad, so the UI runs (and can be screenshotted) without
 // Tauri. Scenarios:
 //   mockup-console   the exact data of docs/mvp/gui-1-console.png (static)
+//   mockup-takes     docs/mvp/gui-2-takes.png: "Older" playing at 1:42.310 (static)
 //   live             same data, playing: position advances, controls respond
 //   empty            engine up, nothing playing
 // Real engine semantics live in hub/ (tested with pytest); this only mirrors enough
@@ -12,6 +13,7 @@ import { applyMergePatch } from "../lib/mergePatch";
 import type { EngineStatus, IpcClient, Reply } from "../ipc/types";
 import { MOCK_ART } from "./art";
 import { MockRig } from "./rig";
+import { MockTakeStore, mockActivity, mockTakes } from "./takes";
 
 export const MOCK_STATUS: EngineStatus = {
   phase: "connected",
@@ -23,7 +25,7 @@ export const MOCK_STATUS: EngineStatus = {
   socket: "mock",
 };
 
-export type Scenario = "mockup-console" | "mockup-setup" | "live" | "empty";
+export type Scenario = "mockup-console" | "mockup-setup" | "mockup-takes" | "live" | "empty";
 
 function baseState(scenario: Scenario): State {
   const s = structuredClone(mockupState) as State;
@@ -32,8 +34,15 @@ function baseState(scenario: Scenario): State {
     s.rec = { state: "idle", take_id: null, elapsed_ms: 0, events: 0, mode: "replace", name: "", groups_touched: 0 };
     s.room = s.room.map((r) => ({ ...r, hex: null }));
   }
-  if (scenario === "live") {
+  if (scenario === "live" || scenario === "mockup-takes") {
     s.rec = { state: "idle", take_id: null, elapsed_ms: 0, events: 0, mode: "replace", name: "", groups_touched: 0 };
+  }
+  const older = mockTakes()[0];
+  if (scenario === "mockup-console") s.activity = mockActivity(older, 102000, "rec");
+  if (scenario === "mockup-takes") {
+    s.now = { ...s.now, pos_ms: 102310 };
+    s.play = { state: "playing", take_id: older.header.id, pos_ms: 102310, loop: false };
+    s.activity = mockActivity(older, older.header.dur_ms ?? 0, "play");
   }
   return s;
 }
@@ -44,6 +53,7 @@ export class MockEngine implements IpcClient {
   private timer: ReturnType<typeof setInterval> | null = null;
   readonly requests: Record<string, unknown>[] = [];
   readonly rig = new MockRig((rev) => this.patch({ fixtures_rev: rev }));
+  readonly takes = new MockTakeStore(() => this.state, (p) => this.patch(p));
 
   constructor(readonly scenario: Scenario = "live") {
     this.state = baseState(scenario);
@@ -97,10 +107,15 @@ export class MockEngine implements IpcClient {
           this.patch({ who: i.who });
           return { ok: true };
         }
-        return this.console(i);
+        const r = this.console(i);
+        if (r.ok && this.state.rec.state === "recording" && !["palette_store", "cue_store"].includes(i.intent)) {
+          this.patch({ rec: { events: this.state.rec.events + 1 } });
+        }
+        return r;
       }
       default:
         if (typeof req.op === "string" && /^(fixtures|groups|banks)\./.test(req.op)) return this.rig.handle(req);
+        if (typeof req.op === "string" && /^(takes|take|rec|play)\./.test(req.op)) return this.takes.handle(req);
         return { ok: false, error: `unknown op '${String(req.op)}'` };
     }
   }

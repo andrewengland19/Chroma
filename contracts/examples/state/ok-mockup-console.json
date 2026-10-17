@@ -380,5 +380,71 @@
     "board": "virtual"
   },
   "fixtures_rev": 3,
-  "takes_rev": 6
+  "takes_rev": 6,
+  "activity": {
+    "source": "rec",
+    "dur_ms": 205000,
+    "lanes": [
+      {
+        "group_id": "lr-all",
+        "color": "#e5484d",
+        "spans": [
+          [
+            1000,
+            4000
+          ],
+          [
+            6500,
+            12000
+          ],
+          [
+            13500,
+            14500
+          ]
+        ]
+      },
+      {
+        "group_id": "counter",
+        "color": "#f2c94c",
+        "spans": [
+          [
+            1500,
+            6000
+          ],
+          [
+            30000,
+            36000
+          ]
+        ]
+      },
+      {
+        "group_id": "lr-l",
+        "color": "#2dd4bf",
+        "spans": [
+          [
+            1200,
+            3000
+          ],
+          [
+            8000,
+            9000
+          ]
+        ]
+      },
+      {
+        "group_id": "accent",
+        "color": "#a855f7",
+        "spans": [
+          [
+            1000,
+            4000
+          ],
+          [
+            17500,
+            21000
+          ]
+        ]
+      }
+    ]
+  }
 }

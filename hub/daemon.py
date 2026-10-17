@@ -28,6 +28,7 @@ from paths import chroma_dir
 from rigsvc import RigService
 from scheduler import OutputScheduler
 from state import ART_MODE_IN, StateAssembler
+from takes import TakeError, TakeService, resolve_event
 
 log = logging.getLogger("chroma-hub")
 
@@ -57,7 +58,7 @@ class Chromad:
     TICK_S = 0.25         # publish the interpolated position at 4 Hz while playing
 
     def __init__(self, loop, *, fake: bool = False, no_lifx: bool = False, clock=None,
-                 socket_path: Optional[str] = None, tracks: Optional[list] = None):
+                 socket_path: Optional[str] = None, tracks: Optional[list] = None, replay_offset_ms: int = 0):
         self.loop = loop
         self.home = chroma_dir()
         self.clock = clock or MonotonicClock()
@@ -113,6 +114,9 @@ class Chromad:
                                          self._klass, self.store.limits)
         self._board_ready = False        # seeded from the art look since BOARD began (D2)
         self._save_task: Optional[asyncio.Task] = None
+        # M5: recorder + replay (takes.py); State rec/play/activity/takes_rev come from it
+        self.takes = TakeService(self, os.path.join(self.home, "takes"), offset_ms=replay_offset_ms)
+        self.state.takes = self.takes
 
     # ---- now playing → SongClock -------------------------------------------
     def _on_np(self, np, source: str) -> None:
@@ -141,7 +145,14 @@ class Chromad:
 
     def _on_song_event(self, event: str, _song) -> None:
         self.state.force_pos()
+        self.takes.on_song_event(event)
         self.ipc.mark_dirty()
+
+    def poll_now(self) -> None:
+        """Feed the fake provider's position into the SongClock right away (after a seek)."""
+        if self.fake_provider is not None:
+            from providers import NowPlaying
+            self._on_np(NowPlaying.from_playing(self.fake_provider.playing()), "seek")
 
     # ---- ops ------------------------------------------------------------------
     async def handle(self, req: dict) -> Optional[dict]:
@@ -169,13 +180,20 @@ class Chromad:
             self.console.cues[i].name = name.strip()
             self._console_changed()
             return None
+        if op.split(".")[0] in ("takes", "take", "rec", "play"):
+            try:
+                return await self.takes.handle(op, req)
+            except TakeError as e:
+                raise IpcError(str(e)) from None
         if op.split(".")[0] in ("fixtures", "groups", "banks"):
             res = await self.rig.handle(op, req)
             if res is not None or op in ("fixtures.test",):
                 return res
         raise IpcError(f"unknown op {op!r}")
 
-    async def apply_intent(self, intent, src: str) -> Optional[dict]:
+    async def apply_intent(self, intent, src: str, at: Optional[dict] = None) -> Optional[dict]:
+        """Every console change enters here (src ui | board | replay | cli). `at` (replay):
+        the take event whose resolved b/c/a/v is applied (D9)."""
         if not isinstance(intent, dict) or not isinstance(intent.get("intent"), str):
             raise IpcError("intent must be an object with an 'intent' name")
         name = intent["intent"]
@@ -205,9 +223,13 @@ class Chromad:
         elif self._board_ready:
             self._leave_board()                     # re-enabled elsewhere (/agent, /lights/set)
         try:
-            effects = console_logic.apply(self.console, intent, src)
+            effects = console_logic.apply(self.console, intent, src, at=at)
         except ConsoleError as e:
             raise IpcError(str(e)) from None
+        if src != "replay" and self.takes.rec is not None:
+            resolved = resolve_event(self.console, intent, src)
+            if resolved is not None:
+                self.takes.record(intent, resolved)
         fade = 0
         for eff in effects:
             if eff[0] == "assign":
@@ -242,9 +264,35 @@ class Chromad:
             self.virtual.push(f, hsb, fade_ms)
         self.ipc.mark_dirty()
 
+    def drive_now(self) -> None:
+        if not self.engine.enabled:
+            self._drive(self.clock.monotonic() * 1000.0)
+        self._console_changed()
+
+    def apply_replay(self, ev: dict, drive: bool = True) -> None:
+        """One take event (replay): the same console.apply path as live input, src="replay".
+        Synchronous: the replay loop applies a batch, then drives once."""
+        intent = ev.get("i") or {"intent": "replay"}
+        t_intent = self.clock.monotonic() * 1000.0
+        effects = console_logic.apply(self.console, intent, "replay", at=ev if ev.get("a") else None)
+        fade = next((e[2] for e in effects if e[0] == "recall"), 0)
+        if drive and not self.engine.enabled:
+            self._drive(t_intent, fade)
+
+    def ensure_board(self, why: str) -> None:
+        """REC / PLAY drive the lights from the console: switch to BOARD if AUTO paints."""
+        if self.engine.enabled:
+            self.engine.enabled = False
+            self._ensure_board()
+            self._spawn(self._serialized_who("board"))
+            self.ipc.toast("info", f"Switched to BOARD for {why}")
+
+    def spawn(self, coro) -> None:
+        self._spawn(coro)
+
     def _drive(self, t_intent_ms: float, fade_ms: int = 0) -> None:
         targets = console_logic.resolve(self.console, self._members(), self.store.limits)
-        self.scheduler.submit(targets, t_intent_ms, fade_ms)
+        self.scheduler.submit(targets, t_intent_ms, fade_ms, dark=self.console.blackout)
 
     def art_look(self) -> dict:
         """fixture id -> HSB the room shows from the art painter right now."""
@@ -380,7 +428,7 @@ class Chromad:
         engine_task = self.loop.create_task(self.engine.run())
         self._tasks = [engine_task] + [self.loop.create_task(c()) for c in
                                        (self._bus_watch, self._poll_position, self._ticker,
-                                        self.scheduler.run)]
+                                        self.scheduler.run, self.takes.run)]
         log.info(f"chromad running (home {self.home}{', fake devices' if self.fake else ''})")
         if not any(f.type == "lifx" for f in self.store.fixtures.values()):
             # first start (or an earlier import found nothing): bring the bulbs into the rig
@@ -391,6 +439,7 @@ class Chromad:
             await self.shutdown(engine_task)
 
     async def shutdown(self, engine_task=None) -> None:
+        self.takes.stop_rec("engine stopped")
         await self.ipc.stop()
         if self._save_task is not None:
             self._save_task.cancel()

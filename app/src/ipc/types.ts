@@ -20,4 +20,6 @@ export interface IpcClient {
   onStatus(cb: (s: EngineStatus) => void): () => void;
   status(): Promise<EngineStatus>;
   setTitle?(title: string): void;
+  /** Native only: write a text file (take export) into ~/Downloads; resolves to its path. */
+  saveText?(filename: string, text: string): Promise<string>;
 }

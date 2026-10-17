@@ -14,15 +14,18 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M1 chromad, IPC, SongClock | `app/m1-chromad` | **done** — merged c4ceaad (pending-hardware: H1.1–H1.3) |
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
-| M4 console, intents, AUTO/BOARD | `app/m4-console` | **in progress** — rebased onto 79de99f |
-| M5 recorder, replay, Takes | `app/m5-takes` | — |
+| M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
+| M5 recorder, replay, Takes | `app/m5-takes` | **done** — not merged yet (pending-hardware: H5.1–H5.4) |
 | M6 board link + simulator | `app/m6-board` | — |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-14: **M0–M3 done and merged into local main (8b29256)**; next is **M4 (console, intents,
-AUTO/BOARD)** on branch `app/m4-console` (already created from 8b29256 in the worktree; it only holds this note). Hardware checks are collected in `HARDWARE_CHECKLIST.md` (none run yet).
+Status on 2026-10-16: **M0–M4 merged into local main (b88d544); M5 (recorder, replay, Takes) is done on
+`app/m5-takes`**, all suites green, code review fixed; the merge waits for the user's OK because their `tauri dev`
+runs from the main checkout (a merge rebuilds and restarts it). Hardware checks: `HARDWARE_CHECKLIST.md` (none run
+yet; H5.1–H5.4 added). BLACKOUT decisions made: going dark bypasses the D7 hold (the edge still counts), and a held FLASH punches through
+BLACKOUT.
 
 How the build has been run (keep doing it this way):
 - Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
@@ -37,12 +40,25 @@ How the build has been run (keep doing it this way):
   live|empty`; the mockup data lives in `contracts/examples/{state,fixtures}/ok-mockup*.json`.
 - Native app: `CHROMA_DEBUG_IPC=1 CHROMA_SELFTEST=close-quit npm run tauri dev` (debug builds) proves UI → Rust →
   chromad and the close/quit lifecycle without screen access. The user does not grant Screen Recording; ask them for
-  screenshots in the batched hardware request instead.
+  screenshots in the batched hardware request instead. **Always use a temp home** (`CHROMA_HOME=$(mktemp -d -t cxst)`)
+  and run it in the background (macOS has no `timeout`; the self-test quits itself). If port 1420 is taken (the
+  user's own `tauri dev` from the main checkout), add `--config '{"build":{"devUrl":"http://localhost:1440",
+  "beforeDevCommand":"npm run dev -- --port 1440 --strictPort"}}'` (`npx tauri dev …`). While it runs, drive
+  intents with `CHROMA_HOME=<temp> hub/.venv/bin/python tools/chromactl.py intent …`.
+- The user runs hardware checks on their own (e.g. on `/tmp/chroma-hw` with `lite show` stopped). Before any
+  self-test or merge, check `pgrep -fl chromad.py` and leave the user's engines and apps alone. Note that a merge into
+  main hot-reloads the UI of a `tauri dev` running from the main checkout, but its engine keeps the old code until
+  they restart. A stale fake engine on `~/.chroma/dev` gets *adopted* by the next fake-mode app, so tell the user to
+  stop it rather than testing against old code.
+- If the main checkout has uncommitted work of the user's, never commit or discard it without asking (on 2026-10-16
+  the user had their hardware SVG edit committed as aa7bc38 and a stray `app/app/` lockfile removed; main was clean).
 - Contracts first: change `contracts/*.schema.json` + examples, `npm --prefix app run gen:types`, then code.
 
-M4 starting points: `hub/console.py` has the data model; intents arrive in `daemon.apply_intent` (only `who` today);
-outputs are `self.lifx_out` / `self.virtual`; per-fixture limits come from `FixtureStore.limits()` (D8); the strobe
-definition is D7; board seeding is D2; `LifxOutput.forget_power()` should be called when switching to BOARD.
+M6 starting points: board-sourced intents enter through `daemon.apply_intent(intent, "board")` (pickup in
+`console._fader`); takes record them like UI intents (a board move that did not pick up is not recorded). The
+parity test (§M6) can reuse `test_takes_daemon.py`'s fake-clock harness (`fake_daemon`, `advance`) and compare
+`d.virtual.frames`. `board_sim` replaying a take: read events with `takes.read_take` and send `i` as board snapshots.
+`State.health.board` is still always "none".
 
 ---
 
@@ -323,3 +339,97 @@ virtual light went to full, and `console.json` was written at shutdown with the 
   is an edge too. Letting blackout bypass the limit would let blackout toggling strobe above 3 Hz (§8.1), so it is
   unchanged.
 `tools/test_all.sh`: 328 + 34 + 14 passed.
+
+**Merged** into main as b88d544 (2026-10-16). Re-test on main: pytest in the user's checkout 328 passed; full
+`tools/test_all.sh` in a detached worktree passed (328 + 34 vitest + 14 cargo); `lite show status` → stopped (it was
+already stopped before the merge; not started by the builder).
+
+---
+
+## M5 — recorder, replay, Takes
+
+Started 2026-10-16 (branch `app/m5-takes` on main aa7bc38). First commit: the user's BLACKOUT decision (going dark
+bypasses the D7 hold, the edge still counts; DECISIONS 2026-10-16). Later: FLASH punches through BLACKOUT (user).
+
+**Plan**
+1. Contracts (mostly in place since M0: take header/event, `takes.*`, `rec.*`, `play.*`, `take.nudge`, State
+   `rec`/`play`/`takes_rev`). Additions: header `art_hex` (library thumbnail); State `activity` (lanes of recent
+   event spans for the Console strip); response shapes for `takes.list/get/export`; examples; `gen:types`.
+2. `hub/takes.py`, pure where possible:
+   - `TakeStore`: `$CHROMA_HOME/takes/<id>_<slug>.jsonl`, atomic rewrites, list (headers cached by mtime),
+     get/delete (moved to `takes/.deleted/`, never unlinked)/rename/duplicate/set_flag/markers/nudge/export.
+   - `resolve_event(before, after, intent)` → D9 `b/c/a/v` + `g` from the console state after apply. Not recorded:
+     `who`, `palette_store`, `cue_store` (editing, not performing) and board moves that did not pick up.
+   - `Recorder`: SongClock-stamped events, `init` snapshot, D10 modes at stop: REPLACE = new only; MERGE = old + new;
+     OVERDUB = old minus each channel's events inside its touch spans (live input + 750 ms) + new, and a flash the
+     old take held into a span is released at the span start.
+   - `Replayer`: `step(pos_ms)` applies every due event (pos − nudge − global offset), `seek(pos)` rebuilds the
+     console from `init` + events up to pos without output, skip predicate for OVERDUB touch spans.
+     Replay goes through `console.apply(..., src="replay", at=ev)`: the resolved `b/c/a/v` targets the channel, so
+     replay never depends on the live bank, fader function or last-touched channel. Replay skips `bank`,
+     `fader_fn`, `select` and `assign` (they would move the user's view / rewrite the rig).
+3. Daemon: recorder hook in `apply_intent` (src ≠ replay), replay loop on the SongClock (sleeps to the next due
+   event, ≤ 50 ms), stop on track change, follow seeks, REC/PLAY switch to BOARD, `rec.arm` starts on play,
+   recording stops (and saves) on track change and at shutdown. Ops per §5.1.
+4. UI: Console REC/PLAY/STOP + activity strip (gui-1 bottom); Takes screen (gui-2): library + search, transport,
+   mode, nudge, loop, ruler + markers (M key / button), one lane per group (level curve + flash blocks), playhead,
+   details, training toggle, export/duplicate/delete. `tools/ui_compare.py takes`.
+5. AC tests: schema-valid recorded take; ±20 ms replay on the virtual output (fake clock + `scheduler.step`);
+   mode tests; nudge; track change stops replay; restart survival. Real Apple TV drift = H5.
+
+**Done**
+- Contracts: take header `art_hex`; State `activity` (Console strip lanes); response shapes `takes_list`, `take_full`,
+  `take_export` (+ `track_id` in summaries); examples; `contracts.ts` regenerated (DECISIONS X7).
+- `hub/takes.py`: `TakeStore` (atomic rewrites, header cache, delete → `takes/.deleted/` without overwriting),
+  `resolve_event` (D9), `Recorder` (REPLACE / MERGE / OVERDUB punch-in, D10), `Replayer`, `activity_lanes`,
+  `TakeService` (recording, playback on the SongClock, all §5.1 take ops).
+- `console.apply(..., src="replay", at=event)` → `apply_resolved`: replay targets the recorded bank/channel and never
+  moves the live bank, fader function, selection or the rig's bindings; `load_init` / `snapshot_init`.
+- Daemon: recorder hook in `apply_intent` (src ≠ replay), REC/PLAY switch to BOARD (toast), `rec.arm` starts with
+  the song, track change stops recording (saved) and replay, seeks rebuild the replayed look, recording is saved at
+  shutdown, `--replay-offset-ms` (global offset), `AppleTVProvider.seek` (timeline scrub; pending-hardware).
+- UI: Console REC/PLAY/STOP wired (REC lit/armed/idle, PLAY = newest take of the song) and the activity strip;
+  Takes screen (library + search, REC into the selected take with the mode, nudge ±5 ms / shift ±1, loop, time,
+  ruler, markers via M / double-click / flag click to remove, lanes with level curves and flash blocks, playhead,
+  click-to-seek, details, rename, training flag, duplicate, delete, export → `~/Downloads` via a native command).
+
+**AC**
+| AC | Status | Evidence |
+|---|---|---|
+| A recorded take validates against the schema | **pass** | `test_takes_daemon.py::test_a_recorded_take_validates_and_replays_within_20ms…`; native self-test take file validated |
+| Replay reproduces the intents within ±20 ms on the virtual output | **pass** | fake clock + `scheduler.step`: every frame within 1 ms (the 1 ms step); real asyncio loop: 1.3–4.1 ms (`test_real_time_replay…`). A 50 ms offset makes the test fail. |
+| Modes behave per §5.4 / D10 | **pass** | `test_takes.py` (REPLACE, MERGE, OVERDUB spans, flash release), `test_takes_daemon.py` (overdub live override + old take resumes after 750 ms, merge/replace into a take, live flash kept) |
+| Nudge shifts playback | **pass** | `test_nudge_shifts_playback_later` (+200 ms → 320 ms for a 120 ms event); recording into a nudged take is stored in take time |
+| Changing track stops replay | **pass** | `test_track_change_stops_replay…` (and recording stops + saves) |
+| Real Apple TV: 3 min record + replay, drift | **pending-hardware** | H5.1 |
+| A take survives app and engine restarts | **pass (engine)** / **pending-hardware (app, real)** | `test_take_ops_and_a_take_survives_a_restart`; H5.3 |
+
+**Native self-test** (temp home, port 1440; the user's `tauri dev` on 1420 and `/tmp/chroma-hw` engine untouched): the
+UI fetched `get_state` and `takes.list` through Rust (again after `takes_rev` moved). chromactl drove `rec.start` →
+BOARD, 4 intents, `rec.stop` (take file valid, 4 events), `play.seek 0`, `play.start` (State `play` playing,
+activity source `play`), `play.stop`. Close hid the window with the engine alive; Quit stopped it.
+
+**Visual comparison** (`tools/ui_compare.py takes`, console strip region): layout within ~1–2 px of gui-2 and of the
+gui-1 strip. Known differences: headless Chrome SF is slightly wider; the footer says "35m recorded" (sum of the six
+mock takes' lengths; the mockup's "1h 02m" is not derivable); FX lane says "level · color" (the mockup says "flash
+only" over a level curve; the subtitle is derived from the events); the lane curves and strip bars come from
+generated mock events.
+
+**Code review (high)**: 8 findings, all fixed with regression tests (each fails on the pre-fix code): OVERDUB released
+the performer's own live FLASH; init was snapshotted before the D2 seed; events recorded into a nudged take were not
+in take time; REC in MERGE/REPLACE left a playback running; a refused `rec.arm` stayed armed; delete could overwrite
+an earlier deleted copy; groups-touched recount per State build; lane paths rebuilt every playhead tick.
+`tools/test_all.sh`: 369 pytest + 43 vitest + 15 cargo passed. One flake seen once under load:
+`test_chromactl_watch_streams_patches_from_a_fake_chromad` (passed 4/4 alone and in the next full runs; it now prints
+the patches if it fails again).
+
+**Deviations / notes (flagged for review)**
+- Not recorded: `who`, `palette_store`, `cue_store` (editing, not performing), board moves that did not pick up.
+  Recorded but not replayed: `bank`, `fader_fn`, select, `assign` (would move the user's view / rewrite the rig).
+  A replayed cue recall uses the cue's *current* contents.
+- REC and PLAY switch to BOARD (toast). A take only plays / records with its own song (track id, else title +
+  artist). PLAY on the Console = newest take of the song now playing. STOP stops both.
+- Library red dot = the take being recorded or played.
+- Export writes to `~/Downloads` (no save dialog: that would need `tauri-plugin-dialog`, a new dependency).
+- Recording in progress is kept in memory and saved on STOP / track change / engine shutdown; an engine crash
+  mid-take loses that pass.

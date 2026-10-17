@@ -174,7 +174,7 @@ def test_chromactl_watch_streams_patches_from_a_fake_chromad():
         lines = r.stdout.strip().splitlines()
         assert r.returncode == 0 and len(lines) == 5
         assert "state  Sasha Alex Sloan — Older" in lines[0]
-        assert all('patch {"now":{"pos_ms":' in l for l in lines[1:])
+        assert all('patch {"now":{"pos_ms":' in l for l in lines[1:]), lines
         st = json.loads(ctl(home, "state").stdout)
         assert_valid("state", st)
         r = ctl(home, "op", "set_art_mode", "mode=ai")

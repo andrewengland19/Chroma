@@ -180,6 +180,10 @@ class AppleTVProvider:
     async def previous(self) -> None:
         await self._atv.remote_control.previous()
 
+    async def seek(self, pos_ms: int) -> None:
+        """Takes timeline scrub (M5). pyatv positions are whole seconds."""
+        await self._atv.remote_control.set_position(int(round(pos_ms / 1000.0)))
+
     def raw_anchor(self) -> Optional[dict]:
         """Precise position anchor from MRP: {elapsed_s, anchor_wall, rate}.
 

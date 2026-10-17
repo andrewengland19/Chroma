@@ -3,6 +3,7 @@
 #
 #   apply(state, intent, src)       one §5.2 intent -> state change (+ effects for
 #                                   the daemon: bank re-binding, cue fades)
+#   apply_resolved(state, event)    replay of a take event's resolved b/c/a/v (D9)
 #   resolve(state, members, limits) console state -> one HSB per fixture
 #                                   (HTP level, LTP hue/sat, master, blackout,
 #                                   flash, per-fixture caps — D8)
@@ -125,15 +126,19 @@ class ConsoleState:
 
 # ---- intents (§5.2) ---------------------------------------------------------------------
 
-def apply(st: ConsoleState, intent: dict, src: str = "ui") -> list:
+def apply(st: ConsoleState, intent: dict, src: str = "ui", at: Optional[dict] = None) -> list:
     """Apply one intent. Returns effects for the caller:
     ("assign", bank, ch, group_id)  persist the binding in the rig's banks
     ("recall", i, fade_ms)          a cue was recalled (the scheduler may fade)
-    Raises ConsoleError for anything it cannot apply (`who` belongs to the daemon)."""
+    Raises ConsoleError for anything it cannot apply (`who` belongs to the daemon).
+    `at` (replay only): the take event; its resolved b/c/a/v is applied instead of the
+    verbatim intent, so replay does not depend on the live bank, function or selection."""
     if not isinstance(intent, dict) or not isinstance(intent.get("intent"), str):
         raise ConsoleError("intent must be an object with an 'intent' name")
     if src not in SRCS:
         raise ConsoleError(f"unknown src {src!r}")
+    if src == "replay" and at is not None and at.get("a"):
+        return apply_resolved(st, at)
     name = intent["intent"]
     handler = _HANDLERS.get(name)
     if handler is None:
@@ -169,13 +174,15 @@ def _flag(intent: dict, key: str) -> bool:
     return v
 
 
-def _touch(st: ConsoleState, c: Channel, level: bool = False, color: bool = False) -> None:
+def _touch(st: ConsoleState, c: Channel, level: bool = False, color: bool = False,
+           select: bool = True) -> None:
     st.seq += 1
     if level:
         c.level_seq = st.seq
     if color:
         c.color_seq = st.seq
-    st.last_touched = (c.bank, c.ch)
+    if select:
+        st.last_touched = (c.bank, c.ch)
 
 
 def picked_up(stored: float, prev_raw: Optional[float], raw: float) -> bool:
@@ -359,6 +366,85 @@ _HANDLERS: dict = {
 }
 
 
+# ---- replay (D9) ---------------------------------------------------------------------------
+
+# Recorded for the performance record, not replayed: they would move the user's view
+# (bank, fader function, selection) or rewrite the rig (assign).
+REPLAY_SKIPS = frozenset({"bank", "fader_fn", "select", "assign", "who"})
+
+
+def apply_resolved(st: ConsoleState, ev: dict) -> list:
+    """Apply a take event's resolved target: `b`/`c` = channel, `a` = attribute, `v` =
+    absolute value. Never changes the bank, fader function or last-touched channel."""
+    a, v = ev.get("a"), ev.get("v")
+    if a in REPLAY_SKIPS:
+        return []
+    if a == "master":
+        st.master = _unit(v)
+        return []
+    if a == "blackout":
+        if not isinstance(v, bool):
+            raise ConsoleError("blackout event needs true or false")
+        st.blackout = v
+        return []
+    if a == "cue":
+        return _cue_recall(st, {"i": v}, "replay")
+    b, ch = ev.get("b"), ev.get("c")
+    if b not in BANKS or isinstance(ch, bool) or not isinstance(ch, int) or not 1 <= ch <= CHANNELS_PER_BANK:
+        raise ConsoleError(f"{a} event needs a bank and channel")
+    c = st.channel(b, ch)
+    if a == "flash":
+        if not isinstance(v, bool):
+            raise ConsoleError("flash event needs true or false")
+        c.flash = v
+        if v:
+            _touch(st, c, level=True, color=True, select=False)
+        return []
+    if a == "level":
+        c.level = _unit(v)
+        _touch(st, c, level=True, select=False)
+    elif a == "hue":
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 360:
+            raise ConsoleError("hue event needs 0..360")
+        c.hue = min(float(v), HUE_TOP)
+        _touch(st, c, color=True, select=False)
+    elif a == "sat":
+        c.sat = _unit(v)
+        _touch(st, c, color=True, select=False)
+    elif a == "palette":
+        if not isinstance(v, str) or len(v) != 7 or not v.startswith("#"):
+            raise ConsoleError("palette event needs a #rrggbb colour")
+        col = _hex_to_hsb(v)
+        c.hue, c.sat = col.h % 360.0, col.s
+        _touch(st, c, color=True, select=False)
+    else:
+        raise ConsoleError(f"unknown event attribute {a!r}")
+    st.cue_active = None
+    _recheck_pickup(st, c)
+    return []
+
+
+def load_init(st: ConsoleState, init: dict) -> None:
+    """A take's `init` snapshot (replay start / seek): every channel's level/hue/sat,
+    master and blackout. Flashes are released; bank, fader function, selection and the
+    rig's bindings are left alone."""
+    st.seq += 1
+    for c, look in zip(st.channels, init.get("channels") or []):
+        c.level, c.hue, c.sat = float(look["level"]), float(look["hue"]) % 360.0, float(look["sat"])
+        c.flash = False
+        c.level_seq = c.color_seq = st.seq
+        _recheck_pickup(st, c)
+    st.master = min(1.0, max(0.0, float(init.get("master", st.master))))
+    st.blackout = bool(init.get("blackout", False))
+    st.cue_active = None
+
+
+def snapshot_init(st: ConsoleState) -> dict:
+    """The take header's `init` (contracts/take-header.schema.json)."""
+    return {"bank": st.bank, "fader_fn": st.fader_fn, "master": round(st.master, 4), "blackout": st.blackout,
+            "channels": [{"group_id": c.group_id, **c.look()} for c in st.channels]}
+
+
 # ---- arbitration (§5.3) ------------------------------------------------------------------
 
 def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> dict:
@@ -367,7 +453,9 @@ def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> 
     Level = HTP (flash = 1.0) across the fixture's channels, hue/sat = LTP. After D2
     seeding the art colour / brightness stand until a channel moves colour / level, and
     only channels moved since the seed take part (seeded values are display/pickup only).
-    Then x master, blackout -> 0 (beats flash), capped at max_level (flash cannot exceed)."""
+    Then x master, capped at max_level (flash cannot exceed). Blackout -> 0, except that a
+    held FLASH punches through it: its fixtures go to full x master (capped) in the flashing
+    channel's colour (user decision 2026-10-16: hold blackout, flash a few lights)."""
     by_fixture: dict = {}
     for c in st.channels:
         for fid in (members.get(c.group_id, ()) if c.group_id else ()):
@@ -386,7 +474,14 @@ def resolve(st: ConsoleState, members: dict, limits: Callable[[str], tuple]) -> 
             src = max(chans, key=lambda c: (c.color_seq, 1.0 if c.flash else c.level))
             h, s = src.hue, src.sat
         max_level, _hz = limits(fid)
-        level = 0.0 if st.blackout else min(level * st.master, max_level)
+        if st.blackout:
+            flashing = [c for c in chans if c.flash]
+            if flashing:
+                src = max(flashing, key=lambda c: c.color_seq)
+                h, s = src.hue, src.sat
+            level = min(st.master, max_level) if flashing else 0.0
+        else:
+            level = min(level * st.master, max_level)
         out[fid] = HSB(h % 360.0, s, level)
     return out
 
@@ -428,14 +523,17 @@ def edge_budget(max_hz: float) -> tuple:
 
 class StrobeLimiter:
     """Per fixture, after caps and master. A value that would exceed the edge budget is
-    held; the newest held value goes out as soon as the budget allows (`poll`)."""
+    held; the newest held value goes out as soon as the budget allows (`poll`).
+    `dark=True` (BLACKOUT on) sends a brightness-0 value at once even over budget; the edge
+    still counts, so coming back up waits (user decision 2026-10-16: never delay dark)."""
 
     def __init__(self):
         self.sent: dict = {}          # fid -> last HSB sent
         self.edges: dict = {}         # fid -> deque of edge times (ms)
         self.pending: dict = {}       # fid -> (HSB, max_hz)
 
-    def offer(self, fid: str, hsb: HSB, now_ms: float, max_hz: float) -> Optional[HSB]:
+    def offer(self, fid: str, hsb: HSB, now_ms: float, max_hz: float,
+              dark: bool = False) -> Optional[HSB]:
         """The value to send now, or None: held (see `pending`) or already showing."""
         if hsb == self.sent.get(fid):
             self.pending.pop(fid, None)
@@ -445,7 +543,7 @@ class StrobeLimiter:
             q = self.edges.setdefault(fid, deque())
             while q and q[0] <= now_ms - window:
                 q.popleft()
-            if len(q) >= n:
+            if len(q) >= n and not (dark and hsb.b <= 0.0):
                 self.pending[fid] = (hsb, max_hz)
                 return None
             q.append(now_ms)

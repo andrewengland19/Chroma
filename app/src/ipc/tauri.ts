@@ -28,4 +28,5 @@ export const tauriIpc: IpcClient = {
   onStatus: (cb) => subscribe<EngineStatus>("chromad://status", cb),
   status: () => invoke<EngineStatus>("engine_status"),
   setTitle: (t) => void getCurrentWindow().setTitle(t).catch(() => {}),
+  saveText: (filename, text) => invoke<string>("save_export", { filename, text }),
 };

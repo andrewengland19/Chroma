@@ -34,6 +34,7 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 | X4 | Board snapshots older than the newest applied are never applied; within 8 of the newest they are dropped quietly, older ones count as replays. |
 | X5 | Fader fill = channel's live colour; Takes lanes and bank bars = group UI colour. |
 | X6 | `now.pos_ms` patched at <= 4 Hz; the UI interpolates. |
+| X7 | (M5, builder) Schema additions: take header `art_hex`; State `activity` {source, dur_ms, lanes[{group_id, color, spans}]} for the Console strip; response shapes `takes_list`, `take_full`, `take_export`. |
 
 ## Builder decisions (log)
 
@@ -61,3 +62,18 @@ answers) was approved as written on 2026-10-11; those answers are recorded here.
 - 2026-10-14 — Added ops `groups.set_limits` (limits only) and `banks.swap` (atomic) to the contract, so the UI never re-sends stale member lists or splits a swap into two requests.
 - 2026-10-14 — Setup deviations from gui-3 (flagged): row "×" remove with confirm; member dots show real status; flash-rate slider drawn to 10 Hz with the >3 Hz region hatched and unreachable; minimal "+ Add fixture" form (virtual or LIFX by IP); "not added" rows get an **Add** button.
 - 2026-10-14 — A corrupt/invalid `fixtures.json` is moved to `fixtures.json.bad-<time>` and the default rig is used (logged), instead of chromad failing to start.
+- 2026-10-14 — Setup "Test" on real bulbs: acked `GetPower` + acked waveform (3 tries, 1 s each), "switched off" / "could not reach X at IP (no reply)" errors, a success toast that says "(fake bulb …)" on a fake engine; IP-only fixtures keep the fire-and-forget pulse (lifxlan matches acks by MAC). Root cause of the "Test did nothing" report: the debug app talks to the fake engine by default.
+- 2026-10-15 — Pickup state describes the physical fader: with no board position seen yet everything counts as engaged (no ghost markers without a board); the first board report far from the stored value is ignored (no jump on connect); bank/fn switches disengage, then re-engage faders that already match; UI, cue, palette and encoder changes apply at once and disengage a board fader that no longer matches.
+- 2026-10-15 — D2 seed: seeded channel values are display/pickup only. Until a channel moves, its fixtures keep the art colour/brightness, and only channels moved since the seed take part in HTP/LTP. Cue-recall colour ties go to the brighter channel.
+- 2026-10-15 — D7 budget for caps below 3 Hz: `floor(2·hz)` edges per `n/(2·hz)` s (min 1 edge); identical values are never resent; a held value is released by the scheduler timer.
+- 2026-10-15 — Output scheduler: LIFX ≥ 50 ms apart per bulb, virtual 60 Hz, newest value wins; latency p50/p95/max per class logged at shutdown ("console output latency").
+- 2026-10-16 — `who` flips `Engine.enabled` (and seeds BOARD) inline, so intents after it on a connection see the new mode; config save and repaint stay in the background, FIFO. The console never pushes while the engine paints (`_push` checks).
+- 2026-10-16 — A HUE fader at the top is 359.9° (no wrap to 0). Knob: 4 px drag or 40 px wheel delta = one detent; knobs send nothing without a touched channel. Palette swatch "selected" = within 8° hue / 0.12 sat of the last-touched colour.
+- 2026-10-16 — USER DECISION (was open): BLACKOUT ON is never held by the D7 limiter; the brightness-0 value goes out at once and still counts as an edge, so coming back up (BLACKOUT off) waits for the budget. Worst case with blackout toggling: 7 edges in a sliding second (≈3.5 Hz) instead of 6. Only blackout bypasses; a fader pulled to 0 is still limited.
+- 2026-10-16 — Takes: replay applies each event's resolved b/c/a/v through `console.apply(src="replay", at=…)`; bank, fader function, selection and assign events are recorded but not replayed; `who`, `palette_store`, `cue_store` are not recorded. Events are stored in take time (song position − nudge − global offset).
+- 2026-10-16 — REC / PLAY switch to BOARD; a take records/plays only with its own song; Console PLAY = newest take of the current song; STOP stops recording and playback.
+- 2026-10-16 — OVERDUB: a channel is touched for 750 ms after each live event; replay skips its old events then; a FLASH the replay holds is released when live input takes the channel; a held flash punched out at a span start gets a release in the saved take.
+- 2026-10-16 — Deleted takes go to `takes/.deleted/` (never unlinked, never overwritten). Export writes to `~/Downloads` (no save dialog, to avoid a new plugin dependency).
+- 2026-10-16 — `chromad --replay-offset-ms` (default 0) is the global replay offset; `CHROMA_SELFTEST_HOLD_S` (debug builds) lengthens the self-test.
+- 2026-10-16 — USER DECISION: FLASH punches through BLACKOUT (was: blackout beats flash, §5.3). With BLACKOUT on, everything is dark except the fixtures of a channel whose FLASH is held: full × master, capped by max level (D8), in the flashing channel's colour; the strobe limit still applies. Releasing the flash goes dark again (instantly, per the blackout bypass above).
+

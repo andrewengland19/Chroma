@@ -2,8 +2,8 @@
 // tab bar, toasts and the engine-connection notice.
 import { useEffect, useState } from "react";
 import { ConsoleScreen } from "./screens/ConsoleScreen";
-import { PendingScreen } from "./screens/PendingScreen";
 import { SetupScreen } from "./screens/SetupScreen";
+import { TakesScreen } from "./screens/TakesScreen";
 import { useSelect, useStore } from "./store";
 
 export const CANVAS_W = 1178;
@@ -79,7 +79,7 @@ export function Shell() {
         </nav>
         <EngineNotice />
         {tab === "Console" && <ConsoleScreen />}
-        {tab === "Takes" && <PendingScreen name="Takes" milestone="M5" />}
+        {tab === "Takes" && <TakesScreen />}
         {tab === "Setup" && <SetupScreen />}
         <Toasts />
       </div>

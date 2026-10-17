@@ -68,7 +68,7 @@ describe("Console header (gui-1)", () => {
   test("tabs switch screens", async () => {
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Takes" }));
-    expect(screen.getByTestId("takes-screen")).toHaveTextContent("arrives in M5");
+    expect(screen.getByTestId("takes-screen")).toHaveTextContent("Take details");
     fireEvent.click(screen.getByRole("button", { name: "Setup" }));
     expect(screen.getByTestId("setup-screen")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Console" }));

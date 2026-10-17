@@ -6,6 +6,7 @@ import type { FixturesFile, Intent, IpcEvent, State } from "./contracts";
 import type { ArtResolver } from "./ipc";
 import type { EngineStatus, IpcClient, Reply } from "./ipc/types";
 import { applyMergePatch } from "./lib/mergePatch";
+import type { Summary } from "./lib/takes";
 
 export interface Toast {
   id: number;
@@ -19,15 +20,18 @@ export type Rig = FixturesFile & { online: Record<string, boolean> };
 export interface Snapshot {
   state: State | null;
   rig: Rig | null;
+  takes: Summary[] | null;
   status: EngineStatus | null;
   posAt: number; // performance.now() when now.pos_ms was last received
   toasts: Toast[];
 }
 
 export class ChromaStore {
-  private snap: Snapshot = { state: null, rig: null, status: null, posAt: 0, toasts: [] };
+  private snap: Snapshot = { state: null, rig: null, takes: null, status: null, posAt: 0, toasts: [] };
   private rigFetching = false;
   private rigFetchedFor: number | undefined;
+  private takesFetching = false;
+  private takesFetchedFor: number | undefined;
   private subs = new Set<() => void>();
   private toastId = 1;
 
@@ -71,6 +75,7 @@ export class ChromaStore {
     if (r.ok && r.state) {
       this.set({ state: r.state as State, posAt: this.clock() });
       this.maybeRefreshRig();
+      this.maybeRefreshTakes();
     }
   }
 
@@ -98,10 +103,31 @@ export class ChromaStore {
     if (this.snap.state?.fixtures_rev !== wanted) this.maybeRefreshRig();
   }
 
+  /** The take library is not in the State either; refetch when takes_rev moves. */
+  private maybeRefreshTakes() {
+    const rev = this.snap.state?.takes_rev;
+    if (rev == null || this.takesFetching || rev === this.takesFetchedFor) return;
+    void this.refreshTakes();
+  }
+
+  async refreshTakes() {
+    const wanted = this.snap.state?.takes_rev;
+    this.takesFetching = true;
+    try {
+      const r = await this.ipc.request({ op: "takes.list" });
+      if (r.ok) this.set({ takes: r.takes as Summary[] });
+    } finally {
+      this.takesFetching = false;
+      this.takesFetchedFor = wanted;
+    }
+    if (this.snap.state?.takes_rev !== wanted) this.maybeRefreshTakes();
+  }
+
   onEvent(e: IpcEvent) {
     if (e.ev === "state") {
       this.set({ state: e.state, posAt: this.clock() });
       this.maybeRefreshRig();
+      this.maybeRefreshTakes();
     } else if (e.ev === "patch") {
       if (!this.snap.state) {
         void this.refreshState();
@@ -112,6 +138,7 @@ export class ChromaStore {
       const posMoved = now && ("pos_ms" in now || "track_id" in now || "playing" in now);
       this.set({ state, posAt: posMoved ? this.clock() : this.snap.posAt });
       if ("fixtures_rev" in (e.patch as object)) this.maybeRefreshRig();
+      if ("takes_rev" in (e.patch as object)) this.maybeRefreshTakes();
     } else if (e.ev === "toast") {
       this.toast(e.level, e.text);
     }

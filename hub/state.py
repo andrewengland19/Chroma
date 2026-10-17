@@ -41,6 +41,8 @@ class StateAssembler:
         self.board_health = "none"
         self.fixtures_rev = 0
         self.takes_rev = 0
+        self.activity: dict = {"source": None, "dur_ms": None, "lanes": []}
+        self.takes = None                   # chromad's TakeService: rec / play / activity / takes_rev
         self._art_ref = None
         self._art_rev = 0
         self._pos_val: Optional[int] = None
@@ -108,5 +110,8 @@ class StateAssembler:
                        "board": self.board_health},
             "fixtures_rev": self.rig.store.rev if self.rig else self.fixtures_rev,
             "takes_rev": self.takes_rev,
+            "activity": self.activity,
         }
+        if self.takes is not None:
+            state.update(self.takes.state_fields())
         return state

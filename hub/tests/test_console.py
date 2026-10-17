@@ -120,17 +120,32 @@ def test_level_moves_do_not_steal_ltp_colour():
     assert out(st)["tv-l"].h == 120
 
 
-def test_master_scales_and_blackout_forces_zero_even_over_flash():
+def test_master_scales_and_flash_punches_through_blackout():
     st = st_()
     fader(st, 3, 0.8)
+    fader(st, 1, 0.6)
     fader(st, "master", 0.5)
     assert out(st)["couch"].b == pytest.approx(0.4)
-    go(st, intent="flash", ch=3, down=True)
-    assert out(st)["couch"].b == pytest.approx(0.5)      # flash = 1.0, then x master
     go(st, intent="blackout", on=True)
     assert all(v.b == 0 for v in out(st).values())
+    go(st, intent="flash", ch=3, down=True)               # hold blackout, flash a few lights
+    o = out(st)
+    assert o["couch"].b == pytest.approx(0.5)             # flash = 1.0, then x master
+    assert o["tv-l"].b == 0 and o["tv-r"].b == 0          # LR ALL is up at 0.6 but blacked out
+    go(st, intent="flash", ch=3, down=False)
+    assert all(v.b == 0 for v in out(st).values())        # release: dark again
     go(st, intent="blackout", on=False)
-    assert out(st)["couch"].b == pytest.approx(0.5)
+    assert out(st)["couch"].b == pytest.approx(0.4)
+
+
+def test_a_flash_through_blackout_respects_the_group_cap_and_its_colour():
+    st = st_()
+    go(st, intent="assign", ch=3)
+    go(st, intent="hue", v=200)
+    go(st, intent="blackout", on=True)
+    go(st, intent="flash", ch=3, down=True)
+    o = out(st, limits=lambda f: (0.7, 3.0))
+    assert o["couch"].b == pytest.approx(0.7) and o["couch"].h == pytest.approx(200)
 
 
 def test_unbound_fixtures_and_channels_hold():
@@ -492,6 +507,33 @@ def test_a_non_edge_value_replaces_a_held_one():
     assert "f" in lim.pending                             # held "off"
     assert lim.offer("f", HSB(0, 1, 0.95), 10, 3.0) is not None   # near the last sent "on"
     assert lim.pending == {}
+
+
+def test_blackout_goes_dark_over_budget_but_coming_back_up_waits():
+    lim = StrobeLimiter()
+    for i in range(8):                                    # budget used up, "off" held
+        lim.offer("f", on_off(i), i * 10, 3.0)
+    assert lim.offer("f", HSB(0, 1, 0.0), 100, 3.0) is None          # plain dark: held
+    assert lim.offer("f", HSB(0, 1, 0.0), 100, 3.0, dark=True) == HSB(0, 1, 0.0)
+    assert lim.pending == {}
+    assert lim.offer("f", on_off(0), 110, 3.0) is None    # back up: held until the window frees
+    assert lim.offer("f", HSB(0, 1, 0.4), 110, 3.0, dark=True) is None   # dark only bypasses at 0
+
+
+def test_blackout_toggling_stays_near_3hz():
+    lim = StrobeLimiter()
+    lim.offer("f", on_off(0), 0, 3.0)
+    sent = [(0, on_off(0))]
+    for i in range(1, 200):                               # blackout on/off at 20 Hz for 10 s
+        t = i * 50
+        dark = i % 2 == 1
+        if (v := lim.offer("f", on_off(i), t, 3.0, dark=dark)) is not None:
+            sent.append((t, v))
+        sent += [(t, v) for v in lim.poll(t).values()]
+    edges = edge_times(sent)
+    assert len(edges) >= 50
+    for a in edges:                                       # 6 edges + at most one bypassing "dark"
+        assert len([b for b in edges if a <= b < a + 1000]) <= 7
 
 
 # ---- State + console.json -------------------------------------------------------------------------

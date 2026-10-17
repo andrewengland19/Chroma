@@ -100,7 +100,7 @@ async def test_level_moves_keep_the_art_colour_until_colour_is_touched(daemon):
     assert await wait_for(lambda: _hsb_of(colors(tv)[-1][1])[0] == pytest.approx(200, abs=0.01))
 
 
-async def test_flash_holds_and_releases_and_blackout_wins(daemon):
+async def test_flash_holds_and_releases_and_punches_through_blackout(daemon):
     d = daemon
     await board(d)
     tv = bulb(d, "TV Left")
@@ -116,9 +116,12 @@ async def test_flash_holds_and_releases_and_blackout_wins(daemon):
     await intent(d, intent="blackout", on=True)
     assert await wait_for(lambda: colors(tv)[-1][1][2] == 0)
     assert not [c for c in tv.calls if c[0] == "set_power" and c[1] == 0]   # D15: never powered off
-    await intent(d, intent="flash", ch=1, down=True)
+    await intent(d, intent="flash", ch=8, down=True)            # FX (virtual light) only
+    assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 1.0)
     await asyncio.sleep(0.2)
-    assert colors(tv)[-1][1][2] == 0                            # blackout beats flash
+    assert colors(tv)[-1][1][2] == 0                            # the rest stays dark
+    await intent(d, intent="flash", ch=8, down=False)
+    assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 0.0)
 
 
 async def test_auto_shows_console_changes_but_pushes_nothing_and_back_to_auto_repaints(daemon):
@@ -201,6 +204,26 @@ async def test_flash_hammering_is_held_to_3hz_on_every_fixture(daemon):
     assert len(edges) >= 8                                       # it still flashes ...
     for a in edges:                                              # ... but <= 6 edges in any second
         assert len([b for b in edges if a <= b < a + 1.0]) <= 6
+
+
+async def test_blackout_is_not_delayed_by_the_strobe_hold(daemon):
+    d = daemon
+    await board(d)
+    await intent(d, intent="fader", ch=8, v=0.0)
+    vl = "virtual-light-1"
+    for _ in range(80):                                          # flash until "off" is held while lit
+        lit = d.virtual.current[vl].b > 0.5
+        await intent(d, intent="flash", ch=8, down=not lit)      # toggle away from what shows
+        await asyncio.sleep(0.03)
+        if vl in d.scheduler.limiter.pending and d.virtual.current[vl].b > 0.5:
+            break
+    assert vl in d.scheduler.limiter.pending and d.virtual.current[vl].b > 0.5
+    t0 = time.monotonic()
+    await intent(d, intent="blackout", on=True)
+    assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 0.0, timeout=0.5)
+    assert time.monotonic() - t0 < 0.1
+    await intent(d, intent="flash", ch=8, down=False)
+    await intent(d, intent="blackout", on=False)
 
 
 async def test_lifx_gets_at_most_20_messages_a_second_and_the_newest_value(daemon):

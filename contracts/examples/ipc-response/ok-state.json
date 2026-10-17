@@ -383,6 +383,6 @@
       "board": "virtual"
     },
     "fixtures_rev": 3,
-    "takes_rev": 6
+    "takes_rev": 6, "activity": {"source": null, "dur_ms": null, "lanes": []}
   }
 }
