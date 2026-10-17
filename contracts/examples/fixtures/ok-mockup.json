@@ -13,7 +13,8 @@
       "lifx_group": "Living Room",
       "x": 0.3,
       "y": 0.25,
-      "color": "#e86a3c"
+      "color": "#e86a3c",
+      "space": "living-room"
     },
     {
       "id": "tv-right",
@@ -26,7 +27,8 @@
       "lifx_group": "Living Room",
       "x": 0.65,
       "y": 0.29,
-      "color": "#d6453d"
+      "color": "#d6453d",
+      "space": "living-room"
     },
     {
       "id": "couch-left",
@@ -39,7 +41,8 @@
       "lifx_group": "Living Room",
       "x": 0.3,
       "y": 0.72,
-      "color": "#8a4fd0"
+      "color": "#8a4fd0",
+      "space": "living-room"
     },
     {
       "id": "right-couch",
@@ -52,7 +55,8 @@
       "lifx_group": "Living Room",
       "x": 0.66,
       "y": 0.74,
-      "color": "#c95aa0"
+      "color": "#c95aa0",
+      "space": "living-room"
     },
     {
       "id": "washer",
@@ -65,7 +69,8 @@
       "lifx_group": "Living Room",
       "x": 0.05,
       "y": 0.58,
-      "color": "#f0a35a"
+      "color": "#f0a35a",
+      "space": "living-room"
     },
     {
       "id": "bedroom-1",
@@ -78,7 +83,8 @@
       "lifx_group": "Bedroom",
       "series": "Bedroom 1–4",
       "x": 0.5,
-      "y": 0.5
+      "y": 0.5,
+      "space": "bedroom"
     },
     {
       "id": "bedroom-2",
@@ -91,7 +97,8 @@
       "lifx_group": "Bedroom",
       "series": "Bedroom 1–4",
       "x": 0.5,
-      "y": 0.5
+      "y": 0.5,
+      "space": "bedroom"
     },
     {
       "id": "bedroom-3",
@@ -104,7 +111,8 @@
       "lifx_group": "Bedroom",
       "series": "Bedroom 1–4",
       "x": 0.5,
-      "y": 0.5
+      "y": 0.5,
+      "space": "bedroom"
     },
     {
       "id": "bedroom-4",
@@ -117,7 +125,8 @@
       "lifx_group": "Bedroom",
       "series": "Bedroom 1–4",
       "x": 0.5,
-      "y": 0.5
+      "y": 0.5,
+      "space": "bedroom"
     },
     {
       "id": "counter-strip",
@@ -126,7 +135,8 @@
       "status": "planned",
       "class": "fast",
       "x": 0.9,
-      "y": 0.5
+      "y": 0.5,
+      "space": "living-room"
     },
     {
       "id": "playbill-01",
@@ -136,7 +146,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.1,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-02",
@@ -146,7 +157,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.173,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-03",
@@ -156,7 +168,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.245,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-04",
@@ -166,7 +179,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.318,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-05",
@@ -176,7 +190,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.391,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-06",
@@ -186,7 +201,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.464,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-07",
@@ -196,7 +212,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.536,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-08",
@@ -206,7 +223,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.609,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-09",
@@ -216,7 +234,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.682,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-10",
@@ -226,7 +245,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.755,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-11",
@@ -236,7 +256,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.827,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "playbill-12",
@@ -246,7 +267,8 @@
       "class": "fast",
       "series": "Playbill 01–12",
       "x": 0.9,
-      "y": 0.05
+      "y": 0.05,
+      "space": "living-room"
     },
     {
       "id": "virtual-light-1",
@@ -256,7 +278,8 @@
       "class": "fast",
       "x": 0.5,
       "y": 0.45,
-      "color": "#3b82f6"
+      "color": "#3b82f6",
+      "space": "living-room"
     }
   ],
   "groups": [
@@ -493,5 +516,15 @@
       null,
       null
     ]
-  }
+  },
+  "spaces": [
+    {
+      "id": "living-room",
+      "name": "Living Room"
+    },
+    {
+      "id": "bedroom",
+      "name": "Bedroom"
+    }
+  ]
 }

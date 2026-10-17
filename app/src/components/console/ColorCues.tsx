@@ -5,6 +5,7 @@ import { hexToHsv, hueDist } from "../../lib/color";
 import { tint } from "../../lib/color";
 import { useSelect, useStore } from "../../store";
 import { Panel } from "../ui";
+import { SCENE_SLOTS, type SceneSummary, type ScenesPane } from "./scenes";
 import { useHold } from "./useHold";
 
 const PX_PER_DETENT = 4;                 // knob drag: 4 px = one encoder detent (5° / 2 %)
@@ -148,14 +149,64 @@ function CuePad({ i, name, stored, active }: { i: number; name: string; stored: 
   );
 }
 
-export function CuesPanel() {
+function ScenePad({ i, scene, active, onRecall }: { i: number; scene: SceneSummary; active: boolean; onRecall: () => void }) {
+  const col = CUE_COLORS[i];
+  return (
+    <button data-testid={`scene-${i}`} aria-pressed={active} aria-label={`Scene ${scene.name}`} onClick={onRecall}
+      title={`tap = recall ${scene.name}`}
+      className="absolute rounded-[6px]"
+      style={{ left: 11 + (i % 4) * 76.8, top: 27 + Math.floor(i / 4) * 49.8, width: 71, height: 42,
+        border: `1.3px solid ${col}`, background: active ? col : tint(col, 0.2) }}>
+      <span className="absolute flex" style={{ left: 6, top: 5, gap: 2 }}>
+        {scene.colors.slice(0, 4).map((c, k) => (
+          <span key={k} className="rounded-full" style={{ width: 6, height: 6, background: c, border: "1px solid #1d1d23" }} />
+        ))}
+      </span>
+      <span className="absolute inset-x-1 truncate text-center font-bold" style={{ top: 18, fontSize: 9.5, color: active ? "#1d1d23" : "#ececf1" }}>
+        {scene.name.replace(/^agent\./, "")}
+      </span>
+    </button>
+  );
+}
+
+export function CuesPanel({ pane, onConfigure }: { pane: ScenesPane; onConfigure?: () => void }) {
   const cues = useSelect((s) => s.state?.cues) ?? [];
   const active = useSelect((s) => s.state?.cue_active);
+  const scenesMode = pane.mode === "scenes";
+  const many = pane.all.length > SCENE_SLOTS;
   return (
-    <Panel style={{ left: 19, top: 469, width: 324, height: 140 }}>
-      <div className="label absolute" style={{ left: 11, top: 8 }}>Cues</div>
-      {cues.map((c) => <CuePad key={c.id} i={c.id} name={c.name} stored={c.stored} active={c.id === active} />)}
-      <div className="absolute text-label" style={{ left: 11, top: 120.5, fontSize: 7.5 }}>shift + tap stores the current look</div>
+    <Panel style={{ left: 19, top: 469, width: 324, height: 140 }}
+      onDoubleClick={(e) => scenesMode && many && !(e.target as HTMLElement).closest("button") && onConfigure?.()}>
+      <div className="absolute flex items-center" style={{ left: 11, top: 5, height: 14, gap: 4 }}>
+        <span className="label" style={{ marginRight: 2 }}>{scenesMode ? "Scenes" : "Cues"}</span>
+        <div role="tablist" aria-label="Cues or Scenes" className="flex" style={{ gap: 3 }}>
+          {(["cues", "scenes"] as const).map((m) => (
+            <button key={m} role="tab" aria-selected={m === pane.mode} onClick={() => pane.setMode(m)}
+              className={`rounded-[4px] font-bold ${m === pane.mode ? "bg-accent text-white" : "text-dim hover:text-fg"}`}
+              style={{ height: 13, padding: "0 6px", fontSize: 7.5, letterSpacing: "0.02em" }}>
+              {m === "cues" ? "Cues" : "Scenes"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {scenesMode ? (
+        <>
+          {pane.visible.map((sc, i) => <ScenePad key={sc.name} i={i} scene={sc} active={sc.name === pane.active} onRecall={() => void pane.recall(sc.name)} />)}
+          {pane.loaded && pane.visible.length === 0 && (
+            <div className="pointer-events-none absolute inset-x-0 text-center text-dim" style={{ top: 62, fontSize: 9 }}>
+              {pane.all.length ? "No scenes chosen — double-click to pick some" : "No saved scenes — save one from the Agent tab"}
+            </div>
+          )}
+          <div className="absolute text-label" style={{ left: 11, top: 120.5, fontSize: 7.5 }}>
+            {many ? `showing ${pane.visible.length} of ${pane.all.length} · double-click to choose` : "tap a scene to recall it"}
+          </div>
+        </>
+      ) : (
+        <>
+          {cues.map((c) => <CuePad key={c.id} i={c.id} name={c.name} stored={c.stored} active={c.id === active} />)}
+          <div className="absolute text-label" style={{ left: 11, top: 120.5, fontSize: 7.5 }}>shift + tap stores the current look</div>
+        </>
+      )}
     </Panel>
   );
 }

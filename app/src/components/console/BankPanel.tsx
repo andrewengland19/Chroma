@@ -2,7 +2,7 @@
 // strip, ASSIGN, fader with ghost marker, value, FLASH, number) and MASTER with BLACKOUT.
 // Everything shown comes from the State; controls only send intents (§5.1).
 import { useEffect, useRef, useState } from "react";
-import type { ChannelState, FaderFn, Intent } from "../../contracts";
+import type { ChannelState, FaderFn, Fixture, Intent } from "../../contracts";
 
 type Bank = ChannelState["bank"];
 import { liveColor, tint } from "../../lib/color";
@@ -16,6 +16,7 @@ const MASTER = { left: 714, width: 72 };
 const TRACK = { top: 75, height: 246, width: 5.5 };
 const CAP = { width: 27, height: 23 };
 const FLASH_D = 50;
+const SOLO = "light-";   // id prefix of the one-light groups made by the ASSIGN picker
 
 const BANKS: Bank[] = ["A", "B", "C"];
 const FNS: { fn: FaderFn; label: string }[] = [
@@ -96,7 +97,9 @@ function AssignPicker({ ch, current, onClose, anchor }: {
   ch: number; current: string | null; onClose: () => void; anchor: React.RefObject<HTMLElement | null>;
 }) {
   const store = useStore();
-  const groups = useSelect((s) => s.rig?.groups) ?? [];
+  const rigGroups = useSelect((s) => s.rig?.groups) ?? [];
+  const fixtures = useSelect((s) => s.rig?.fixtures) ?? [];
+  const groups = rigGroups.filter((g) => !g.id.startsWith(SOLO));
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const off = (e: PointerEvent) => {
@@ -106,9 +109,21 @@ function AssignPicker({ ch, current, onClose, anchor }: {
     window.addEventListener("pointerdown", off, true);
     return () => window.removeEventListener("pointerdown", off, true);
   }, [onClose, anchor]);
+  const assign = (group_id: string | null) => void store.intent({ intent: "assign", ch, group_id } as Intent);
   const pick = (group_id: string | null) => {
-    void store.intent({ intent: "assign", ch, group_id } as Intent);
+    assign(group_id);
     onClose();
+  };
+  // A channel binds to a group, so a single light gets a one-member group of its own (made once, reused).
+  const pickLight = async (f: Fixture) => {
+    onClose();
+    const solo = rigGroups.find((g) => g.members.length === 1 && g.members[0] === f.id);
+    if (solo) return assign(solo.id);
+    const r = await store.op("groups.upsert", { group: {
+      id: SOLO + f.id, name: f.label.slice(0, 16), color: f.color ?? "#9a9aa6",
+      members: [f.id], max_level: 1, max_flash_hz: 3, idle_dim_min: null,
+    } });
+    if (r.ok) assign(SOLO + f.id);
   };
   return (
     <div ref={ref} role="listbox" aria-label={`Assign channel ${ch}`} data-testid={`assign-picker-${ch}`}
@@ -121,6 +136,20 @@ function AssignPicker({ ch, current, onClose, anchor }: {
           <span className="rounded-full" style={{ width: 6, height: 6, background: g.color }} />{g.name}
         </button>
       ))}
+      {fixtures.some((f) => f.status !== "not_added") && (
+        <div className="label" style={{ fontSize: 7, padding: "5px 5px 2px" }}>Lights</div>
+      )}
+      {fixtures.filter((f) => f.status !== "not_added").map((f) => {
+        const id = rigGroups.find((g) => g.members.length === 1 && g.members[0] === f.id)?.id;
+        return (
+          <button key={f.id} role="option" aria-selected={id !== undefined && id === current} onClick={() => void pickLight(f)}
+            data-testid={`assign-light-${f.id}`}
+            className={`flex w-full items-center rounded-[4px] text-left hover:bg-panel ${id !== undefined && id === current ? "text-fg" : "text-dim"}`}
+            style={{ fontSize: 9, padding: "3px 5px", gap: 6 }}>
+            <span className="rounded-full" style={{ width: 6, height: 6, background: f.color ?? "#9a9aa6" }} />{f.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -144,6 +173,26 @@ function Strip({ c, index, fn }: { c: ChannelState; index: number; fn: FaderFn }
       flashDown(false);
     }
   };
+  // Number keys 1–8 (row or keypad) flash the lane of that number, same as holding its FLASH button.
+  useEffect(() => {
+    const typing = (t: EventTarget | null) =>
+      t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    const down = (e: KeyboardEvent) => {
+      if (e.key !== String(c.ch) || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      if (holding.current) return;
+      holding.current = true;
+      flashDown(true);
+    };
+    const up = (e: KeyboardEvent) => { if (e.key === String(c.ch)) release(); };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", release);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
+    };
+  });
   const cx = 41;
   return (
     <div data-testid={`strip-${c.ch}`} className="absolute rounded-[7px] border border-line bg-ctl"
@@ -192,6 +241,35 @@ function MasterStrip() {
   const store = useStore();
   const master = useSelect((s) => s.state?.master) ?? 1;
   const blackout = useSelect((s) => s.state?.blackout) ?? false;
+  // Hold 0 for blackout, released back to what it was; lane keys keep flashing meanwhile.
+  const was = useRef<boolean | null>(null);
+  const live = useRef(blackout);
+  live.current = blackout;
+  useEffect(() => {
+    const typing = (t: EventTarget | null) =>
+      t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    const release = () => {
+      if (was.current === null) return;
+      const prior = was.current;
+      was.current = null;
+      if (!prior) void store.intent({ intent: "blackout", on: false });
+    };
+    const down = (e: KeyboardEvent) => {
+      if (e.key !== "0" || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || was.current !== null) return;
+      was.current = live.current;
+      if (!live.current) void store.intent({ intent: "blackout", on: true });
+    };
+    const up = (e: KeyboardEvent) => { if (e.key === "0") release(); };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", release);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
+      release();
+    };
+  }, [store]);
   return (
     <div data-testid="strip-master" className="absolute rounded-[7px] border border-line bg-ctl"
       style={{ left: MASTER.left, top: STRIP.top, width: MASTER.width, height: STRIP.height }}>

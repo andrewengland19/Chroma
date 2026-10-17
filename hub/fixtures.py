@@ -9,6 +9,10 @@
 #   group     what a fader controls: members + safety limits (max level, max flash
 #             rate <= 3 Hz, idle auto-dim)
 #   banks     A/B/C x 8 channels -> group id (or empty)
+#   space     a room of the house (Living Room, Bedroom, ...): each fixture lives in
+#             one; the Room panel shows one Space and the agent is scoped to Spaces.
+#             living-room is the default and can't be removed. Seeded from the bulbs'
+#             LIFX groups.
 #
 # A fixture in several groups gets the MOST restrictive limits of all its groups
 # (DECISIONS D8). Validation is by hand (no jsonschema at runtime); the tests check
@@ -30,6 +34,7 @@ HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 IP = re.compile(r"^[0-9]{1,3}(\.[0-9]{1,3}){3}$")
 MAC = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
 LIVING_ROOM = "Living Room"
+DEFAULT_SPACE = "living-room"
 
 
 class RigError(ValueError):
@@ -55,11 +60,12 @@ class Fixture:
     lifx_group: Optional[str] = None
     series: Optional[str] = None
     color: Optional[str] = None
+    space: Optional[str] = None
 
     def to_dict(self) -> dict:
         d = {"id": self.id, "label": self.label, "type": self.type, "status": self.status,
              "class": self.klass, "x": round(self.x, 4), "y": round(self.y, 4)}
-        for k in ("ip", "mac", "lifx_group", "series", "color"):
+        for k in ("ip", "mac", "lifx_group", "series", "color", "space"):
             v = getattr(self, k)
             if v is not None:
                 d[k] = v
@@ -70,7 +76,7 @@ class Fixture:
         if not isinstance(d, dict):
             raise RigError("fixture must be an object")
         kw = {k: d.get(k) for k in ("id", "label", "type", "status", "x", "y", "ip", "mac",
-                                    "lifx_group", "series", "color")}
+                                    "lifx_group", "series", "color", "space")}
         kw["klass"] = d.get("class", d.get("klass"))
         if kw["x"] is None:
             kw["x"] = 0.5
@@ -103,6 +109,8 @@ class Fixture:
                 raise RigError(f"bad MAC address {self.mac!r}")
         if self.color is not None and not HEX.match(self.color):
             raise RigError(f"bad colour {self.color!r}")
+        if self.space is not None and (not isinstance(self.space, str) or not SLUG.match(self.space)):
+            raise RigError(f"bad space id {self.space!r}")
         if self.type == "lifx" and self.status == "active" and not self.ip:
             raise RigError("an active LIFX fixture needs its IP address (or use Discover LIFX)")
         if self.type == "wled" and self.status == "active":
@@ -154,6 +162,27 @@ class Group:
             raise RigError("idle auto-dim must be off or 1–240 minutes")
         if len(set(self.members)) != len(self.members):
             raise RigError("a fixture is listed twice in the group")
+
+
+@dataclass
+class Space:
+    id: str
+    name: str
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "name": self.name}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Space":
+        if not isinstance(d, dict):
+            raise RigError("space must be an object")
+        sp = cls(id=d.get("id"), name=d.get("name"))
+        if not isinstance(sp.id, str) or not SLUG.match(sp.id):
+            raise RigError(f"space id {sp.id!r} must be lowercase letters, digits and dashes")
+        if not isinstance(sp.name, str) or not 1 <= len(sp.name.strip()) <= 24:
+            raise RigError("space name must be 1–24 characters")
+        sp.name = sp.name.strip()
+        return sp
 
 
 # ---- the default rig (gui-3 mockup, mapped onto the real bulbs — DECISIONS D5) -----------
@@ -209,6 +238,7 @@ class FixtureStore:
         self.fixtures: dict = {}      # id -> Fixture (insertion order = table order)
         self.groups: dict = {}        # id -> Group
         self.banks: dict = {b: [None] * 8 for b in BANKS}
+        self.spaces: dict = {}        # id -> Space (insertion order = tab order)
         self.fresh = False            # True when seeded this run (first start): auto-import bulbs
         self.recovered: Optional[str] = None   # a corrupt fixtures.json was moved here
 
@@ -251,12 +281,18 @@ class FixtureStore:
         for b in BANKS:
             row = list(banks.get(b) or [None] * 8)[:8]
             s.banks[b] = row + [None] * (8 - len(row))
+        for sd in d.get("spaces") or []:
+            sp = Space.from_dict(sd)
+            s.spaces[sp.id] = sp
+        if s._ensure_spaces() or "spaces" not in d:
+            s.save()                  # a file from before Spaces: seeded from the LIFX groups
         return s
 
     def to_dict(self) -> dict:
         return {"v": 1, "rev": self.rev, "fixtures": [f.to_dict() for f in self.ordered()],
                 "groups": [g.to_dict() for g in self.groups.values()],
-                "banks": {b: list(self.banks[b]) for b in BANKS}}
+                "banks": {b: list(self.banks[b]) for b in BANKS},
+                "spaces": [sp.to_dict() for sp in self.spaces.values()]}
 
     def save(self) -> None:
         if not self.path:
@@ -287,6 +323,7 @@ class FixtureStore:
                           color="#3b82f6"))
         self.groups["fx"].members.append("virtual-light-1")
         self.banks = {b: list(row) for b, row in DEFAULT_BANKS.items()}
+        self._ensure_spaces()
         self.rev = 1
         self.fresh = True
         self.save()
@@ -294,6 +331,64 @@ class FixtureStore:
 
     def _add(self, fx: Fixture) -> None:
         self.fixtures[fx.id] = fx
+
+    # ---- spaces ----------------------------------------------------------------------
+    def space_for_group(self, lifx_group: Optional[str]) -> str:
+        """The Space for a LIFX group (created on first sight); no group -> living-room."""
+        name = (lifx_group or "").strip()[:24]
+        sid = slugify(name) if name else DEFAULT_SPACE
+        if sid not in self.spaces:
+            self.spaces[sid] = Space(sid, name or LIVING_ROOM)
+        return sid
+
+    def _ensure_spaces(self) -> bool:
+        """living-room exists and every fixture is in a known Space. True if anything changed."""
+        changed = False
+        if DEFAULT_SPACE not in self.spaces:
+            self.spaces = {DEFAULT_SPACE: Space(DEFAULT_SPACE, LIVING_ROOM), **self.spaces}
+            changed = True
+        for f in self.fixtures.values():
+            if f.space not in self.spaces:
+                f.space = self.space_for_group(f.lifx_group) if f.type == "lifx" else DEFAULT_SPACE
+                changed = True
+        return changed
+
+    def upsert_space(self, d: dict) -> Space:
+        if not isinstance(d, dict):
+            raise RigError("space must be an object")
+        d = dict(d)
+        if not d.get("id"):
+            base, n = slugify(d.get("name", "")), 2
+            if base == "fixture":
+                base = "space"
+            sid = base
+            while sid in self.spaces:
+                sid = f"{base[:44]}-{n}"
+                n += 1
+            d["id"] = sid
+        sp = Space.from_dict(d)
+        if any(o.name.lower() == sp.name.lower() and o.id != sp.id for o in self.spaces.values()):
+            raise RigError(f"there is already a space called {sp.name}")
+        self.spaces[sp.id] = sp
+        self._changed()
+        return sp
+
+    def remove_space(self, sid: str) -> None:
+        """Its lights move to living-room, which itself can't be removed."""
+        if sid not in self.spaces:
+            raise RigError(f"no space {sid!r}")
+        if sid == DEFAULT_SPACE:
+            raise RigError(f"{self.spaces[sid].name} is the default space — rename it instead")
+        del self.spaces[sid]
+        for f in self.fixtures.values():
+            if f.space == sid:
+                f.space = DEFAULT_SPACE
+        self._changed()
+
+    def in_spaces(self, sids) -> list:
+        """Fixtures (any status) whose Space is one of `sids`."""
+        want = set(sids)
+        return [f for f in self.ordered() if f.space in want]
 
     def _unique_id(self, base: str) -> str:
         fid, n = base, 2
@@ -310,6 +405,11 @@ class FixtureStore:
         if not d.get("id"):
             d["id"] = self._unique_id(slugify(d.get("label", "")))
         fx = Fixture.from_dict(d)
+        if fx.space is None:
+            old = self.fixtures.get(fx.id)
+            fx.space = old.space if old else DEFAULT_SPACE      # a UI from before Spaces
+        if fx.space not in self.spaces:
+            raise RigError(f"no space {fx.space!r}")
         if fx.mac:
             clash = [o for o in self.fixtures.values() if o.mac == fx.mac and o.id != fx.id]
             if clash:
@@ -400,7 +500,8 @@ class FixtureStore:
             fx = Fixture(self._unique_id(slugify(label)), label, "lifx",
                          "active" if living else "not_added", "slow",
                          min(1.0, max(0.0, float(x))), min(1.0, max(0.0, float(y))),
-                         ip=b["ip"], mac=mac, lifx_group=b.get("group"))
+                         ip=b["ip"], mac=mac, lifx_group=b.get("group"),
+                         space=self.space_for_group(b.get("group")))
             self.fixtures[fx.id] = fx
             by_mac[mac] = fx
             for gid in default_groups_for(label, b.get("group"), living_room):

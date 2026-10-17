@@ -174,3 +174,55 @@ def test_set_limits_and_swap(store):
     assert store.banks["A"][0] is None and store.banks["C"][7] == "lr-all" and store.rev == rev + 1
     with pytest.raises(RigError, match="cells"):
         store.swap_banks(("A", 0), ("A", 1))
+
+
+def test_spaces_are_seeded_from_the_lifx_groups(store):
+    assert list(store.spaces) == ["living-room"]
+    assert {f.space for f in store.fixtures.values()} == {"living-room"}      # planned + virtual
+    store.import_discovered(BULBS)
+    assert list(store.spaces) == ["living-room", "bedroom"]
+    assert store.spaces["bedroom"].name == "Bedroom"
+    f = {x.label: x for x in store.fixtures.values()}
+    assert f["TV Left"].space == "living-room" and f["Bright Light"].space == "bedroom"
+    assert [x.label for x in store.in_spaces(["bedroom"])] == [l for l, _, _ in BEDROOM]
+    assert_valid("fixtures", store.to_dict())
+
+
+def test_a_file_from_before_spaces_is_migrated(tmp_path, store):
+    store.import_discovered(BULBS)
+    d = store.to_dict()
+    del d["spaces"]
+    for fd in d["fixtures"]:
+        fd.pop("space", None)
+    p = tmp_path / "old.json"
+    p.write_text(json.dumps(d))
+    s = FixtureStore.load(str(p))
+    assert list(s.spaces) == ["living-room", "bedroom"]
+    assert s.fixtures["tv-left"].space == "living-room" and s.fixtures["bright-light"].space == "bedroom"
+    assert s.fixtures["virtual-light-1"].space == "living-room"
+    assert json.loads(p.read_text())["spaces"][1] == {"id": "bedroom", "name": "Bedroom"}   # written back
+    assert s.rev == d["rev"]
+
+
+def test_space_edits(store):
+    store.import_discovered(BULBS)
+    sp = store.upsert_space({"name": "Kitchen"})
+    assert sp.id == "kitchen" and store.spaces["kitchen"].name == "Kitchen"
+    store.upsert_space({"id": "bedroom", "name": "Main bedroom"})
+    assert store.spaces["bedroom"].name == "Main bedroom"
+    with pytest.raises(RigError, match="already a space"):
+        store.upsert_space({"name": "kitchen"})
+    with pytest.raises(RigError, match="1–24"):
+        store.upsert_space({"name": " "})
+    fx = store.fixtures["washer"].to_dict()
+    store.upsert_fixture({**fx, "space": "kitchen"})
+    assert store.fixtures["washer"].space == "kitchen"
+    with pytest.raises(RigError, match="no space"):
+        store.upsert_fixture({**fx, "space": "garage"})
+    store.upsert_fixture({k: v for k, v in fx.items() if k != "space"})     # an old UI keeps the Space
+    assert store.fixtures["washer"].space == "kitchen"
+    store.remove_space("kitchen")
+    assert "kitchen" not in store.spaces and store.fixtures["washer"].space == "living-room"
+    with pytest.raises(RigError, match="default space"):
+        store.remove_space("living-room")
+    assert_valid("fixtures", store.to_dict())

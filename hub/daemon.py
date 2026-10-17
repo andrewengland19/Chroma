@@ -190,7 +190,9 @@ class Chromad:
                 raise IpcError(str(e)) from None
         if op.split(".")[0] == "agent":
             return await self.agent.handle(op, req)
-        if op.split(".")[0] in ("fixtures", "groups", "banks"):
+        if op.split(".")[0] == "scenes":
+            return await self.agent.handle_scenes(op, req)
+        if op.split(".")[0] in ("fixtures", "groups", "banks", "spaces"):
             res = await self.rig.handle(op, req)
             if res is not None or op in ("fixtures.test",):
                 return res
@@ -328,6 +330,20 @@ class Chromad:
         self.rig.live = dict((k, v) for k, v in art.items() if self._klass(k) == "slow")
         self.lifx_out.forget_power()        # bulbs may have been switched off elsewhere
         self._board_ready = True
+
+    def adopt_look(self, looks: dict) -> None:
+        """The bulbs were set outside the console (a recalled scene): make the board show that
+        look, so the next fader move starts from it instead of snapping back to the old one.
+        `looks` is fixture id -> HSB for every LIFX bulb the scene touched or switched off."""
+        art = dict(self.console.art if self._board_ready else self.art_look())
+        art.update(looks)
+        console_logic.seed_from_art(self.console, art, self._members())
+        self.scheduler.reset()
+        self.scheduler.prime(art)
+        self.rig.live = dict((k, v) for k, v in art.items() if self._klass(k) == "slow")
+        self.lifx_out.forget_power()
+        self._board_ready = True
+        self._console_changed()
 
     def _leave_board(self) -> None:
         self._board_ready = False

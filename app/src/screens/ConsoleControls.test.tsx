@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { renderApp } from "../test/helpers";
 
@@ -200,5 +200,39 @@ describe("COLOR and CUES (gui-1)", () => {
       fireEvent.pointerUp(screen.getByTestId("swatch-0"));
     });
     expect(screen.getByRole("status")).toHaveTextContent("touch a channel first");
+  });
+});
+
+describe("Cues pane: Scenes mode", () => {
+  test("toggle swaps the cue pads for saved scenes; tapping one recalls it", async () => {
+    const { engine } = await renderApp();
+    expect(screen.getByTestId("cue-0")).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole("tab", { name: "Scenes" })));
+    await waitFor(() => expect(screen.getByTestId("scene-0")).toBeInTheDocument());
+    expect(screen.queryByTestId("cue-0")).toBeNull();
+    expect(screen.getByTestId("scene-0")).toHaveTextContent("sunset");
+    await act(async () => fireEvent.click(screen.getByTestId("scene-1")));
+    expect(engine.requests).toContainEqual({ op: "scenes.recall", name: "agent.movie_night" });
+    expect(screen.getByTestId("scene-1")).toHaveAttribute("aria-pressed", "true");
+    await act(async () => fireEvent.click(screen.getByRole("tab", { name: "Cues" })));
+    expect(screen.getByTestId("cue-0")).toBeInTheDocument();
+  });
+
+  test("with more scenes than pads, double-click opens the picker and hiding one brings in the next", async () => {
+    await renderApp();
+    await act(async () => fireEvent.click(screen.getByRole("tab", { name: "Scenes" })));
+    await waitFor(() => expect(screen.getByTestId("scene-7")).toBeInTheDocument());
+    expect(screen.queryByTestId("scene-8")).toBeNull();
+    await act(async () => fireEvent.doubleClick(screen.getByTestId("scene-0")));
+    expect(screen.queryByTestId("scenes-modal")).toBeNull();            // a pad double-click isn't "configure"
+    await act(async () => fireEvent.doubleClick(screen.getByText("Scenes", { selector: "span" })));
+    const modal = screen.getByTestId("scenes-modal");
+    expect(within(modal).getByLabelText("Show agent.cozy")).toBeDisabled();     // 8 of 8
+    await act(async () => fireEvent.click(within(modal).getByLabelText("Show agent.sunset")));
+    await act(async () => fireEvent.click(within(modal).getByLabelText("Show agent.cozy")));
+    await act(async () => fireEvent.keyDown(window, { key: "Escape" }));
+    expect(screen.queryByTestId("scenes-modal")).toBeNull();
+    expect(screen.getByTestId("scene-0")).toHaveTextContent("movie_night");
+    expect(screen.getByTestId("scene-7")).toHaveTextContent("cozy");
   });
 });

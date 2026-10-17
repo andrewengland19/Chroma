@@ -23,7 +23,7 @@ describe("Agent tab", () => {
     expect(screen.getByTestId("agent-prompt")).toHaveValue("Rainy evening, cozy but I need to read");
     fireEvent.click(ask);
     await waitFor(() => expect(screen.getByTestId("agent-running")).toBeInTheDocument());
-    expect(ops(engine)).toEqual([{ op: "agent.ask", prompt: "Rainy evening, cozy but I need to read" }]);
+    expect(ops(engine)).toEqual([{ op: "agent.ask", prompt: "Rainy evening, cozy but I need to read", spaces: [] }]);
     expect(screen.getByTestId("agent-prompt")).toHaveValue("");
     expect(screen.getByTestId("agent-ask")).toBeDisabled();
     expect(screen.getByTestId("agent-why")).toHaveTextContent("Working on it…");
@@ -57,7 +57,7 @@ describe("Agent tab", () => {
     fireEvent.change(screen.getByTestId("agent-name"), { target: { value: "movie night!" } });
     expect(screen.getByTestId("agent-save")).toBeDisabled();
     expect(screen.getByText(/Names use a–z/)).toBeInTheDocument();
-    expect(ops(engine)).toEqual([{ op: "agent.ask", prompt: "movie night" }]);
+    expect(ops(engine)).toEqual([{ op: "agent.ask", prompt: "movie night", spaces: [] }]);
   });
 
   test("a blocked engine says why and disables Ask; errors are shown", async () => {
@@ -80,5 +80,31 @@ describe("Agent tab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Agent" }));
     expect(screen.getByTestId("agent-reply")).toHaveTextContent("Warm low pool");
     expect(screen.getByTestId("agent-undo")).toBeEnabled();
+  });
+
+  test("Space checkboxes scope the ask; none checked means Living Room", async () => {
+    const { engine } = await setup();
+    const group = await waitFor(() => {
+      const g = screen.getByRole("group", { name: "Spaces" });
+      expect(within(g).getByLabelText("Bedroom")).toBeInTheDocument();
+      return g;
+    });
+    expect(group).toHaveTextContent("none checked: Living Room only");
+    fireEvent.click(within(group).getByLabelText("Bedroom"));
+    expect(group).not.toHaveTextContent("none checked");
+    fireEvent.change(screen.getByTestId("agent-prompt"), { target: { value: "wind down" } });
+    await act(async () => fireEvent.click(screen.getByTestId("agent-ask")));
+    expect(ops(engine).at(-1)).toEqual({ op: "agent.ask", prompt: "wind down", spaces: ["bedroom"] });
+    await waitFor(() => expect(screen.queryByTestId("agent-running")).not.toBeInTheDocument());
+
+    fireEvent.click(within(group).getByLabelText("All"));
+    expect(within(group).getByLabelText("Living Room")).toBeChecked();
+    expect(within(group).getByLabelText("Bedroom")).toBeChecked();
+    fireEvent.change(screen.getByTestId("agent-prompt"), { target: { value: "party" } });
+    await act(async () => fireEvent.click(screen.getByTestId("agent-ask")));
+    expect(ops(engine).at(-1)).toEqual({ op: "agent.ask", prompt: "party", spaces: ["living-room", "bedroom"] });
+    await waitFor(() => expect(screen.queryByTestId("agent-running")).not.toBeInTheDocument());
+    fireEvent.click(within(group).getByLabelText("All"));
+    expect(within(group).getByLabelText("Bedroom")).not.toBeChecked();
   });
 });

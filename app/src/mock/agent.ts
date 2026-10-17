@@ -16,6 +16,24 @@ export class MockAgent {
     this.patch({ agent: p });
   }
 
+  /** Saved lite scenes for scenes.list (newest first); tests can replace it. */
+  scenes: { name: string; colors: string[] }[] = [
+    "sunset", "movie_night", "focus", "reading", "party", "morning", "candle", "dim_hall", "aurora", "storm", "cozy", "late_snack",
+  ].map((n, i) => ({ name: `agent.${n}`, colors: [LOOK[i % LOOK.length], LOOK[(i + 3) % LOOK.length], LOOK[(i + 5) % LOOK.length]] }));
+
+  handleScenes(req: Record<string, unknown>): Reply {
+    const a = this.state().agent;
+    if (a.blocked) return { ok: false, error: a.blocked };
+    if (req.op === "scenes.list") return { ok: true, scenes: this.scenes.map((s) => ({ ...s })) };
+    if (req.op === "scenes.recall") {
+      const name = String(req.name ?? "");
+      if (!this.scenes.some((s) => s.name === name)) return { ok: false, error: `no scene '${name}'` };
+      this.patch({ who: "board" });
+      return { ok: true };
+    }
+    return { ok: false, error: `unknown op '${String(req.op)}'` };
+  }
+
   handle(req: Record<string, unknown>): Reply {
     const a = this.state().agent;
     if (a.blocked) return { ok: false, error: a.blocked };

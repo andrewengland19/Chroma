@@ -1,8 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 
-export function Panel({ style, children, className = "" }: { style?: CSSProperties; children?: ReactNode; className?: string }) {
+export function Panel({ style, children, className = "", onDoubleClick }: {
+  style?: CSSProperties; children?: ReactNode; className?: string; onDoubleClick?: React.MouseEventHandler;
+}) {
   return (
-    <section className={`absolute rounded-[8px] border border-line bg-panel ${className}`} style={style}>
+    <section className={`absolute rounded-[8px] border border-line bg-panel ${className}`} style={style} onDoubleClick={onDoubleClick}>
       {children}
     </section>
   );

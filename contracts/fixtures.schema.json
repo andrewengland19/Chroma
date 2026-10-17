@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FixturesFile",
-  "description": "~/.chroma/fixtures.json — fixtures, groups and the 3x8 bank map. `rev` bumps on every change and is stamped into takes as fixtures_rev.",
+  "description": "~/.chroma/fixtures.json — fixtures, groups, the 3x8 bank map and the Spaces (rooms). `rev` bumps on every change and is stamped into takes as fixtures_rev.",
   "type": "object",
   "required": ["v", "rev", "fixtures", "groups", "banks"],
   "additionalProperties": false,
@@ -10,7 +10,9 @@
     "rev": { "type": "integer", "minimum": 0 },
     "fixtures": { "type": "array", "items": { "$ref": "#/$defs/fixture" } },
     "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
-    "banks": { "$ref": "#/$defs/banks" }
+    "banks": { "$ref": "#/$defs/banks" },
+    "spaces": { "type": "array", "items": { "$ref": "#/$defs/space" },
+                "description": "Rooms of the house; each fixture lives in one. living-room is the default and always present (files from before Spaces are migrated from the bulbs' LIFX groups)." }
   },
   "$defs": {
     "fixture": {
@@ -30,7 +32,8 @@
         "series": { "type": "string", "description": "Optional display grouping, e.g. 'Playbill 01–12' collapses into one table row." },
         "x": { "$ref": "common.schema.json#/$defs/unit" },
         "y": { "$ref": "common.schema.json#/$defs/unit" },
-        "color": { "$ref": "common.schema.json#/$defs/hex", "description": "Display colour for the Setup table dot." }
+        "color": { "$ref": "common.schema.json#/$defs/hex", "description": "Display colour for the Setup table dot." },
+        "space": { "$ref": "common.schema.json#/$defs/slug_id", "description": "The Space (room) this fixture is in; missing = living-room." }
       }
     },
     "group": {
@@ -47,6 +50,13 @@
                           "description": "Safety: on/off cycles per second; never above 3 (BUILD_ORDER §8.1)." },
         "idle_dim_min": { "oneOf": [{ "type": "integer", "minimum": 1, "maximum": 240 }, { "type": "null" }],
                           "description": "BOARD only: dim to 30 % after this many minutes without input; null = off." }
+      }
+    },
+    "space": {
+      "type": "object", "title": "Space", "required": ["id", "name"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/slug_id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 24, "description": "Shown on the Room panel's tabs and the Agent's checkboxes, e.g. Bedroom." }
       }
     },
     "bank_row": {

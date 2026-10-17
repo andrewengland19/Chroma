@@ -21,10 +21,11 @@ def agent(daemon, monkeypatch):  # noqa: F811
     import lights_agent
     daemon.fake = False
     gate = threading.Event()
-    calls = {"run": [], "undo": 0, "save": []}
+    calls = {"run": [], "undo": 0, "save": [], "scope": []}
 
     def run(prompt):
         calls["run"].append(prompt)
+        calls["scope"].append(lights_agent._SCOPE)
         assert gate.wait(5)
         if prompt == "explode":
             raise RuntimeError("no Anthropic API key — run `lite show setkey`")
@@ -35,6 +36,7 @@ def agent(daemon, monkeypatch):  # noqa: F811
 
     def undo():
         calls["undo"] += 1
+        calls["scope"].append(lights_agent._SCOPE)
         return {"restored": "rainy"}
 
     def save(args):
@@ -135,3 +137,99 @@ async def test_save_is_create_only_and_namespaced(agent):
     assert not res[2]["ok"] and not res[3]["ok"]
     assert calls["save"] == ["agent.rainy_evening", "agent.taken"]   # bad names never reach lite's file
     assert (await state(d))["agent"]["saved_as"] == "agent.rainy_evening"
+
+
+LR_MACS = {"d0:73:d5:00:00:01", "d0:73:d5:00:00:02", "d0:73:d5:00:00:03", "d0:73:d5:00:00:04", "d0:73:d5:00:00:05"}
+
+
+async def test_ask_defaults_to_the_living_room(agent):
+    d, gate, calls = agent
+    gate.set()
+    await ipc(d.ipc.path, {"op": "agent.ask", "prompt": "cozy"})
+    assert await wait_for(lambda: d.agent.s["status"] == "done")
+    await ipc(d.ipc.path, {"op": "agent.undo"})
+    assert calls["scope"] == [(LR_MACS, ["Living Room"])] * 2         # the run and its undo
+    import lights_agent
+    assert lights_agent._SCOPE is None                                 # never leaks past a call
+
+
+async def test_ask_is_limited_to_the_chosen_spaces(agent):
+    d, gate, calls = agent
+    gate.set()
+    await d.rig.handle("spaces.upsert", {"space": {"name": "Kitchen"}})
+    fx = d.store.fixtures["washer"].to_dict()
+    await d.rig.handle("fixtures.upsert", {"fixture": {**fx, "space": "kitchen"}})
+    res, _ = await ipc(d.ipc.path, {"op": "agent.ask", "prompt": "breakfast", "spaces": ["kitchen"]})
+    assert res[0]["ok"]
+    assert await wait_for(lambda: d.agent.s["status"] == "done")
+    assert calls["scope"] == [({"d0:73:d5:00:00:05"}, ["Kitchen"])]
+    await ipc(d.ipc.path, {"op": "agent.ask", "prompt": "all", "spaces": ["living-room", "kitchen"]})
+    assert await wait_for(lambda: len(calls["run"]) == 2 and d.agent.s["status"] == "done")
+    assert calls["scope"][1] == (LR_MACS, ["Living Room", "Kitchen"])
+
+
+async def test_ask_refuses_unknown_or_empty_spaces(agent):
+    d, _, calls = agent
+    await d.rig.handle("spaces.upsert", {"space": {"name": "Attic"}})
+    res, _ = await ipc(d.ipc.path, {"op": "agent.ask", "prompt": "x", "spaces": ["garage"]},
+                       {"op": "agent.ask", "prompt": "x", "spaces": ["attic"]},
+                       {"op": "agent.ask", "prompt": "x", "spaces": "attic"})
+    assert [r["ok"] for r in res] == [False, False, False]
+    assert "no space 'garage'" in res[0]["error"] and "no LIFX bulbs in Attic" in res[1]["error"]
+    assert calls["run"] == [] and d.agent.s["status"] == "idle"
+
+
+def test_scoped_limits_every_tool_to_those_bulbs(tmp_path, monkeypatch):
+    import json
+
+    import lights_agent
+    cache = tmp_path / "cache.json"
+    cache.write_text(json.dumps({"lights": [
+        {"label": "TV Left", "group": "Living Room", "mac": "d0:73:d5:00:00:01", "ip": "10.0.0.1"},
+        {"label": "Bright Light", "group": "Bedroom", "mac": "D0:73:D5:00:00:09", "ip": "10.0.0.9"}]}))
+    monkeypatch.setattr(lights_agent, "CACHE_PATH", str(cache))
+    assert [b["label"] for b in lights_agent._bulbs()] == ["TV Left", "Bright Light"]
+    with lights_agent.scoped({"d0:73:d5:00:00:09"}, ["Bedroom"]):
+        assert [b["label"] for b in lights_agent._bulbs()] == ["Bright Light"]
+        assert [b["label"] for b in lights_agent._resolve("all", lights_agent._bulbs())] == ["Bright Light"]
+    assert lights_agent._SCOPE is None
+
+
+async def test_scenes_refused_on_a_fake_engine(daemon):  # noqa: F811
+    res, _ = await ipc(daemon.ipc.path, {"op": "scenes.list"}, {"op": "scenes.recall", "name": "x"})
+    for r in res:
+        assert r["ok"] is False and "Devices → Real" in r["error"]
+
+
+async def test_scenes_list_and_recall(agent, monkeypatch):
+    import lights_agent
+    d, _, _ = agent
+    recalled = []
+    monkeypatch.setattr(lights_agent, "scenes_view", lambda: [{"name": "agent.sunset", "saved_at": 2, "colors": ["#ff8800"]}])
+    monkeypatch.setattr(lights_agent, "t_recall_scene", lambda a: recalled.append(a["name"]) or (
+        {"error": "no scene 'nope'"} if a["name"] == "nope" else {"recalled": a["name"]}))
+    res, _ = await ipc(d.ipc.path, {"op": "scenes.list"})
+    assert res[0]["ok"] is True and res[0]["scenes"] == [{"name": "agent.sunset", "saved_at": 2, "colors": ["#ff8800"]}]
+    assert d.engine.enabled is True
+    res, _ = await ipc(d.ipc.path, {"op": "scenes.recall", "name": "agent.sunset"})
+    assert res[0]["ok"] is True and recalled == ["agent.sunset"]
+    assert d.engine.enabled is False                     # BOARD, so the art painter doesn't undo it
+    res, _ = await ipc(d.ipc.path, {"op": "scenes.recall", "name": "nope"}, {"op": "scenes.recall", "name": ""},
+                       {"op": "scenes.recall"})
+    assert [r["ok"] for r in res] == [False, False, False] and "no scene 'nope'" in res[0]["error"]
+    assert recalled == ["agent.sunset", "nope"]
+
+
+async def test_scene_recall_updates_the_board_to_the_scene_look(agent, monkeypatch):
+    import lights_agent
+    d, _, _ = agent
+    lit, *rest = d.store.active("lifx")
+    monkeypatch.setattr(lights_agent, "t_recall_scene", lambda a: {"recalled": a["name"]})
+    monkeypatch.setattr(lights_agent, "scene_lights",
+                        lambda n: [{"label": lit.label, "ip": lit.ip or "10.9.9.9", "h": 0, "s": 65535, "b": 32768, "k": 3500}])
+    res, _ = await ipc(d.ipc.path, {"op": "scenes.recall", "name": "agent.red"})
+    assert res[0]["ok"] is True and d._board_ready
+    assert d.console.art[lit.id].s == 1.0 and abs(d.console.art[lit.id].b - 0.5) < 0.01
+    assert all(d.console.art[f.id].b == 0.0 for f in rest)           # bulbs not in the scene went dark
+    bound = [c for c in d.console.channels if c.group_id and lit.id in d._members().get(c.group_id, ())]
+    assert bound and all(abs(c.level - 0.5) < 0.2 or len(d._members()[c.group_id]) > 1 for c in bound)

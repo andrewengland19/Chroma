@@ -109,6 +109,22 @@ export type IpcRequest =
     }
   | {
       id: number;
+      op: "spaces.upsert";
+      /**
+       * Without id: a new Space (its id is made from the name). With id: rename it.
+       */
+      space: {
+        id?: string;
+        name: string;
+      };
+    }
+  | {
+      id: number;
+      op: "spaces.remove";
+      space_id: string;
+    }
+  | {
+      id: number;
       op: "banks.get";
     }
   | {
@@ -244,6 +260,12 @@ export type IpcRequest =
       id: number;
       op: "agent.ask";
       prompt: string;
+      /**
+       * Space ids the agent may touch; empty or missing = living-room only.
+       *
+       * @maxItems 32
+       */
+      spaces?: string[];
     }
   | {
       id: number;
@@ -252,6 +274,15 @@ export type IpcRequest =
   | {
       id: number;
       op: "agent.save";
+      name: string;
+    }
+  | {
+      id: number;
+      op: "scenes.list";
+    }
+  | {
+      id: number;
+      op: "scenes.recall";
       name: string;
     };
 /**
@@ -573,6 +604,10 @@ export interface Fixture {
    * Display colour for the Setup table dot.
    */
   color?: string;
+  /**
+   * The Space (room) this fixture is in; missing = living-room.
+   */
+  space?: string;
 }
 export interface Group {
   id: string;
@@ -734,7 +769,7 @@ export interface TakeEvent {
   v?: number | boolean | string | null;
 }
 /**
- * ~/.chroma/fixtures.json — fixtures, groups and the 3x8 bank map. `rev` bumps on every change and is stamped into takes as fixtures_rev.
+ * ~/.chroma/fixtures.json — fixtures, groups, the 3x8 bank map and the Spaces (rooms). `rev` bumps on every change and is stamped into takes as fixtures_rev.
  */
 export interface FixturesFile {
   v: 1;
@@ -742,11 +777,22 @@ export interface FixturesFile {
   fixtures: Fixture[];
   groups: Group[];
   banks: Banks;
+  /**
+   * Rooms of the house; each fixture lives in one. living-room is the default and always present (files from before Spaces are migrated from the bulbs' LIFX groups).
+   */
+  spaces?: Space[];
 }
 export interface Banks {
   A: BankRow;
   B: BankRow;
   C: BankRow;
+}
+export interface Space {
+  id: string;
+  /**
+   * Shown on the Room panel's tabs and the Agent's checkboxes, e.g. Bedroom.
+   */
+  name: string;
 }
 /**
  * ~/.chroma/console.json — persisted console: channel values, palette, cues, last bank / fader function, playback offset.

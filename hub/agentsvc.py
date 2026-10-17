@@ -11,6 +11,10 @@
 # lights_agent addresses the real bulbs from ~/.lifx_cli_cache.json whatever the
 # engine's Devices mode is, so every agent op is refused on a fake engine.
 # Saves are create-only lite scenes, always named agent.<name>.
+#
+# agent.ask names the Spaces (rooms) the agent may touch — none = living-room. The
+# run, its Undo, Save and the look read back are all limited to the LIFX bulbs in
+# those Spaces (lights_agent.scoped), so a Bedroom scene leaves the living room be.
 # =============================================================================
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ import logging
 import re
 from typing import Optional
 
+from fixtures import DEFAULT_SPACE
 from ipc import IpcError
 
 log = logging.getLogger("chroma-hub")
@@ -90,6 +95,7 @@ class AgentService:
         self.d = d                       # Chromad: engine, ipc, fake, spawn, _who_lock
         self.s = idle_state()
         self._busy = False               # an undo / save is in flight
+        self._scope = None               # (MACs, Space names) of the last ask
 
     def state_fields(self) -> dict:
         return {"agent": {**self.s, "blocked": FAKE_BLOCK if self.d.fake else None, "actions": list(self.s["actions"]), "look": list(self.s["look"])}}
@@ -106,12 +112,46 @@ class AgentService:
         if self.s["status"] == "running" or self._busy:
             raise IpcError("the agent is still working on the last request")
         if op == "agent.ask":
-            return await self.ask(req.get("prompt"))
+            return await self.ask(req.get("prompt"), req.get("spaces"))
         self._busy = True
         try:
             return await (self.undo() if op == "agent.undo" else self.save(req.get("name")))
         finally:
             self._busy = False
+
+    async def handle_scenes(self, op: str, req: dict) -> Optional[dict]:
+        """scenes.list / scenes.recall: the saved lite scenes (Console Cues pane's Scenes mode)."""
+        import lights_agent
+        if op not in ("scenes.list", "scenes.recall"):
+            raise IpcError(f"unknown op {op!r}")
+        if self.d.fake:
+            raise IpcError(FAKE_BLOCK)
+        loop = asyncio.get_running_loop()
+        if op == "scenes.list":
+            return {"scenes": await loop.run_in_executor(None, lights_agent.scenes_view)}
+        name = req.get("name")
+        if not isinstance(name, str) or not name or len(name) > 64:
+            raise IpcError("name: 1-64 characters")
+        await self._stop_painting()
+        res = await loop.run_in_executor(None, lights_agent.t_recall_scene, {"name": name})
+        if isinstance(res, dict) and res.get("error"):
+            raise IpcError(res["error"])
+        entries = await loop.run_in_executor(None, lights_agent.scene_lights, name)
+        self.d.adopt_look(self._scene_looks(entries))
+        return None
+
+    def _scene_looks(self, entries: list) -> dict:
+        """fixture id -> HSB the recalled scene left each active LIFX bulb in (off if not in it)."""
+        from outputs.base import HSB
+        looks = {}
+        for f in self.d.store.active("lifx"):
+            e = next((e for e in entries if (f.ip and e.get("ip") == f.ip) or e.get("label") == f.label), None)
+            if e is not None:
+                looks[f.id] = HSB(e["h"] / 65535.0 * 360.0, e["s"] / 65535.0, e["b"] / 65535.0)
+            else:
+                prev = self.d.console.art.get(f.id)
+                looks[f.id] = HSB(prev.h if prev else 0.0, prev.s if prev else 0.0, 0.0)
+        return looks
 
     async def _stop_painting(self) -> None:
         """Like POST /agent: AUTO stops painting so the look stays (WHO DRIVES → BOARD)."""
@@ -124,20 +164,50 @@ class AgentService:
         self.d.ipc.toast("info", "Switched to BOARD for the agent")
         self.d.ipc.mark_dirty()
 
+    def resolve_spaces(self, spaces) -> tuple:
+        """Space ids -> (MACs of their LIFX bulbs, Space names). None / [] = living-room."""
+        if spaces is None:
+            spaces = []
+        if not isinstance(spaces, list) or not all(isinstance(x, str) for x in spaces):
+            raise IpcError("spaces must be a list of space ids")
+        store = self.d.store
+        ids = list(dict.fromkeys(spaces)) or [DEFAULT_SPACE]
+        unknown = [x for x in ids if x not in store.spaces]
+        if unknown:
+            raise IpcError(f"no space {unknown[0]!r}")
+        names = [store.spaces[x].name for x in ids]
+        macs = {f.mac for f in store.in_spaces(ids) if f.type == "lifx" and f.mac}
+        if not macs:
+            raise IpcError(f"there are no LIFX bulbs in {' / '.join(names)} — assign some in the Room panel's Spaces")
+        return macs, names
+
+    async def _scoped(self, fn, *args):
+        """Run a blocking lights_agent call in the executor, limited to the last ask's Spaces."""
+        import lights_agent
+        scope = self._scope
+
+        def call():
+            if scope is None:
+                return fn(*args)
+            with lights_agent.scoped(*scope):
+                return fn(*args)
+        return await asyncio.get_running_loop().run_in_executor(None, call)
+
     async def _read_look(self) -> list:
         import lights_agent
         try:
-            return look_rows(await asyncio.get_running_loop().run_in_executor(None, lights_agent.room_view))
+            return look_rows(await self._scoped(lights_agent.room_view))
         except Exception as e:
             log.warning(f"agent: could not read the bulbs back: {e}")
             return []
 
-    async def ask(self, prompt) -> Optional[dict]:
+    async def ask(self, prompt, spaces=None) -> Optional[dict]:
         if not isinstance(prompt, str) or not prompt.strip():
             raise IpcError("say what the room should look like")
         prompt = prompt.strip()
         if len(prompt) > MAX_PROMPT:
             raise IpcError(f"keep it under {MAX_PROMPT} characters")
+        self._scope = self.resolve_spaces(spaces)
         self._set(**{**idle_state(), "status": "running", "prompt": prompt})
         self.d.spawn(self._run(prompt))
         return None
@@ -146,7 +216,7 @@ class AgentService:
         import lights_agent
         try:
             await self._stop_painting()
-            res = await asyncio.get_running_loop().run_in_executor(None, lights_agent.run, prompt)
+            res = await self._scoped(lights_agent.run, prompt)
         except Exception as e:
             log.warning(f"agent run failed: {e}")
             self._set(status="error", error=str(e) or type(e).__name__, look=await self._read_look())
@@ -160,7 +230,7 @@ class AgentService:
         if not self.s["can_undo"]:
             raise IpcError("nothing to undo")
         await self._stop_painting()
-        res = await asyncio.get_running_loop().run_in_executor(None, lights_agent.undo)
+        res = await self._scoped(lights_agent.undo)
         if isinstance(res, dict) and res.get("error"):
             raise IpcError(res["error"])
         self._set(can_undo=False, look=await self._read_look())
@@ -171,7 +241,7 @@ class AgentService:
         if not isinstance(name, str) or not NAME_RE.match(name):
             raise IpcError("name: 1-32 of a-z, 0-9, _ or -")
         full = f"agent.{name}"
-        res = await asyncio.get_running_loop().run_in_executor(None, lights_agent.t_save_scene, {"name": full})
+        res = await self._scoped(lights_agent.t_save_scene, {"name": full})
         if isinstance(res, dict) and res.get("error"):
             raise IpcError(res["error"])
         self._set(saved_as=full)

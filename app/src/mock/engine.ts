@@ -53,7 +53,14 @@ export class MockEngine implements IpcClient {
   private events = new Set<(e: IpcEvent) => void>();
   private timer: ReturnType<typeof setInterval> | null = null;
   readonly requests: Record<string, unknown>[] = [];
-  readonly rig = new MockRig((rev) => this.patch({ fixtures_rev: rev }));
+  readonly rig = new MockRig(
+    (rev) => this.patch({ fixtures_rev: rev }),
+    // like rigsvc.room(): the Room shows a fixture where the rig says it is
+    (fx) => {
+      if (this.state.room.some((r) => r.fixture_id === fx.id && (r.x !== fx.x || r.y !== fx.y)))
+        this.patch({ room: this.state.room.map((r) => (r.fixture_id === fx.id ? { ...r, x: fx.x, y: fx.y } : r)) });
+    },
+  );
   readonly takes = new MockTakeStore(() => this.state, (p) => this.patch(p));
   readonly agent = new MockAgent(() => this.state, (p) => this.patch(p));
 
@@ -117,9 +124,10 @@ export class MockEngine implements IpcClient {
         return r;
       }
       default:
-        if (typeof req.op === "string" && /^(fixtures|groups|banks)\./.test(req.op)) return this.rig.handle(req);
+        if (typeof req.op === "string" && /^(fixtures|groups|banks|spaces)\./.test(req.op)) return this.rig.handle(req);
         if (typeof req.op === "string" && /^(takes|take|rec|play)\./.test(req.op)) return this.takes.handle(req);
         if (typeof req.op === "string" && req.op.startsWith("agent.")) return this.agent.handle(req);
+        if (typeof req.op === "string" && req.op.startsWith("scenes.")) return this.agent.handleScenes(req);
         return { ok: false, error: `unknown op '${String(req.op)}'` };
     }
   }

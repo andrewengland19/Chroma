@@ -76,6 +76,14 @@ class RigService:
                 s.remove_group(req.get("group_id"))
                 self.changed()
                 return {"rev": s.rev}
+            if op == "spaces.upsert":
+                sp = s.upsert_space(req.get("space"))
+                self.changed()
+                return {"space": sp.to_dict(), "rev": s.rev}
+            if op == "spaces.remove":
+                s.remove_space(req.get("space_id"))
+                self.changed()
+                return {"rev": s.rev}
             if op == "banks.get":
                 return {"banks": {b: list(r) for b, r in s.banks.items()}, "rev": s.rev}
             if op == "groups.set_limits":

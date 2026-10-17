@@ -229,3 +229,20 @@ async def test_import_is_retried_when_the_rig_has_no_bulbs():
         assert d.store.fresh is False and len(d.store.active("lifx")) == 5
     finally:
         await stop(d, task)
+
+
+async def test_spaces_ops(daemon):
+    rig = await op(daemon, "fixtures.list")
+    assert rig["spaces"] == [{"id": "living-room", "name": "Living Room"}, {"id": "bedroom", "name": "Bedroom"}]
+    by = {f["id"]: f for f in rig["fixtures"]}
+    assert by["washer"]["space"] == "living-room" and by["bright-light"]["space"] == "bedroom"
+    res = await op(daemon, "spaces.upsert", space={"name": "Kitchen"})
+    assert res["space"] == {"id": "kitchen", "name": "Kitchen"}
+    await op(daemon, "fixtures.upsert", fixture={**by["washer"], "space": "kitchen"})
+    assert daemon.store.fixtures["washer"].space == "kitchen"
+    await op(daemon, "spaces.remove", space_id="kitchen")
+    assert daemon.store.fixtures["washer"].space == "living-room"
+    from ipc import IpcError
+    with pytest.raises(IpcError, match="default space"):
+        await op(daemon, "spaces.remove", space_id="living-room")
+    assert_valid("fixtures", daemon.store.to_dict())

@@ -31,6 +31,12 @@
       "type": "object", "title": "TakesList", "required": ["takes"],
       "properties": { "takes": { "type": "array", "items": { "$ref": "#/$defs/take_summary" } } }
     },
+    "scenes_list": {
+      "type": "object", "title": "ScenesList", "required": ["scenes"],
+      "properties": { "scenes": { "type": "array", "items": {
+        "type": "object", "title": "SceneSummary", "required": ["name", "colors"],
+        "properties": { "name": { "type": "string" }, "colors": { "type": "array", "items": { "type": "string" } } } } } }
+    },
     "take_full": {
       "type": "object", "title": "TakeFull", "required": ["header", "events"],
       "properties": { "header": { "$ref": "take-header.schema.json" },

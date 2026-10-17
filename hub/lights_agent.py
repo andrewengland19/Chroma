@@ -8,6 +8,9 @@
 #   ~/.spectrum_scenes.json  scenes (create-only from here — never overwrites)
 #   ~/Code/Spectrum/patterns YAML patterns
 # Every run snapshots the room first → `undo()` puts it back.
+# Inside `scoped(macs, names)` (the app's Spaces) every tool only sees those bulbs,
+# so "all", recall's "turn off the rest", saves and the undo snapshot stay in the
+# chosen rooms. Without it (POST /agent, ⌃⇧L, the CLI) the whole house is in play.
 #
 # Used by server.py (POST /agent, POST /agent/undo) and directly:
 #   ./.venv/bin/python lights_agent.py "rainy sunday, cozy but I need to read"
@@ -21,6 +24,7 @@ import json
 import os
 import sys
 import time
+from contextlib import contextmanager
 
 from keystore import load_anthropic_key
 
@@ -31,6 +35,9 @@ LAYOUT_PATH = os.path.expanduser("~/.chroma/layout.json")
 UNDO_PATH = os.path.expanduser("~/.chroma/lights_undo.json")
 SPECTRUM_DIR = os.path.expanduser("~/Code/Spectrum")
 MAX_TURNS = 8
+
+# (bulb MACs, Space names) the current call is limited to, or None for every bulb.
+_SCOPE = None
 
 SYSTEM = """You control the user's LIFX lights. Turn their description into a lighting look
 and apply it with the tools.
@@ -89,11 +96,24 @@ def _load_json(path, default):
         return default
 
 
+@contextmanager
+def scoped(macs, names=()):
+    """Limit every tool (and run/undo/save) to the bulbs with these MACs."""
+    global _SCOPE
+    prev, _SCOPE = _SCOPE, ({m.lower() for m in macs}, list(names))
+    try:
+        yield
+    finally:
+        _SCOPE = prev
+
+
 def _bulbs():
     cache = _load_json(CACHE_PATH, None)
     if not cache:
         raise RuntimeError(f"no bulb cache at {CACHE_PATH} — run `lite refresh`")
-    return cache["lights"]
+    if _SCOPE is None:
+        return cache["lights"]
+    return [b for b in cache["lights"] if (b.get("mac") or "").lower() in _SCOPE[0]]
 
 
 def _light(b):
@@ -216,8 +236,11 @@ def t_recall_scene(args):
         return {"error": f"no scene {args['name']!r}"}
     from lifxlan import Light
     listed = set()
+    in_scope = {b["ip"] for b in _bulbs()}
     for e in scene["lights"]:
         if "ip" not in e:  # non-LIFX (Home Assistant) entries: leave to `lite scene`
+            continue
+        if _SCOPE is not None and e["ip"] not in in_scope:   # another Space's bulb
             continue
         listed.add(e["ip"])
         l = Light("00:00:00:00:00:00", e["ip"])
@@ -227,6 +250,12 @@ def t_recall_scene(args):
         if b["ip"] not in listed:
             _light(b).set_power("off", duration=800, rapid=True)
     return {"recalled": args["name"]}
+
+
+def scene_lights(name):
+    """The LIFX entries of a saved scene: [{label, ip, h, s, b, k}] (empty if unknown)."""
+    sc = _load_json(SCENES_PATH, {}).get("scenes", {}).get(name) or {}
+    return [e for e in sc.get("lights", []) if "ip" in e]
 
 
 def t_save_scene(args):
@@ -327,7 +356,11 @@ def run(prompt: str, log=lambda *a: None) -> dict:
     with open(UNDO_PATH, "w") as f:
         json.dump({"saved_at": time.time(), "prompt": prompt, "room": read_room()}, f)
 
-    messages = [{"role": "user", "content": prompt}]
+    content = prompt
+    if _SCOPE is not None:
+        content = (f"[Spaces: {', '.join(_SCOPE[1]) or 'selected'} — only these rooms' bulbs exist for "
+                   f"this request; leave every other room alone]\n{prompt}")
+    messages = [{"role": "user", "content": content}]
     actions = []
     for _ in range(MAX_TURNS):
         resp = client.messages.create(model=MODEL, max_tokens=2048, system=SYSTEM,

@@ -2,16 +2,25 @@
 // in-memory versions of the fixtures/groups/banks ops, mirroring hub/fixtures.py's rules
 // that the UI depends on (flash rate <= 3 Hz, ids, banks).
 import mockupRig from "../../../contracts/examples/fixtures/ok-mockup.json";
-import type { FixturesFile, Fixture, Group } from "../contracts";
+import type { FixturesFile, Fixture, Group, Space } from "../contracts";
 import type { Reply } from "../ipc/types";
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export class MockRig {
   rig: FixturesFile = structuredClone(mockupRig) as FixturesFile;
-  constructor(private bump: (rev: number) => void) {}
+  constructor(
+    private bump: (rev: number) => void,
+    private moved: (fx: Fixture) => void = () => {},
+  ) {}
 
   private changed() {
     this.rig.rev += 1;
     this.bump(this.rig.rev);
+  }
+
+  private spaces(): Space[] {
+    return (this.rig.spaces ??= [{ id: "living-room", name: "Living Room" }]);
   }
 
   online(): Record<string, boolean> {
@@ -31,11 +40,14 @@ export class MockRig {
         return { ok: true, result: { found: 9, added: [], updated: [] }, ...this.view() };
       case "fixtures.upsert": {
         const fx = { ...(req.fixture as Fixture) };
-        if (!fx.id) fx.id = fx.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        if (!fx.id) fx.id = slug(fx.label);
         const i = r.fixtures.findIndex((f) => f.id === fx.id);
+        fx.space ??= (i >= 0 ? r.fixtures[i].space : undefined) ?? "living-room";
+        if (!this.spaces().some((sp) => sp.id === fx.space)) return { ok: false, error: `no space '${fx.space}'` };
         if (i >= 0) r.fixtures[i] = fx;
         else r.fixtures.push(fx);
         this.changed();
+        this.moved(fx);
         return { ok: true, fixture: fx, rev: r.rev };
       }
       case "fixtures.remove":
@@ -74,6 +86,33 @@ export class MockRig {
         r.banks[b.bank][b.channel - 1] = t;
         this.changed();
         return { ok: true, banks: r.banks, rev: r.rev };
+      }
+      case "spaces.upsert": {
+        const sp = { ...(req.space as Space) };
+        const name = (sp.name ?? "").trim();
+        if (!name || name.length > 24) return { ok: false, error: "space name must be 1–24 characters" };
+        if (!sp.id) {
+          sp.id = slug(name) || "space";
+          for (let n = 2; this.spaces().some((x) => x.id === sp.id); n++) sp.id = `${slug(name)}-${n}`;
+        }
+        if (this.spaces().some((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== sp.id))
+          return { ok: false, error: `there is already a space called ${name}` };
+        sp.name = name;
+        const spaces = this.spaces();
+        const i = spaces.findIndex((x) => x.id === sp.id);
+        if (i >= 0) spaces[i] = sp;
+        else spaces.push(sp);
+        this.changed();
+        return { ok: true, space: sp, rev: r.rev };
+      }
+      case "spaces.remove": {
+        const id = req.space_id as string;
+        if (id === "living-room") return { ok: false, error: "Living Room is the default space — rename it instead" };
+        if (!this.spaces().some((x) => x.id === id)) return { ok: false, error: `no space '${id}'` };
+        r.spaces = this.spaces().filter((x) => x.id !== id);
+        r.fixtures.forEach((f) => { if (f.space === id) f.space = "living-room"; });
+        this.changed();
+        return { ok: true, rev: r.rev };
       }
       case "banks.get":
         return { ok: true, banks: r.banks, rev: r.rev };

@@ -247,6 +247,63 @@
       "type": "object",
       "required": [
         "id",
+        "op",
+        "space"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "spaces.upsert"
+        },
+        "space": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "$ref": "common.schema.json#/$defs/slug_id"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 24
+            }
+          },
+          "description": "Without id: a new Space (its id is made from the name). With id: rename it."
+        }
+      },
+      "description": "Add or rename a Space (room). Assign a light to it with fixtures.upsert (fixture.space)."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "space_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "spaces.remove"
+        },
+        "space_id": {
+          "$ref": "common.schema.json#/$defs/slug_id"
+        }
+      },
+      "description": "Remove a Space; its lights move to living-room, which can't be removed."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
         "op"
       ],
       "additionalProperties": false,
@@ -809,6 +866,15 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 500
+        },
+        "spaces": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": {
+            "$ref": "common.schema.json#/$defs/slug_id"
+          },
+          "description": "Space ids the agent may touch; empty or missing = living-room only."
         }
       },
       "description": "Agent tab: start the lights agent in the background; progress arrives as State.agent patches. Refused while a run is going or on a fake engine."
@@ -851,6 +917,46 @@
         }
       },
       "description": "Save the room's current state as the new lite scene agent.<name> (create-only)."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "scenes.list"
+        }
+      },
+      "description": "List the saved lite scenes, newest first. Reply: ScenesList. Refused on the fake engine."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "scenes.recall"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "description": "Recall a saved lite scene on the bulbs (AUTO switches to BOARD). Refused on the fake engine."
     }
   ],
   "$defs": {

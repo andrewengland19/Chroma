@@ -1,12 +1,16 @@
 // Console (gui-1): the live header (WHO DRIVES, ART MODE, Now Playing, transport,
-// status chips), Room, COLOR, CUES, the fader bank (M4) and the recording activity
-// strip (M5).
+// status chips), Room (+ its Spaces setup), COLOR, CUES, the fader bank (M4) and the
+// recording activity strip (M5).
+import { useState } from "react";
 import type { ArtMode, Who } from "../contracts";
 import { NowPlayingCard } from "../components/NowPlayingCard";
 import { ActivityStrip } from "../components/console/ActivityStrip";
 import { BankPanel } from "../components/console/BankPanel";
 import { ColorPanel, CuesPanel } from "../components/console/ColorCues";
+import { useScenesPane } from "../components/console/scenes";
 import { RoomView } from "../components/RoomView";
+import { ScenesModal } from "../components/ScenesModal";
+import { SpacesModal } from "../components/SpacesModal";
 import { StatusChips, TransportButtons } from "../components/Transport";
 import { Segmented } from "../components/ui";
 import { useSelect, useStore } from "../store";
@@ -15,6 +19,9 @@ export function ConsoleScreen() {
   const store = useStore();
   const who = useSelect((s) => s.state?.who);
   const artMode = useSelect((s) => s.state?.art_mode);
+  const [spacesOpen, setSpacesOpen] = useState(false);
+  const [scenesOpen, setScenesOpen] = useState(false);
+  const scenes = useScenesPane();
   return (
     <div data-testid="console-screen">
       <div className="absolute" style={{ left: 19, top: 45 }}>
@@ -30,11 +37,13 @@ export function ConsoleScreen() {
       <NowPlayingCard />
       <TransportButtons />
       <StatusChips />
-      <RoomView />
+      <RoomView onConfigure={() => setSpacesOpen(true)} />
       <ColorPanel />
-      <CuesPanel />
+      <CuesPanel pane={scenes} onConfigure={() => setScenesOpen(true)} />
       <BankPanel />
       <ActivityStrip />
+      {scenesOpen && <ScenesModal pane={scenes} onClose={() => setScenesOpen(false)} />}
+      {spacesOpen && <SpacesModal onClose={() => setSpacesOpen(false)} />}
     </div>
   );
 }
