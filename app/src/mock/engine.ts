@@ -11,6 +11,7 @@ import type { ChannelState, IpcEvent, State } from "../contracts";
 import { hexToHsv, hsvToHex } from "../lib/color";
 import { applyMergePatch } from "../lib/mergePatch";
 import type { EngineStatus, IpcClient, Reply } from "../ipc/types";
+import { MockAgent } from "./agent";
 import { MOCK_ART } from "./art";
 import { MockRig } from "./rig";
 import { MockTakeStore, mockActivity, mockTakes } from "./takes";
@@ -54,6 +55,7 @@ export class MockEngine implements IpcClient {
   readonly requests: Record<string, unknown>[] = [];
   readonly rig = new MockRig((rev) => this.patch({ fixtures_rev: rev }));
   readonly takes = new MockTakeStore(() => this.state, (p) => this.patch(p));
+  readonly agent = new MockAgent(() => this.state, (p) => this.patch(p));
 
   constructor(readonly scenario: Scenario = "live") {
     this.state = baseState(scenario);
@@ -63,6 +65,7 @@ export class MockEngine implements IpcClient {
 
   dispose() {
     if (this.timer) clearInterval(this.timer);
+    this.agent.dispose();
   }
 
   tick(ms: number) {
@@ -116,6 +119,7 @@ export class MockEngine implements IpcClient {
       default:
         if (typeof req.op === "string" && /^(fixtures|groups|banks)\./.test(req.op)) return this.rig.handle(req);
         if (typeof req.op === "string" && /^(takes|take|rec|play)\./.test(req.op)) return this.takes.handle(req);
+        if (typeof req.op === "string" && req.op.startsWith("agent.")) return this.agent.handle(req);
         return { ok: false, error: `unknown op '${String(req.op)}'` };
     }
   }

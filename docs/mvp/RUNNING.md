@@ -88,6 +88,17 @@ Caveat (M4 design): AUTO/BOARD is `enabled` in the home's `config.json`. Real sh
 if you leave the app in BOARD (or REC/PLAY switched it), a later `lite show start` comes up with painting off. Click
 AUTO before switching back to Fake (or switch to Real again and click AUTO).
 
+## Agent tab
+
+Describe the room in plain words ("rainy evening, cozy but I need to read"); the lights agent
+(`hub/lights_agent.py`, the same one behind the hub's `/agent` and ⌃⇧L) sets the look right away. It needs
+**Devices → Real** (it addresses the real bulbs from `~/.lifx_cli_cache.json` whatever the engine mode, so a fake
+engine refuses it) and an Anthropic key (`lite show setkey`). Asking switches WHO DRIVES to BOARD so album art won't
+paint over the look; click AUTO on the Console to hand the lights back. **Undo** restores the room as it was before
+the last run (shared with ⌃⇧L / `/agent`: a run there replaces the undo snapshot). **Save scene** stores the current
+room as the new lite scene `agent.<name>` (create-only, never overwrites); recall it with `lite scene agent.<name>`.
+In `dev:mock` the agent is simulated.
+
 ## Force Update (tray menu, or Chroma → Force Update)
 
 Quits the app, stops `lite show` if it runs, ends every CHROMA process (all chromad engines whatever their home, app

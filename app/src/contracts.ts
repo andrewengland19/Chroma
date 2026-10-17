@@ -239,6 +239,20 @@ export type IpcRequest =
         bank: "A" | "B" | "C";
         channel: number;
       };
+    }
+  | {
+      id: number;
+      op: "agent.ask";
+      prompt: string;
+    }
+  | {
+      id: number;
+      op: "agent.undo";
+    }
+  | {
+      id: number;
+      op: "agent.save";
+      name: string;
     };
 /**
  * chromad -> client reply to a request. Echoes `id`. Failures are {ok:false, error}. Successful replies carry op-specific fields (see $defs for the shapes).
@@ -314,6 +328,7 @@ export interface State {
    */
   takes_rev: number;
   activity: Activity;
+  agent: AgentState;
 }
 export interface NowPlayingState {
   /**
@@ -416,6 +431,40 @@ export interface Activity {
      */
     spans: number[][];
   }[];
+}
+/**
+ * Agent tab: the plain-language lights agent (hub/lights_agent.py), run as a background job by agent.ask. idle = never asked since chromad started.
+ */
+export interface AgentState {
+  status: "idle" | "running" | "done" | "error";
+  /**
+   * Why agent ops are refused right now (e.g. a fake engine), or null when the agent can run.
+   */
+  blocked: string | null;
+  prompt: string;
+  reply: string;
+  suggested_name: string | null;
+  /**
+   * @maxItems 50
+   */
+  actions: {
+    tool: string;
+    summary: string;
+  }[];
+  /**
+   * Bulb states read back after the run (or undo), not the engine's idea of the room.
+   *
+   * @maxItems 64
+   */
+  look: {
+    label: string;
+    power: "on" | "off" | "unreachable";
+    hex: string | null;
+    brightness: number | null;
+  }[];
+  error: string | null;
+  can_undo: boolean;
+  saved_as: string | null;
 }
 /**
  * Raw fader position. Board-sourced values go through pickup (§5.3).

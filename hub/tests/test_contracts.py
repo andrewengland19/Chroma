@@ -22,7 +22,7 @@ EXAMPLE_DIRS = {
     "board-packet": "board-packet", "board-frame": "board-frame",
 }
 
-# BUILD_ORDER §5.1 op table (+ the approved additions in DECISIONS.md X1).
+# BUILD_ORDER §5.1 op table (+ the approved additions in DECISIONS.md X1, + agent.* for the Agent tab).
 SPEC_OPS = {
     "intent", "get_state", "subscribe", "refresh", "set_art_mode",
     "fixtures.list", "fixtures.discover", "fixtures.upsert", "fixtures.remove", "fixtures.test",
@@ -31,6 +31,7 @@ SPEC_OPS = {
     "takes.marker.add", "takes.marker.remove", "rec.arm", "rec.start", "rec.stop",
     "play.start", "play.stop", "play.seek", "take.nudge", "board.pairing",
     "takes.duplicate", "cues.rename", "groups.set_limits", "banks.swap",
+    "agent.ask", "agent.undo", "agent.save",
 }
 SPEC_INTENTS = {"fader", "flash", "assign", "bank", "fader_fn", "hue", "sat", "palette_apply",
                 "palette_store", "cue_recall", "cue_store", "blackout", "who"}

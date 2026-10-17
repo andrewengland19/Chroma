@@ -789,6 +789,68 @@
         }
       },
       "description": "Swap two bank cells atomically."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "prompt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "agent.ask"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "description": "Agent tab: start the lights agent in the background; progress arrives as State.agent patches. Refused while a run is going or on a fake engine."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "agent.undo"
+        }
+      },
+      "description": "Restore the room as it was before the last agent run."
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "op",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "const": "agent.save"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]{1,32}$"
+        }
+      },
+      "description": "Save the room's current state as the new lite scene agent.<name> (create-only)."
     }
   ],
   "$defs": {

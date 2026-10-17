@@ -383,6 +383,23 @@
       "board": "virtual"
     },
     "fixtures_rev": 3,
-    "takes_rev": 6, "activity": {"source": null, "dur_ms": null, "lanes": []}
+    "takes_rev": 6,
+    "activity": {
+      "source": null,
+      "dur_ms": null,
+      "lanes": []
+    },
+    "agent": {
+      "status": "idle",
+      "blocked": null,
+      "prompt": "",
+      "reply": "",
+      "suggested_name": null,
+      "actions": [],
+      "look": [],
+      "error": null,
+      "can_undo": false,
+      "saved_as": null
+    }
   }
 }

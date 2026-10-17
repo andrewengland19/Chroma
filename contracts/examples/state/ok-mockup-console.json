@@ -446,5 +446,17 @@
         ]
       }
     ]
+  },
+  "agent": {
+    "status": "idle",
+    "blocked": null,
+    "prompt": "",
+    "reply": "",
+    "suggested_name": null,
+    "actions": [],
+    "look": [],
+    "error": null,
+    "can_undo": false,
+    "saved_as": null
   }
 }

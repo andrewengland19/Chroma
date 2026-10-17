@@ -1,6 +1,7 @@
 // The window: a 1178 x 691 design canvas (the mockups' logical size) scaled to fit,
 // tab bar, toasts and the engine-connection notice.
 import { useEffect, useState } from "react";
+import { AgentScreen } from "./screens/AgentScreen";
 import { ConsoleScreen } from "./screens/ConsoleScreen";
 import { SetupScreen } from "./screens/SetupScreen";
 import { TakesScreen } from "./screens/TakesScreen";
@@ -8,7 +9,7 @@ import { useSelect, useStore } from "./store";
 
 export const CANVAS_W = 1178;
 export const CANVAS_H = 691;
-const TABS = ["Console", "Takes", "Setup"] as const;
+const TABS = ["Console", "Takes", "Setup", "Agent"] as const;
 type Tab = (typeof TABS)[number];
 
 function useFitScale() {
@@ -81,6 +82,7 @@ export function Shell() {
         {tab === "Console" && <ConsoleScreen />}
         {tab === "Takes" && <TakesScreen />}
         {tab === "Setup" && <SetupScreen />}
+        {tab === "Agent" && <AgentScreen />}
         <Toasts />
       </div>
     </div>

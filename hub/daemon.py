@@ -15,6 +15,7 @@ import os
 from typing import Optional
 
 from clock import ClockSample, MonotonicClock, SongClock
+from agentsvc import AgentService
 from config import Config
 import console as console_logic
 from console import ConsoleError, ConsoleState
@@ -117,6 +118,8 @@ class Chromad:
         # M5: recorder + replay (takes.py); State rec/play/activity/takes_rev come from it
         self.takes = TakeService(self, os.path.join(self.home, "takes"), offset_ms=replay_offset_ms)
         self.state.takes = self.takes
+        self.agent = AgentService(self)
+        self.state.agent = self.agent
 
     # ---- now playing → SongClock -------------------------------------------
     def _on_np(self, np, source: str) -> None:
@@ -185,6 +188,8 @@ class Chromad:
                 return await self.takes.handle(op, req)
             except TakeError as e:
                 raise IpcError(str(e)) from None
+        if op.split(".")[0] == "agent":
+            return await self.agent.handle(op, req)
         if op.split(".")[0] in ("fixtures", "groups", "banks"):
             res = await self.rig.handle(op, req)
             if res is not None or op in ("fixtures.test",):

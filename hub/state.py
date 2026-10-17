@@ -13,6 +13,8 @@ from __future__ import annotations
 import re
 from typing import Optional
 
+from agentsvc import idle_state
+
 ART_MODE_OUT = {"deterministic": "det", "paint": "paint", "ai": "ai"}
 ART_MODE_IN = {v: k for k, v in ART_MODE_OUT.items()}
 
@@ -43,6 +45,7 @@ class StateAssembler:
         self.takes_rev = 0
         self.activity: dict = {"source": None, "dur_ms": None, "lanes": []}
         self.takes = None                   # chromad's TakeService: rec / play / activity / takes_rev
+        self.agent = None                   # chromad's AgentService: the Agent tab
         self._art_ref = None
         self._art_rev = 0
         self._pos_val: Optional[int] = None
@@ -111,7 +114,10 @@ class StateAssembler:
             "fixtures_rev": self.rig.store.rev if self.rig else self.fixtures_rev,
             "takes_rev": self.takes_rev,
             "activity": self.activity,
+            "agent": idle_state(),
         }
         if self.takes is not None:
             state.update(self.takes.state_fields())
+        if self.agent is not None:
+            state.update(self.agent.state_fields())
         return state
