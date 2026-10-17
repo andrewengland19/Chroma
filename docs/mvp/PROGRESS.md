@@ -16,14 +16,15 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
 | M5 recorder, replay, Takes | `app/m5-takes` | **done** — merged 14d7f72 (pending-hardware: H5.1–H5.4) |
-| M6 board link + simulator | `app/m6-board` | next — branch on main 01262df |
+| M6 board link + simulator | `app/m6-board` | next — branch on main b7c18a6 |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
 Status on 2026-10-16: **M0–M5 done and merged into local main (M5 = 14d7f72)**; next is **M6 (board link +
-simulator)** on branch `app/m6-board` (on main 01262df in the worktree; it only holds these notes). Also on main:
-**Force Update** (tray + Chroma app menu, merged 01262df; RUNNING.md; check HFU.1). Hardware checks:
+simulator)** on branch `app/m6-board` (on main b7c18a6 in the worktree; it only holds these notes). Also on main: **Force Update** (merged
+01262df; check HFU.1) and **Devices → Fake | Real** (merged b7c18a6; check HD.1), both in the tray and the Chroma
+app menu (RUNNING.md). Hardware checks:
 `HARDWARE_CHECKLIST.md` (none run yet; H5.1–H5.4 added). BLACKOUT decisions made: going dark bypasses the D7 hold
 (the edge still counts), and a held FLASH punches through BLACKOUT. No open user decisions.
 
@@ -456,4 +457,23 @@ with the new menus and close/quit still pass. Not verified: clicking the menu it
 Code review (high): 4 findings, all fixed (ChromaDB-safe matching, a hung app is ended, preflight before ending
 anything, temp script). Re-test on main: pytest 369 in the user's checkout; full `tools/test_all.sh` in a detached
 worktree (369 + 43 + 18 cargo); `lite show status` → stopped.
+
+---
+
+## Devices → Fake | Real (user request, 2026-10-17) — branch `app/devices-menu`, merged b7c18a6
+
+Chroma app menu and tray → Devices → Fake | Real (check items). `devices.rs`: Fake = `~/.chroma/dev --fake`, Real =
+`~/.chroma`; a launch `CHROMA_HOME` is kept for its mode, other launch args carry over. The choice is saved in the
+app's config dir (`devices.json`) and used at launch unless `CHROMA_HOME`/`CHROMAD_ARGS` is set. Switching to Real
+(or launching in a saved Real) stops `lite show`. `Supervisor::switch`: stops only an engine the app started, swaps the
+config, reconnects (spawn/switch gate; IPC `disconnect` with a generation so it is never lost or stored). The art
+protocol follows the current home. The UI store drops state/rig/takes when the socket or fake flag changes.
+Tests: cargo 23 (switch between real stand-in engines incl. an external one left running; device configs; saved
+choice; IPC disconnect race), vitest 44 (store switch). Native self-test: app boots with the menus; close/quit pass.
+Not verified: clicking the items and real devices = HD.1. Code review (high): 6 findings; 4 fixed (saved-Real launch
+stops lite show, spawn race, lost disconnect, "not running" parse), 2 left: BOARD persists `enabled=false` in
+`~/.chroma/config.json` which a later `lite show start` inherits (M4 design; documented in RUNNING.md), and a small
+duplication of env parsing. Re-test on main: pytest 369; full suite in a detached worktree (369 + 44 + 23);
+`lite show status` → stopped. Note found while testing: a copied `/bin/sleep` is killed by macOS outside its signed
+path, so process tests compile their stand-ins.
 
