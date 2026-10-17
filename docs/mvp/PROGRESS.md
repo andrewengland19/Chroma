@@ -15,17 +15,16 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M2 Tauri shell + Console header | `app/m2-shell` | **done** — merged 3af31cf (pending-hardware: H2.1–H2.4) |
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
-| M5 recorder, replay, Takes | `app/m5-takes` | **done** — not merged yet (pending-hardware: H5.1–H5.4) |
-| M6 board link + simulator | `app/m6-board` | — |
+| M5 recorder, replay, Takes | `app/m5-takes` | **done** — merged 14d7f72 (pending-hardware: H5.1–H5.4) |
+| M6 board link + simulator | `app/m6-board` | next — branch on main 14d7f72 |
 | M7 packaging + cutover | `app/m7-cutover` | — |
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-16: **M0–M4 merged into local main (b88d544); M5 (recorder, replay, Takes) is done on
-`app/m5-takes`**, all suites green, code review fixed; the merge waits for the user's OK because their `tauri dev`
-runs from the main checkout (a merge rebuilds and restarts it). Hardware checks: `HARDWARE_CHECKLIST.md` (none run
-yet; H5.1–H5.4 added). BLACKOUT decisions made: going dark bypasses the D7 hold (the edge still counts), and a held FLASH punches through
-BLACKOUT.
+Status on 2026-10-16: **M0–M5 done and merged into local main (M5 = 14d7f72)**; next is **M6 (board link +
+simulator)** on branch `app/m6-board` (on main 14d7f72 in the worktree; it only holds these notes). Hardware checks:
+`HARDWARE_CHECKLIST.md` (none run yet; H5.1–H5.4 added). BLACKOUT decisions made: going dark bypasses the D7 hold
+(the edge still counts), and a held FLASH punches through BLACKOUT. No open user decisions.
 
 How the build has been run (keep doing it this way):
 - Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
@@ -433,3 +432,9 @@ the patches if it fails again).
 - Export writes to `~/Downloads` (no save dialog: that would need `tauri-plugin-dialog`, a new dependency).
 - Recording in progress is kept in memory and saved on STOP / track change / engine shutdown; an engine crash
   mid-take loses that pass.
+
+**Merged** into main as 14d7f72 (2026-10-16, with the user's OK while their `tauri dev` ran from main: it rebuilt and
+restarted the app; their engine on `/tmp/chroma-hw` kept running the pre-M5 code until restarted). Re-test on main:
+pytest in the user's checkout 369 passed; full `tools/test_all.sh` in a detached worktree passed (369 + 43 vitest +
+15 cargo); `lite show status` → stopped (already stopped before the merge; not started by the builder).
+
