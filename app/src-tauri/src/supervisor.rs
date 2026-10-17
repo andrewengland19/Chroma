@@ -46,6 +46,9 @@ pub struct Supervisor {
     cfg: StdMutex<EngineConfig>,
     /// a device switch is in progress: the loop neither connects nor spawns
     switching: AtomicBool,
+    /// held while deciding to spawn + spawning, and while a switch begins: a spawn either
+    /// finishes first (and the switch stops it) or sees the switch and skips
+    spawn_gate: Mutex<()>,
     /// the next connect/spawn starts a fresh backoff (after a switch)
     fresh: AtomicBool,
     pub client: Arc<IpcClient>,
@@ -72,6 +75,7 @@ impl Supervisor {
         Arc::new(Supervisor {
             cfg: StdMutex::new(cfg),
             switching: AtomicBool::new(false),
+            spawn_gate: Mutex::new(()),
             fresh: AtomicBool::new(false),
             client: IpcClient::new(),
             child: Mutex::new(None),
@@ -172,6 +176,7 @@ impl Supervisor {
             if self.fresh.swap(false, Ordering::SeqCst) {
                 attempt = 0;
             }
+            let generation = self.client.generation(); // a switch from here on ends this connection
             match UnixStream::connect(&self.cfg().socket).await {
                 Ok(stream) => {
                     let mut supervised = self.child_alive().await;
@@ -192,7 +197,7 @@ impl Supervisor {
                         s.message = if supervised { "engine started by the app".into() } else { "attached to a running engine".into() };
                     });
                     let started = Instant::now();
-                    self.client.serve(stream, self.events.clone()).await;
+                    self.client.serve_from(stream, self.events.clone(), generation).await;
                     if started.elapsed() > Duration::from_secs(30) {
                         attempt = 0;
                     }
@@ -222,8 +227,14 @@ impl Supervisor {
                                 break;
                             }
                         }
+                        let gate = self.spawn_gate.lock().await;
+                        if self.switching.load(Ordering::SeqCst) {
+                            continue; // never spawn the engine we are switching away from
+                        }
                         attempt += 1;
-                        match self.spawn_engine().await {
+                        let spawned = self.spawn_engine().await;
+                        drop(gate);
+                        match spawned {
                             Ok(pid) => self.set(|s| {
                                 s.phase = "starting".into();
                                 s.supervised = true;
@@ -268,7 +279,10 @@ impl Supervisor {
     /// Chroma → Devices: stop the engine we spawned (an engine someone else started keeps
     /// running), point at `new`, and let the loop connect to / start that one.
     pub async fn switch(&self, new: EngineConfig) {
-        self.switching.store(true, Ordering::SeqCst);
+        {
+            let _gate = self.spawn_gate.lock().await;
+            self.switching.store(true, Ordering::SeqCst);
+        }
         self.client.disconnect();
         self.terminate_child().await; // uses the old home (pid file)
         *self.cfg.lock().unwrap() = new.clone();

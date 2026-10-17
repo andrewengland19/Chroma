@@ -82,6 +82,11 @@ makes Real use `/tmp/chroma-hw`); other `CHROMAD_ARGS` (`--no-lifx`, `--log-leve
 (`~/Library/Application Support/com.chroma.console/devices.json`) and used at the next launch, including Force
 Update relaunches, **unless `CHROMA_HOME` or `CHROMAD_ARGS` is set** (an explicit environment wins). So after picking
 Real, a plain `npm run tauri dev` starts on real devices; pick Fake to go back.
+Starting in a saved Real choice also stops `lite show` first.
+
+Caveat (M4 design): AUTO/BOARD is `enabled` in the home's `config.json`. Real shares `~/.chroma` with `lite show`, so
+if you leave the app in BOARD (or REC/PLAY switched it), a later `lite show start` comes up with painting off. Click
+AUTO before switching back to Fake, or `lite show refresh` / the Lights page re-enables it.
 
 ## Force Update (tray menu, or Chroma → Force Update)
 

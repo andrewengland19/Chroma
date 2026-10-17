@@ -131,7 +131,8 @@ pub fn stop_lite_show(user_home: &Path) -> Result<bool, String> {
     let lite = if local.is_file() { local } else { PathBuf::from("lite") };
     let status = std::process::Command::new(&lite).args(["show", "status"]).output();
     let Ok(status) = status else { return Ok(false) }; // no `lite`: nothing to stop
-    if !String::from_utf8_lossy(&status.stdout).to_lowercase().contains("running") {
+    let text = String::from_utf8_lossy(&status.stdout).to_lowercase();
+    if !text.contains("running") || text.contains("not running") {
         return Ok(false);
     }
     let out = std::process::Command::new(&lite).args(["show", "stop"]).output().map_err(|e| e.to_string())?;

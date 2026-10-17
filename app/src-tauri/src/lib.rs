@@ -350,7 +350,23 @@ pub fn run() {
                 switch_lock: tokio::sync::Mutex::new(()),
                 checks: StdMutex::new(checks),
             });
-            tauri::async_runtime::spawn(sup.clone().run());
+            // a saved Real choice drives the real bulbs: the old hub must not run next to it
+            // (chromad would refuse to start); an explicit environment is left as given
+            let stop_hub = !env_pinned && current == Devices::Real;
+            let (run_sup, run_app, home) = (sup.clone(), handle.clone(), user_home.clone());
+            tauri::async_runtime::spawn(async move {
+                if stop_hub {
+                    match tauri::async_runtime::spawn_blocking(move || devices::stop_lite_show(&home)).await {
+                        Ok(Ok(true)) => {
+                            eprintln!("[chroma] real devices: stopped lite show");
+                            toast(&run_app, "info", "Stopped lite show: the app drives the real lights now");
+                        }
+                        Ok(Err(e)) => toast(&run_app, "warn", e),
+                        _ => {}
+                    }
+                }
+                run_sup.run().await;
+            });
             #[cfg(debug_assertions)]
             selftest(handle.clone(), sup);
             Ok(())
