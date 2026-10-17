@@ -1,0 +1,1 @@
+{ "name": "agent.x", "layers": [ { "op": "pool", "center": "main_seat", "radius_m": 2 } ] }

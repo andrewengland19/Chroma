@@ -1,0 +1,50 @@
+{
+  "clamped": {},
+  "fixtures": {
+    "couch-left": {
+      "brightness": 0.3868,
+      "hex": "#63390f",
+      "hue": 0.0,
+      "kelvin": 2200,
+      "sat": 0.0
+    },
+    "couch-right": {
+      "brightness": 0.3868,
+      "hex": "#63390f",
+      "hue": 0.0,
+      "kelvin": 2200,
+      "sat": 0.0
+    },
+    "pendant": {
+      "brightness": 0.1038,
+      "hex": "#1a0f04",
+      "hue": 0.0,
+      "kelvin": 2200,
+      "sat": 0.0
+    },
+    "tv-left": {
+      "brightness": 0.0,
+      "hex": "#000000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    },
+    "tv-right": {
+      "brightness": 0.0,
+      "hex": "#000000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    },
+    "window-lamp": {
+      "brightness": 0.0,
+      "hex": "#000000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.pool_smooth",
+  "transition_s": 0,
+  "warnings": []
+}

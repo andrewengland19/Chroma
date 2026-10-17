@@ -1,0 +1,1 @@
+{ "name": "agent.x", "layers": [ { "op": "fill", "color": { "kelvin": 2700, "hue_deg": 10, "sat": 0.5 } } ] }

@@ -1,0 +1,4 @@
+{ "name": "agent.clamp", "layers": [
+  { "op": "fill", "color": { "hue_deg": 0, "sat": 1 }, "brightness": 1 },
+  { "op": "fill", "target": { "fixture": "window-lamp" }, "color": { "kelvin": 9000 } },
+  { "op": "scale", "target": { "role": "task" }, "brightness_factor": 2 } ] }

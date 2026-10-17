@@ -1,0 +1,50 @@
+{
+  "clamped": {},
+  "fixtures": {
+    "couch-left": {
+      "brightness": 0.4513,
+      "hex": "#734518",
+      "hue": 0.0,
+      "kelvin": 2334,
+      "sat": 0.0
+    },
+    "couch-right": {
+      "brightness": 0.4261,
+      "hex": "#6d4117",
+      "hue": 0.0,
+      "kelvin": 2330,
+      "sat": 0.0
+    },
+    "pendant": {
+      "brightness": 0.18,
+      "hex": "#2e2217",
+      "hue": 29.93,
+      "kelvin": 2691,
+      "sat": 0.5051
+    },
+    "tv-left": {
+      "brightness": 0.2,
+      "hex": "#192e33",
+      "hue": 192.41,
+      "kelvin": 4100,
+      "sat": 0.5067
+    },
+    "tv-right": {
+      "brightness": 0.2,
+      "hex": "#142e33",
+      "hue": 190.0,
+      "kelvin": 4100,
+      "sat": 0.6
+    },
+    "window-lamp": {
+      "brightness": 0.4,
+      "hex": "#664323",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.rainy_evening",
+  "transition_s": 3.0,
+  "warnings": []
+}

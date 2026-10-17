@@ -1,0 +1,60 @@
+{
+  "clamped": {
+    "couch-right": [
+      "brightness capped at 0.6"
+    ],
+    "pendant": [
+      "brightness capped at 1.0"
+    ],
+    "window-lamp": [
+      "kelvin clamped to 6500"
+    ]
+  },
+  "fixtures": {
+    "couch-left": {
+      "brightness": 1.0,
+      "hex": "#ff0000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 1.0
+    },
+    "couch-right": {
+      "brightness": 0.6,
+      "hex": "#990000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 1.0
+    },
+    "pendant": {
+      "brightness": 1.0,
+      "hex": "#ff0000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 1.0
+    },
+    "tv-left": {
+      "brightness": 1.0,
+      "hex": "#ff0000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 1.0
+    },
+    "tv-right": {
+      "brightness": 1.0,
+      "hex": "#ff0000",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 1.0
+    },
+    "window-lamp": {
+      "brightness": 1.0,
+      "hex": "#fffefa",
+      "hue": 0.0,
+      "kelvin": 6500,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.clamp",
+  "transition_s": 0,
+  "warnings": []
+}

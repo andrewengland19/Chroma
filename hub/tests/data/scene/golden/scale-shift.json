@@ -1,0 +1,50 @@
+{
+  "clamped": {},
+  "fixtures": {
+    "couch-left": {
+      "brightness": 0.6,
+      "hex": "#995a1e",
+      "hue": 0.0,
+      "kelvin": 2300,
+      "sat": 0.0
+    },
+    "couch-right": {
+      "brightness": 0.55,
+      "hex": "#8c531c",
+      "hue": 0.0,
+      "kelvin": 2300,
+      "sat": 0.0
+    },
+    "pendant": {
+      "brightness": 0.3,
+      "hex": "#4c4417",
+      "hue": 50.0,
+      "kelvin": 2700,
+      "sat": 0.7
+    },
+    "tv-left": {
+      "brightness": 0.2,
+      "hex": "#281233",
+      "hue": 279.46,
+      "kelvin": 4100,
+      "sat": 0.6464
+    },
+    "tv-right": {
+      "brightness": 0.2,
+      "hex": "#331833",
+      "hue": 300.0,
+      "kelvin": 4100,
+      "sat": 0.5386
+    },
+    "window-lamp": {
+      "brightness": 0.4,
+      "hex": "#664323",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.vibes1_cooler_tv",
+  "transition_s": 0,
+  "warnings": []
+}

@@ -1,0 +1,50 @@
+{
+  "clamped": {},
+  "fixtures": {
+    "couch-left": {
+      "brightness": 0.5,
+      "hex": "#805937",
+      "hue": 0.0,
+      "kelvin": 3000,
+      "sat": 0.0
+    },
+    "couch-right": {
+      "brightness": 0.5,
+      "hex": "#805937",
+      "hue": 0.0,
+      "kelvin": 3000,
+      "sat": 0.0
+    },
+    "pendant": {
+      "brightness": 0.5,
+      "hex": "#805937",
+      "hue": 0.0,
+      "kelvin": 3000,
+      "sat": 0.0
+    },
+    "tv-left": {
+      "brightness": 0.5,
+      "hex": "#805937",
+      "hue": 0.0,
+      "kelvin": 3000,
+      "sat": 0.0
+    },
+    "tv-right": {
+      "brightness": 0.5,
+      "hex": "#805937",
+      "hue": 0.0,
+      "kelvin": 3000,
+      "sat": 0.0
+    },
+    "window-lamp": {
+      "brightness": 0.5,
+      "hex": "#805937",
+      "hue": 0.0,
+      "kelvin": 3000,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.fill",
+  "transition_s": 0,
+  "warnings": []
+}

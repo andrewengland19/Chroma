@@ -1,0 +1,2 @@
+{ "name": "agent.x", "layers": [ { "op": "gradient", "from": "window", "to": "tv_wall",
+  "colors": [ { "kelvin": 2700 }, { "kelvin": 4000 } ], "targets": { "role": "accent" } } ] }

@@ -1,0 +1,1 @@
+{ "name": "agent.fill", "layers": [ { "op": "fill", "color": { "kelvin": 3000 }, "brightness": 0.5 } ] }

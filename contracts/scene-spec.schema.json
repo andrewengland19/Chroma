@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SceneSpec",
+  "description": "A scene in room terms (lighting-scene-agent-spec §6): what the model emits instead of device commands. hub/scene_render.py renders it against the room model (room.schema.json) into a per-fixture colour/brightness table. Layers apply in order. Places name an anchor or zone of the room, or are [x, y, z] metres.",
+  "type": "object",
+  "required": ["name", "layers"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^agent\\.[a-z0-9][a-z0-9_-]{0,47}$", "description": "agent.<slug>" },
+    "summary": { "type": "string", "maxLength": 280 },
+    "base": {
+      "type": "object", "required": ["scene", "mode"], "additionalProperties": false,
+      "description": "Start from a captured snapshot instead of darkness.",
+      "properties": {
+        "scene": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
+        "mode": { "const": "start_from" }
+      }
+    },
+    "layers": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/layer" } },
+    "transition_s": { "type": "number", "minimum": 0, "maximum": 60 }
+  },
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+    "place": {
+      "description": "An anchor or zone name, or a point in metres.",
+      "oneOf": [
+        { "$ref": "#/$defs/name" },
+        { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "minimum": 0, "maximum": 100 } }
+      ]
+    },
+    "color": {
+      "oneOf": [
+        { "type": "object", "required": ["kelvin"], "additionalProperties": false, "title": "White",
+          "properties": { "kelvin": { "type": "integer", "minimum": 1500, "maximum": 9000 } } },
+        { "type": "object", "required": ["hue_deg", "sat"], "additionalProperties": false, "title": "Hue",
+          "properties": { "hue_deg": { "$ref": "common.schema.json#/$defs/hue" },
+                          "sat": { "$ref": "common.schema.json#/$defs/unit" } } }
+      ]
+    },
+    "target": {
+      "type": "object", "minProperties": 1, "additionalProperties": false,
+      "description": "Which fixtures a layer may touch; several keys must all hold. Default: all.",
+      "properties": {
+        "all": { "const": true },
+        "fixture": { "$ref": "common.schema.json#/$defs/slug_id" },
+        "zone": { "$ref": "#/$defs/name" },
+        "role": { "enum": ["ambient", "accent", "task"] },
+        "aim": { "$ref": "#/$defs/name" },
+        "height_above": { "type": "number", "minimum": 0, "maximum": 100 },
+        "height_below": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "opacity": { "$ref": "common.schema.json#/$defs/unit", "description": "How much of the layer to blend in (default 1)." },
+    "paint": {
+      "anyOf": [ { "required": ["color"] }, { "required": ["brightness"] } ]
+    },
+    "layer": {
+      "type": "object", "required": ["op"],
+      "properties": { "op": { "enum": ["fill", "pool", "gradient", "wash", "scale", "shift", "accent"] } },
+      "oneOf": [
+        { "title": "Fill", "allOf": [{ "$ref": "#/$defs/paint" }],
+          "type": "object", "additionalProperties": false,
+          "properties": { "op": { "const": "fill" }, "target": { "$ref": "#/$defs/target" },
+                          "color": { "$ref": "#/$defs/color" }, "brightness": { "$ref": "common.schema.json#/$defs/unit" },
+                          "opacity": { "$ref": "#/$defs/opacity" } } },
+        { "title": "Pool", "allOf": [{ "$ref": "#/$defs/paint" }],
+          "type": "object", "required": ["center", "radius_m"], "additionalProperties": false,
+          "properties": { "op": { "const": "pool" }, "target": { "$ref": "#/$defs/target" },
+                          "center": { "$ref": "#/$defs/place" },
+                          "radius_m": { "type": "number", "exclusiveMinimum": 0, "maximum": 20 },
+                          "falloff": { "enum": ["smooth", "linear", "hard"], "description": "Default smooth." },
+                          "color": { "$ref": "#/$defs/color" }, "brightness": { "$ref": "common.schema.json#/$defs/unit" },
+                          "opacity": { "$ref": "#/$defs/opacity" } } },
+        { "title": "Gradient",
+          "type": "object", "required": ["from", "to", "colors"], "additionalProperties": false,
+          "properties": { "op": { "const": "gradient" }, "target": { "$ref": "#/$defs/target" },
+                          "from": { "$ref": "#/$defs/place" }, "to": { "$ref": "#/$defs/place" },
+                          "colors": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "$ref": "#/$defs/color" },
+                                      "description": "Evenly spaced stops from `from` to `to`, blended in OKLab." },
+                          "brightness": { "$ref": "common.schema.json#/$defs/unit" },
+                          "opacity": { "$ref": "#/$defs/opacity" } } },
+        { "title": "Wash", "allOf": [{ "$ref": "#/$defs/paint" }],
+          "type": "object", "required": ["surface"], "additionalProperties": false,
+          "properties": { "op": { "const": "wash" }, "target": { "$ref": "#/$defs/target" },
+                          "surface": { "$ref": "#/$defs/name", "description": "An anchor or zone; hits fixtures whose aim lands on it." },
+                          "color": { "$ref": "#/$defs/color" }, "brightness": { "$ref": "common.schema.json#/$defs/unit" },
+                          "opacity": { "$ref": "#/$defs/opacity" } } },
+        { "title": "Scale",
+          "type": "object", "required": ["brightness_factor"], "additionalProperties": false,
+          "properties": { "op": { "const": "scale" }, "target": { "$ref": "#/$defs/target" },
+                          "brightness_factor": { "type": "number", "minimum": 0, "maximum": 4 },
+                          "opacity": { "$ref": "#/$defs/opacity" } } },
+        { "title": "Shift",
+          "anyOf": [ { "required": ["hue_deg"] }, { "required": ["sat_delta"] }, { "required": ["kelvin_delta"] } ],
+          "type": "object", "additionalProperties": false,
+          "properties": { "op": { "const": "shift" }, "target": { "$ref": "#/$defs/target" },
+                          "hue_deg": { "type": "number", "minimum": -180, "maximum": 180 },
+                          "sat_delta": { "type": "number", "minimum": -1, "maximum": 1 },
+                          "kelvin_delta": { "type": "integer", "minimum": -6000, "maximum": 6000,
+                                            "description": "Positive = cooler. Whites move in Kelvin; colours get the same white-balance tint in OKLab." },
+                          "opacity": { "$ref": "#/$defs/opacity" } } },
+        { "title": "Accent", "allOf": [{ "$ref": "#/$defs/paint" }],
+          "type": "object", "required": ["at"], "additionalProperties": false,
+          "properties": { "op": { "const": "accent" }, "target": { "$ref": "#/$defs/target" },
+                          "at": { "$ref": "#/$defs/place" },
+                          "count": { "type": "integer", "minimum": 1, "maximum": 4, "description": "Nearest N fixtures (default 1)." },
+                          "color": { "$ref": "#/$defs/color" }, "brightness": { "$ref": "common.schema.json#/$defs/unit" },
+                          "opacity": { "$ref": "#/$defs/opacity" } } }
+      ]
+    }
+  }
+}
