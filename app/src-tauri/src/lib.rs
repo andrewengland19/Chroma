@@ -131,7 +131,11 @@ fn force_update(app: &AppHandle) {
     let checkout = force_update::dev_checkout(&repo_root);
     let log = force_update::log_path();
     eprintln!("[chroma] force update: relaunching from {} (log {})", checkout.display(), log.display());
-    match force_update::launch(std::process::id(), &checkout, &log) {
+    // nothing is ended unless the relaunch can work
+    let started = force_update::preflight(&checkout)
+        .map_err(|e| e.to_string())
+        .and_then(|()| force_update::launch(std::process::id(), &checkout, &log).map_err(|e| e.to_string()));
+    match started {
         Ok(()) => quit(app),
         Err(e) => {
             STARTED.store(false, std::sync::atomic::Ordering::SeqCst);

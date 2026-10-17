@@ -37,12 +37,30 @@ pub fn log_path() -> PathBuf {
     home.join("Library/Logs/CHROMA/force-update.log")
 }
 
+/// Why Force Update cannot relaunch from `checkout` (checked before anything is ended).
+pub fn preflight(checkout: &Path) -> Result<(), String> {
+    if !checkout.join("app/package.json").is_file() {
+        return Err(format!("no CHROMA dev checkout at {}", checkout.display()));
+    }
+    let npm = Command::new("/bin/bash")
+        .args(["-c", "export PATH=\"$PATH:$(ls -d \"$HOME\"/.nvm/versions/node/*/bin 2>/dev/null | tr '\\n' :)/opt/homebrew/bin:/usr/local/bin\"; command -v npm"])
+        .output();
+    match npm {
+        Ok(o) if o.status.success() => Ok(()),
+        _ => Err("npm was not found".into()),
+    }
+}
+
 /// Write the helper and start it detached; it waits for `app_pid` to exit.
 pub fn launch(app_pid: u32, checkout: &Path, log: &Path) -> io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
     use std::os::unix::process::CommandExt;
+    use std::io::Write;
     let script = std::env::temp_dir().join(format!("chroma-force-update-{app_pid}.sh"));
-    std::fs::write(&script, SCRIPT)?;
+    let _ = std::fs::remove_file(&script);
+    // create_new: never follow a file or symlink someone left at that path; the script deletes itself
+    let mut f = std::fs::OpenOptions::new().write(true).create_new(true).open(&script)?;
+    f.write_all(SCRIPT.as_bytes())?;
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700))?;
     Command::new("/bin/bash")
         .arg(&script)
@@ -62,6 +80,13 @@ mod tests {
     use super::*;
     use std::process::Child;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn preflight_refuses_a_missing_checkout() {
+        assert!(preflight(Path::new("/nonexistent/Chroma")).unwrap_err().contains("no CHROMA dev checkout"));
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        assert_eq!(preflight(&dev_checkout(&repo)), Ok(()));
+    }
 
     #[test]
     fn dev_checkout_is_the_main_checkout() {
@@ -100,9 +125,9 @@ mod tests {
         let co = root.join("Chroma-fu");
         std::fs::create_dir_all(co.join("app")).unwrap();
         std::fs::create_dir_all(root.join("Other/app")).unwrap();
-        std::fs::create_dir_all(root.join("target/debug")).unwrap();
-        let bin = root.join("target/debug/chroma");
-        std::fs::copy("/bin/sleep", &bin).unwrap();
+        std::fs::create_dir_all(co.join("app/src-tauri/target/debug")).unwrap();
+        let bin = co.join("app/src-tauri/target/debug/chroma");
+        sleeper(&root, &bin); // a copied /bin/sleep is killed by macOS outside its signed path
         let r = root.display();
         let mut victims = vec![
             named(&format!("python {r}/hub/chromad.py --home {r}/h"), &root),
@@ -112,7 +137,16 @@ mod tests {
             named("npm run tauri dev", &co.join("app")),
         ];
         let mut decoy = named(&format!("node {r}/Other/app/node_modules/.bin/tauri dev"), &root);
+        std::fs::create_dir_all(root.join("venv/bin")).unwrap();
+        let other_chroma = root.join("venv/bin/chroma"); // e.g. ChromaDB's CLI
+        sleeper(&root, &other_chroma);
+        let mut decoy_db = Command::new(&other_chroma).arg("30").spawn().unwrap();
         let mut decoy_npm = named("npm run tauri dev", &root.join("Other/app"));
+        std::thread::sleep(Duration::from_millis(300));
+        for (k, v) in victims.iter_mut().enumerate() {
+            assert!(v.try_wait().unwrap().is_none(), "victim {k} did not start");
+        }
+        assert!(decoy_db.try_wait().unwrap().is_none() && decoy.try_wait().unwrap().is_none());
         let mut app = named("app-that-quits", &root);
         let app_pid = app.id();
         let _ = app.kill();
@@ -130,15 +164,26 @@ mod tests {
             .unwrap();
         let text = std::fs::read_to_string(&log).unwrap();
         assert!(!status.success(), "no checkout: must not relaunch\n{text}");
+        assert!(text.contains("target/debug/chroma 30"), "the app binary was not matched\n{text}");
         for (k, v) in victims.iter_mut().enumerate() {
             assert!(gone(v), "victim {k} still running\n{text}");
         }
         assert!(decoy.try_wait().unwrap().is_none(), "decoy was killed\n{text}");
         assert!(decoy_npm.try_wait().unwrap().is_none(), "npm outside a Chroma checkout was killed\n{text}");
+        assert!(decoy_db.try_wait().unwrap().is_none(), "a non-CHROMA `chroma` binary was killed\n{text}");
         assert!(text.contains("not relaunching"), "{text}");
         let _ = decoy.kill();
         let _ = decoy_npm.kill();
+        let _ = decoy_db.kill();
         let _ = app.wait();
+    }
+
+    /// A real binary that sleeps 30 s (compiled, so it runs from any path).
+    fn sleeper(dir: &Path, out: &Path) {
+        let src = dir.join("sleeper.c");
+        std::fs::write(&src, "#include <unistd.h>\nint main(void){sleep(30);return 0;}\n").unwrap();
+        let ok = Command::new("cc").arg("-o").arg(out).arg(&src).status().unwrap().success();
+        assert!(ok, "cc failed");
     }
 
     fn regex_escape(s: &str) -> String {

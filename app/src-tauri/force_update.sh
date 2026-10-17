@@ -20,6 +20,7 @@ LOG="${3:-/dev/stdout}"
 DRY="${FORCE_UPDATE_DRY_RUN:-}"
 ONLY="${FORCE_UPDATE_ONLY:-}"
 SELF=$$
+case "$0" in */chroma-force-update-*.sh) rm -f "$0" ;; esac   # the app's temp copy: run once
 
 [ "$LOG" != /dev/stdout ] && mkdir -p "$(dirname "$LOG")" && exec >>"$LOG" 2>&1
 say() { echo "$(date '+%H:%M:%S') force-update: $*"; }
@@ -53,7 +54,10 @@ fi
 chroma_pids() {
   {
     pgrep -f 'hub/chromad\.py'
-    pgrep -x chroma
+    # app binaries named `chroma`, only when the executable is a CHROMA build (not e.g. ChromaDB)
+    for p in $(pgrep -x chroma); do
+      lsof -a -p "$p" -d txt -Fn 2>/dev/null | grep -m1 '^n' | grep -qE '/src-tauri/target/(debug|release)/chroma$|/Chroma\.app/Contents/MacOS/' && echo "$p"
+    done
     pgrep -f 'Chroma\.app/Contents/MacOS/'
     pgrep -f 'Chroma[^ ]*/app/node_modules/\.bin/tauri'
     pgrep -f 'Chroma[^ ]*/app/node_modules/.*vite'
@@ -63,7 +67,7 @@ chroma_pids() {
       lsof -a -p "$p" -d cwd -Fn 2>/dev/null | grep -q '^n.*/Chroma[^/]*/app$' && echo "$p"
     done
   } | sort -un | while read -r p; do
-    [ "$p" = "$SELF" ] || [ "$p" = "$PPID" ] && continue
+    [ "$p" = "$SELF" ] && continue              # (the app is our parent: a hung app is ended too)
     if [ -n "$ONLY" ]; then                     # tests: command line or working dir must match
       { ps -o command= -p "$p"; lsof -a -p "$p" -d cwd -Fn; } 2>/dev/null | grep -qE "$ONLY" || continue
     fi
