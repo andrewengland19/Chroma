@@ -86,7 +86,7 @@ Starting in a saved Real choice also stops `lite show` first.
 
 Caveat (M4 design): AUTO/BOARD is `enabled` in the home's `config.json`. Real shares `~/.chroma` with `lite show`, so
 if you leave the app in BOARD (or REC/PLAY switched it), a later `lite show start` comes up with painting off. Click
-AUTO before switching back to Fake, or `lite show refresh` / the Lights page re-enables it.
+AUTO before switching back to Fake (or switch to Real again and click AUTO).
 
 ## Force Update (tray menu, or Chroma → Force Update)
 
