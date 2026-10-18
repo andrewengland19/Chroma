@@ -1,0 +1,4 @@
+{ "v": 1, "scene": "vibes1", "source": "capture", "static": true,
+  "fixtures": { "tv-left": { "hue": 280, "sat": 0.7, "brightness": 1.5, "kelvin": 3500 } },
+  "descriptors": { "lit_count": 1, "mean_brightness": 0.5, "peak_brightness": 0.5, "kelvin_mean": null, "kelvin_min": null,
+                   "kelvin_max": null, "dominant_hue": "purple", "lr_balance": 0, "fb_balance": 0, "zone_contrast": 0 } }

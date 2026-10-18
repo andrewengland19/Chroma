@@ -377,9 +377,17 @@ Scene Agent works without any of the following. They are listed only so that if 
 
 ## 15. Milestones
 
+Status (2026-10-18): M1 done (`hub/room_model.py`, `hub/scene_render.py`); M2 done in code, hardware checks pending (below).
+
 1. **M0, discovery (short):** confirm or correct assumptions A1 to A6 by trying `lite` from a terminal and noting what it does; decide the scene-listing source in §5.1; record the result in this document.
-2. **M1, foundations:** room model schema and loader, SceneSpec schema and validator, renderer with golden tests, fake devices and stub `lite`.
-3. **M2, recall and capture:** Driver A, registry, capture and normalization, Taste Profile generation.
+2. **M1, foundations (done):** room model schema and loader, SceneSpec schema and validator, renderer with golden tests, fake devices and stub `lite`.
+3. **M2, recall and capture (done in code; tests use fakes only):** Driver A, registry, capture and normalization, Taste Profile generation.
+   - [x] Registry over `~/.spectrum_scenes.json` incl. `agent.*`, optional user list, snapshot store (`hub/scene_registry.py`)
+   - [x] Normalization + descriptors (`hub/scene_normalize.py`), snapshot contract (`contracts/snapshot.schema.json`)
+   - [x] Driver A recall as an argument vector, registry-gated, optional read-back verify (`hub/scene_recall.py`)
+   - [x] Capture with restore, static detection, batch (`hub/scene_capture.py`; fakes in `hub/testing/fake_room.py`)
+   - [x] Taste Profile generation, overrides, prompt text (`hub/scene_taste.py`, `contracts/taste-profile.schema.json`)
+   - [ ] Pending hardware: one real `capture vibes1` round trip (restore + static flag) and a real recall read-back; no CLI/wiring yet (M3)
 4. **M3, the agent:** tool set, `ask` flow, preview (terminal and floor plan), `apply`, `revert`, `save`.
 5. **M4, spatial polish:** calibration flow, multizone and matrix rendering, night-hour ceilings, coexistence warnings.
 6. **M5, integrations:** Claude Code wrapper, evaluation set, packaging for the home server, hooks for the lighting board.

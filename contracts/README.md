@@ -16,6 +16,8 @@ the schema first, then the code. `hub/tests/test_contracts.py` validates every e
 | `console.schema.json` | `~/.chroma/console.json` |
 | `room.schema.json` | Scene Agent room model, `~/.chroma/scene-agent/room.yaml` (loader: `hub/room_model.py`) |
 | `scene-spec.schema.json` | Scene Agent SceneSpec, the model's output (renderer: `hub/scene_render.py`) |
+| `snapshot.schema.json` | Scene Agent scene snapshot: a scene in room terms + descriptors (`hub/scene_normalize.py`, `hub/scene_capture.py`) |
+| `taste-profile.schema.json` | Scene Agent Taste Profile generated from saved scenes (`hub/scene_taste.py`) |
 
 Approved deviations from BUILD_ORDER (resolved fields in take events, `boot` nonce, extra state fields, extra
 ops) are listed in `docs/mvp/DECISIONS.md` (X1–X6).

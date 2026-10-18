@@ -20,7 +20,8 @@ EXAMPLE_DIRS = {
     "intent": "intent", "state": "state", "ipc-request": "ipc-request", "ipc-response": "ipc-response",
     "ipc-event": "ipc-event", "fixtures": "fixtures", "console": "console",
     "board-packet": "board-packet", "board-frame": "board-frame",
-    "room": "room", "scene-spec": "scene-spec",
+    "room": "room", "scene-spec": "scene-spec", "snapshot": "snapshot",
+    "taste-profile": "taste-profile",
 }
 
 # BUILD_ORDER §5.1 op table (+ the approved additions in DECISIONS.md X1, + agent.* for the Agent tab, + spaces.*).

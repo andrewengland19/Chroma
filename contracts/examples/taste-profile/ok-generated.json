@@ -1,0 +1,6 @@
+{ "v": 1, "generated_at": "2026-10-18T20:05:00Z", "scenes": ["vibes1", "movie"], "scene_count": 2, "strength": 1,
+  "brightness": { "min": 0.25, "median": 0.4, "max": 0.55 }, "peak_brightness": 0.8,
+  "kelvin": { "min": 2200, "median": 2500, "max": 2800 },
+  "hues": [ { "family": "purple", "share": 0.5 }, { "family": "white", "share": 0.5 } ],
+  "contrast": { "min": 0.05, "median": 0.2, "max": 0.35 },
+  "overrides": { "strength": 0.5, "kelvin": { "max": 3000 } } }

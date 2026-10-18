@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SceneSnapshot",
+  "description": "What a lite / agent scene actually looks like, in room terms (lighting-scene-agent-spec §5.2-5.3): one colour/brightness per room fixture plus descriptors computed by hub/scene_normalize.py. Stored at ~/.chroma/scene-agent/registry/snapshots/<scene>.json. `fixtures` is exactly what hub/scene_render.py takes as a base snapshot (an optional hex is allowed, as in a rendered table).",
+  "type": "object",
+  "required": ["v", "scene", "source", "static", "fixtures", "descriptors"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "scene": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
+    "captured_at": { "type": "string", "description": "ISO 8601 UTC time of the capture or derivation." },
+    "source": { "enum": ["capture", "stored"], "description": "capture = read back from the bulbs; stored = derived from the lights saved in ~/.spectrum_scenes.json." },
+    "static": { "type": "boolean", "description": "false when state changed between two reads: recallable by name, never a base for derived scenes." },
+    "fixtures": { "type": "object", "propertyNames": { "$ref": "common.schema.json#/$defs/slug_id" }, "additionalProperties": { "$ref": "#/$defs/state" } },
+    "unmatched": { "type": "array", "items": { "type": "string" }, "description": "Scene entries (labels / IPs) that matched no room fixture, or are not LIFX." },
+    "descriptors": { "$ref": "#/$defs/descriptors" }
+  },
+  "$defs": {
+    "state": {
+      "type": "object", "required": ["hue", "sat", "brightness", "kelvin"], "additionalProperties": false,
+      "properties": {
+        "hue": { "$ref": "common.schema.json#/$defs/hue" },
+        "sat": { "$ref": "common.schema.json#/$defs/unit" },
+        "brightness": { "$ref": "common.schema.json#/$defs/unit" },
+        "kelvin": { "type": "integer", "minimum": 1500, "maximum": 9000 },
+        "hex": { "$ref": "common.schema.json#/$defs/hex" }
+      }
+    },
+    "balance": { "type": "number", "minimum": -1, "maximum": 1 },
+    "descriptors": {
+      "type": "object", "additionalProperties": false,
+      "required": ["lit_count", "mean_brightness", "peak_brightness", "kelvin_mean", "kelvin_min", "kelvin_max",
+                   "dominant_hue", "lr_balance", "fb_balance", "zone_contrast"],
+      "properties": {
+        "lit_count": { "type": "integer", "minimum": 0, "description": "Fixtures with brightness > 0." },
+        "mean_brightness": { "$ref": "common.schema.json#/$defs/unit", "description": "Mean over lit fixtures." },
+        "peak_brightness": { "$ref": "common.schema.json#/$defs/unit" },
+        "kelvin_mean": { "type": ["number", "null"], "description": "Over lit white fixtures; null when none." },
+        "kelvin_min": { "type": ["integer", "null"] },
+        "kelvin_max": { "type": ["integer", "null"] },
+        "dominant_hue": { "enum": ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "magenta", "white", null], "description": "Brightness-weighted family of the coloured fixtures; white when none is coloured; null when nothing is lit." },
+        "lr_balance": { "$ref": "#/$defs/balance", "description": "+1 = all light to the viewer's right, -1 = left." },
+        "fb_balance": { "$ref": "#/$defs/balance", "description": "+1 = all light toward the focal wall, -1 = behind the viewer." },
+        "zone_contrast": { "$ref": "common.schema.json#/$defs/unit", "description": "Max - min of mean brightness across zones (across fixtures when fewer than two zones)." }
+      }
+    }
+  }
+}
