@@ -448,6 +448,12 @@ pub fn run() {
                 api.prevent_exit();
                 quit(app);
             }
+            // Safety net for exits that skip ExitRequested (Dock > Quit, AppleScript quit, logout):
+            // shutdown is idempotent, so a normal Quit that already stopped the engine is a no-op.
+            RunEvent::Exit => {
+                let sup = app.state::<Shell>().sup.clone();
+                tauri::async_runtime::block_on(sup.shutdown());
+            }
             #[cfg(target_os = "macos")]
             RunEvent::Reopen { .. } => show_main(app),
             _ => {}
