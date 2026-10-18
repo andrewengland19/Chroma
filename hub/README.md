@@ -76,7 +76,7 @@ launchd, Pass 5) shuts it down cleanly.
 | `keystore.py` | **Pass 4.6** — Anthropic API key from env / macOS Keychain |
 | `distribute.py` | **Pass 4** — round-robin + OKLab IDW colour distribution |
 | `scenes.py` | **Pass 4.5** — persistent per-album scenes (`~/.chroma/scenes.json`) |
-| `web/` | **Pass 4** — the web GUI (`index.html`, `app.js`, `style.css`) |
+| `web/` | the legacy-hub web GUI (`lights.html`, `remote.html`, `style.css`; Music page retired 2026-10-18) |
 | `showctl.py` | `lite show start\|stop\|status\|restart\|refresh`: controls **chromad** (pid file + Unix socket); `--legacy` = the old `server.py` hub (M7) |
 | `chromad.py` / `daemon.py` | the MVP engine daemon the app, `lite show` and the login LaunchAgent run; PyInstaller-frozen into the app by `tools/build_sidecar.sh` |
 | `tv_cmd.py` | **`tv` CLI** — rapid-fire Apple TV remote from any terminal |

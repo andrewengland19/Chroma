@@ -116,8 +116,10 @@ async def test_stop_route(api):
 
 async def test_static_pages(api):
     c, *_ = api
-    for path in ("/", "/lights.html", "/remote.html", "/style.css", "/app.js"):
+    for path in ("/lights.html", "/remote.html", "/style.css"):
         assert (await c.get(path)).status_code == 200, path
+    r = await c.get("/", follow_redirects=False)         # the Music page is retired: "/" -> Lights
+    assert r.status_code in (302, 307) and r.headers["location"] == "/lights.html"
 
 
 # ---- Pass 5: agent, lights, scenes, tv (user-owned; must keep working) ------------

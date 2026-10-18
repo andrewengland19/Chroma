@@ -9,6 +9,6 @@ run by the current stack.
 | `lifx_music_app.py` | Original rumps/tkinter album-art painter; its pure colour logic lives on in `hub/color_pipeline.py` |
 | `com.andrewengland19.lifx-music.plist` | LaunchAgent template for the old daemon (never installed by the app) |
 
-Still at the repo root on purpose: `lifx_music_daemon.py` is launched by path from `~/.local/bin/lite` (`lite chroma`).
-It is **deprecated**; retire it together with the `lite chroma` subcommand in M7. Nothing was deleted: moving files
+Retired 2026-10-18 (deleted from the tree, recoverable from git tag `legacy-backup-2026-10-18`): `lifx_music_daemon.py`
+and the hub Music page (`hub/web/index.html`, `app.js`). `lite chroma` now prints a pointer to `lite show start`. Nothing was deleted: moving files
 back is a `git mv`. Deleting this folder needs the user's approval (BUILD_ORDER §10).

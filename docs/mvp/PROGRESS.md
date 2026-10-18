@@ -17,7 +17,7 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
 | M5 recorder, replay, Takes | `app/m5-takes` | **done** — merged 14d7f72 (pending-hardware: H5.1–H5.4) |
 | M6 board link + simulator | `app/m6-board` | next — branch on main b7c18a6 |
-| M7 packaging + cutover | `app/m7-cutover` | **safe half built** on `claude/charming-chaum-b37f42` (sidecar, LaunchAgent, `lite show`→chromad, docs); retiring Music page / `lifx_music_daemon.py` awaits the user; pending-hardware: HM7.1–HM7.4 |
+| M7 packaging + cutover | `claude/charming-chaum-b37f42` | **done** — merged 2026-10-18 (sidecar, LaunchAgent, `lite show`→chromad; Music page and `lifx_music_daemon.py` retired with the user's approval); pending-hardware: HM7.1–HM7.4 |
 
 ## Hand-off for the next session (start here)
 

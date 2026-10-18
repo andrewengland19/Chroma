@@ -318,9 +318,18 @@ async def ws(sock: WebSocket):
 
 
 # =============================================================================
-# Web GUI — served from hub/web/ (index.html at /). Mounted LAST so the API
-# routes above take precedence.
+# Web GUI — served from hub/web/ (Lights + Remote pages; the Music page was retired
+# 2026-10-18, the Chroma app replaced it). Mounted LAST so the API routes above take
+# precedence. "/" lands on the Lights page.
 # =============================================================================
+
+from fastapi.responses import RedirectResponse
+
+
+@app.get("/", include_in_schema=False)
+async def _root():
+    return RedirectResponse("/lights.html")
+
 
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
 
