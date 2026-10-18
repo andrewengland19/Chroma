@@ -132,3 +132,19 @@ tools/build_sidecar.sh --smoke            # "smoke ok: sidecar answers get_state
 (cd app/src-tauri && cargo test launch_agent)
 ```
 Login agent and live `lite`: HARDWARE_CHECKLIST HM7.1–HM7.4.
+## M6 — board link and simulator
+
+```bash
+# Engine on a temp home, fake devices; pair, then play a canned performance as a virtual board
+export CHROMA_HOME=$(mktemp -d -t cx) && hub/.venv/bin/python hub/chromad.py --fake --no-lifx &
+sleep 3; python3 tools/chromactl.py op board.pairing                  # creates $CHROMA_HOME/board.key, listener on UDP 9876
+python3 tools/chromactl.py intent who who=board
+hub/.venv/bin/python tools/board_sim.py perform              # also: --loss 0.3 | replay <take> | send '{"intent":"fader","ch":1,"v":0.5}'
+python3 tools/chromactl.py state | grep -A3 '"board'          # health.board "virtual" -> "offline" 3 s after it stops
+kill %1; unset CHROMA_HOME
+
+# Tests (parity, 30 % loss, bad MAC / replay, offline, pickup, real loopback UDP)
+(cd hub && .venv/bin/python -m pytest -q tests/test_board_link.py tests/test_board.py)
+(cd app && npx vitest run src/screens/SetupScreen.test.tsx)
+```
+

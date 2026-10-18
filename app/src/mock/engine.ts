@@ -109,6 +109,11 @@ export class MockEngine implements IpcClient {
         this.patch({ art_mode: mode });
         return { ok: true };
       }
+      case "board.pairing": {
+        const created = !this.state.board_link.paired;
+        this.patch({ board_link: { paired: true } });
+        return { ok: true, key: "ab".repeat(32), port: this.state.board_link.port, hosts: ["192.168.0.20"], created };
+      }
       case "refresh":
         return { ok: true, result: { ok: true, message: "lights refreshed" } };
       case "intent": {

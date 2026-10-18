@@ -16,12 +16,12 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M3 fixtures, groups, banks, Setup | `app/m3-fixtures` | **done** — merged 8b29256 (pending-hardware: H3.1–H3.2) |
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
 | M5 recorder, replay, Takes | `app/m5-takes` | **done** — merged 14d7f72 (pending-hardware: H5.1–H5.4) |
-| M6 board link + simulator | `app/m6-board` | next — branch on main b7c18a6 |
+| M6 board link + simulator | `claude/jovial-bohr-7ac7e5` | **done** — merged 2026-10-18 (all ACs pass in tests; pending-hardware: H6.1–H6.4) |
 | M7 packaging + cutover | `claude/charming-chaum-b37f42` | **done** — merged 2026-10-18 (sidecar, LaunchAgent, `lite show`→chromad; Music page and `lifx_music_daemon.py` retired with the user's approval); pending-hardware: HM7.1–HM7.4 |
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-18: **M0–M5 done and merged; M6 (board link + simulator) is next and not started; M7 not started.**
+Status on 2026-10-18: **M0–M7 all merged; M6 (board link + simulator) merged last; nothing pushed.**
 Also on main: Force Update (HFU.1), Devices → Fake | Real (HD.1), Agent tab, Scenes and Spaces modals, Auto-mode keys,
 Option+digit fader focus, and Scene Agent M1 (`hub/room_model.py`, `hub/scene_render.py`, schemas; nothing writes to
 bulbs; scene-agent spec M2–M5 untouched). All worktrees and finished branches were removed on 2026-10-18: work now
@@ -62,7 +62,7 @@ M6 starting points: board-sourced intents enter through `daemon.apply_intent(int
 `console._fader`); takes record them like UI intents (a board move that did not pick up is not recorded). The
 parity test (§M6) can reuse `test_takes_daemon.py`'s fake-clock harness (`fake_daemon`, `advance`) and compare
 `d.virtual.frames`. `board_sim` replaying a take: read events with `takes.read_take` and send `i` as board snapshots.
-`State.health.board` is still always "none".
+`State.health.board` is still always "none". *(M6 now done: see the M6 section.)*
 
 ---
 
@@ -500,3 +500,36 @@ path, so process tests compile their stand-ins.
   they only run with `lite show start --legacy`, and cannot run together with chromad on one home.
 - Not covered by tests: the menu click path (Tauri event wiring), `SystemLaunchd` (real `launchctl`), the frozen engine on
   real devices.
+
+## M6 — board link and simulator
+
+Branch `claude/jovial-bohr-7ac7e5` (from main d9e3c26). Merged 2026-10-18, not pushed. 4 commits (flaky-test fix, board link + sim, Setup card + docs, review fixes).
+
+- **Commit 1:** `test_flash_hammering_is_held_to_3hz_on_every_fixture` now runs on a fake clock (`fake_daemon` + `advance`),
+  so the §8.1 strobe-cap guard can no longer flake under load.
+- **Contracts:** `board-packet` / `board-frame` / `board.pairing` already existed from M0. Added `State.board_link`
+  `{paired, port, id}` (Setup card needs "paired?" without creating a key), `ipc-response/ok-pairing`, `gen:types`.
+- **`hub/board_link.py`:** UDP listener (default 9876, `chromad --board-port`), bound only once `board.key` exists;
+  datagrams are size-checked, MAC-checked (HMAC-SHA256, first 8 bytes, constant-time) **before** JSON parsing, then
+  validated; per-`(id, boot)` `seq` must increase (late within 8 / replay counted, never applied); used boot nonces
+  persist in `board_boots.json`. First snapshot = baseline (`console.observe_board` records the physical faders so
+  pickup/ghost markers are right; no intents). Later snapshots are diffed into intents sent through
+  `daemon.apply_intent(…, "board")` (faders with 0.004 deadband + end stops, FLASH, ASSIGN (+ hue turn re-maps the
+  group), PALETTE/CUE short/600 ms hold, BANK, BLACKOUT, REC/PLAY/STOP, hue/sat/nudge encoders (32-bit wrap), toggles).
+  Offline after 3 s without a valid datagram: releases the flashes the board holds, keeps faders, `health.board =
+  "offline"`, next datagram is a baseline. Engine→board UI frames on change (≤ 20 Hz) and 2 Hz. `board.pairing` creates
+  the key (0600, never overwritten) and starts the listener. `health.board`: none / virtual (id starts `sim`) / online / offline.
+- **`tools/board_sim.py`:** Python API (`BoardSim`: faders, taps, holds, encoders, `intent()`, `play()`, `replay_take()`,
+  seeded packet loss, fake-clock friendly) and CLI (`perform`, `replay TAKE`, `send JSON…`, `idle`).
+- **UI:** minimal Setup "Board" card (status, UDP port, Pair board / Show key); the Board health chip already existed
+  (M2) and now shows real values. Flagged in DECISIONS.
+- **Tests:** `hub/tests/test_board_link.py` (36). Suites: 533 pytest, 57 vitest.
+
+| AC | Status |
+|---|---|
+| Parity: same intents via IPC and via `board_sim` → identical scheduler output (every fixture) and virtual frames | **pass** (`test_parity_…`) |
+| 30 % loss (12 seeds): no stuck flash, state converges ≤ 500 ms after the last change | **pass** |
+| Bad MAC / wrong key / tampered / oversize / replayed or old `seq` / old boot ignored | **pass** |
+| Offline after 3 s releases flashes, keeps faders, health "offline", recovers with a baseline | **pass** |
+| Bank switch exercises pickup (ghost marker, ignored until crossing) | **pass** |
+| Real board / real UDP on the LAN | **pending-hardware** H6.1–H6.4 (the loopback UDP + pairing path is tested) |

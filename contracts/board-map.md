@@ -80,3 +80,16 @@ Engine → board frames use the same rule.
   so old captures cannot be replayed after a reboot.
 - **Offline** = no accepted datagram for 3 s: release every held flash, keep fader values, set
   `health.board = "offline"`. The next accepted datagram is a baseline.
+
+## Firmware notes (from the M6 simulator)
+
+- **Repeat a changed snapshot** 3–4 times, one 60 Hz frame apart, then fall back to the 2 Hz heartbeat. One lost datagram
+  then never costs a 500 ms heartbeat; with 30 % loss the engine converges well inside 500 ms (tested with `tools/board_sim.py`).
+- Give every datagram a new `seq`, including repeats. Pick a random `boot` at power-up and never reuse it; the engine
+  keeps the highest `seq` used per boot (`~/.chroma/board_boots.json`), so after a *chromad* restart a running board
+  carries on, while a captured old datagram is rejected.
+- The engine answers to the source address of the last valid datagram (UI frames: change ≤ 20 Hz, and 2 Hz). Frame text is
+  ASCII; non-ASCII characters arrive as `?`.
+- A button already down when the board connects is ignored until released. A FLASH held through a BANK press is released
+  by the engine and ignored until the button is let go.
+

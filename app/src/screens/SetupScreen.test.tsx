@@ -37,6 +37,24 @@ describe("Setup (gui-3)", () => {
       "Counter strip", "Playbill 01–12", "Virtual Light 1"]);
   });
 
+  test("Board card: pairing creates the key once and shows it; status follows health", async () => {
+    const { engine } = await setup();
+    expect(screen.getByTestId("board-status")).toHaveTextContent("virtual · sim-1");   // the mockup scenario
+    act(() => engine.patch({ health: { board: "none" }, board_link: { paired: false, id: null } }));
+    expect(screen.getByTestId("board-status")).toHaveTextContent("not paired");
+    await act(async () => fireEvent.click(screen.getByTestId("board-pair")));
+    expect(engine.requests).toContainEqual({ op: "board.pairing" });
+    expect(screen.getByTestId("board-key")).toHaveTextContent(/^(ab){32}$/);
+    expect(screen.getByTestId("board-pairing")).toHaveTextContent("192.168.0.20:9876");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByTestId("board-pairing")).toBeNull();
+    expect(screen.getByTestId("board-pair")).toHaveTextContent("Show key");
+    act(() => engine.patch({ health: { board: "online" }, board_link: { id: "board-1" } }));
+    expect(screen.getByTestId("board-status")).toHaveTextContent("online · board-1");
+    act(() => engine.patch({ health: { board: "offline" } }));
+    expect(screen.getByTestId("board-status")).toHaveTextContent("offline");
+  });
+
   test("Test, Discover and Add send the right ops", async () => {
     const { engine } = await setup();
     fireEvent.click(screen.getByTestId("test-couch-left"));
