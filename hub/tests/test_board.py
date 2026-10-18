@@ -371,3 +371,22 @@ async def test_auto_fader_blackout_and_flash_follow_the_bank(daemon):
     await intent(d, intent="flash", ch=1, down=True)
     assert await wait_for(lambda: colors(tv)[-1][1][2] == 65535)
     assert d.engine.enabled is True
+
+
+# ---- smooth faders ----------------------------------------------------------------------------
+
+async def test_fader_moves_fade_but_flash_and_blackout_stay_hard(daemon):
+    d = daemon
+    await board(d)
+    since = len(d.virtual.frames)
+    await intent(d, intent="fader", ch=8, v=0.8)
+    await asyncio.sleep(0.2)
+    fr = vframes(d, since)
+    assert fr and all(f[3] == 120 for f in fr)                # a fader value glides (SMOOTH_FADE_MS)
+    await intent(d, intent="fader", ch=8, v=0.0)
+    await asyncio.sleep(0.2)
+    since = len(d.virtual.frames)
+    await intent(d, intent="flash", ch=8, down=True)
+    await asyncio.sleep(0.2)
+    fr = vframes(d, since)
+    assert fr and all(f[3] == 0 for f in fr)                  # the flash punches in at once

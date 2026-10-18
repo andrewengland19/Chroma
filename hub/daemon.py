@@ -33,6 +33,12 @@ from takes import TakeError, TakeService, resolve_event
 
 log = logging.getLogger("chroma-hub")
 
+# Continuous controls glide instead of stepping: each value fades over a little more than one LIFX
+# pacing gap (scheduler: 50 ms), so successive values overlap and a drag reads as one smooth ramp.
+# Flash, blackout, bank and cue recall keep their own timing (hard punch / the cue's fade_ms).
+SMOOTH_INTENTS = {"fader", "hue", "sat"}
+SMOOTH_FADE_MS = 120
+
 INTENT_NAMES = {"fader", "flash", "assign", "bank", "fader_fn", "hue", "sat", "palette_apply",
                 "palette_store", "cue_recall", "cue_store", "blackout", "who"}
 
@@ -250,6 +256,8 @@ class Chromad:
                 self.rig.changed()
             elif eff[0] == "recall":
                 fade = eff[2]
+        if fade == 0 and name in SMOOTH_INTENTS:
+            fade = SMOOTH_FADE_MS
         self._drive(t_intent, fade)
         self._console_changed()
         return None
@@ -286,6 +294,8 @@ class Chromad:
         t_intent = self.clock.monotonic() * 1000.0
         effects = console_logic.apply(self.console, intent, "replay", at=ev if ev.get("a") else None)
         fade = next((e[2] for e in effects if e[0] == "recall"), 0)
+        if fade == 0 and intent.get("intent") in SMOOTH_INTENTS:
+            fade = SMOOTH_FADE_MS
         if drive and (not self.engine.enabled or self._auto_ready):
             self._drive(t_intent, fade)
 
