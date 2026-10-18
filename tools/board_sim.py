@@ -260,6 +260,8 @@ async def amain(args) -> int:
         lambda: _Proto(holder), remote_addr=(args.host, args.port))
     sim = BoardSim(key, transport.sendto, board_id=args.id, loss=args.loss, seed=args.seed)
     holder["sim"] = sim
+    if args.faders:                                       # where the physical faders sit (pickup!)
+        sim.place_faders([float(x) for x in args.faders.split(",")])
     try:
         await sim.emit()                                  # baseline
         await sim.sleep(0.2)
@@ -298,6 +300,8 @@ def main(argv=None) -> int:
     ap.add_argument("--id", default="sim-1", help="board id (must start with 'sim' to show as virtual)")
     ap.add_argument("--loss", type=float, default=0.0, help="simulated packet loss, 0..1")
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--faders", help="starting fader positions, 8 or 9 comma-separated 0..1 values (channels, master). "
+                    "Pickup ignores a fader far from the console's stored value until it crosses it; the sim cannot see the console")
     ap.add_argument("--speed", type=float, default=1.0, help="replay speed (2 = twice as fast)")
     ap.add_argument("cmd", choices=["perform", "replay", "send", "idle"])
     ap.add_argument("arg", nargs="*")

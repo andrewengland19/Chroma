@@ -42,7 +42,7 @@ FADER_DEADBAND = 0.004
 BOOTS_KEEP = 64
 FRAME_MIN_GAP_S = 0.05          # engine -> board: changes at most 20 Hz ...
 FRAME_HEARTBEAT_S = 0.5         # ... and at least 2 Hz
-BOOTS_FLUSH_S = 2.0
+BOOTS_FLUSH_S = 30.0            # seq high-water marks; a new boot is saved at once
 TICK_S = 0.05
 
 # button mask bit offsets (contracts/board-map.md)
@@ -240,7 +240,16 @@ class BoardLink:
     async def pair(self) -> dict:
         key, created = create_key(self.path)
         self.key = key
-        await self.start()
+        try:
+            await self.start()
+        except IpcError:
+            if created:                      # nothing is listening: do not leave a half-paired state behind
+                self.key = None
+                try:
+                    os.unlink(self.path)
+                except OSError:
+                    pass
+            raise
         return {"key": key.hex(), "port": self.port, "hosts": lan_hosts(), "created": created}
 
     async def start(self) -> None:
@@ -278,6 +287,9 @@ class BoardLink:
             await self.tick()
 
     def enqueue(self, data: bytes, addr) -> None:
+        if self.key is None or len(data) > MAX_DATAGRAM or unseal(self.key, data) is None:
+            self.stats["bad_size" if len(data) > MAX_DATAGRAM else "bad_mac"] += 1   # cheap: never queued
+            return
         try:
             self._q.put_nowait((data, addr))
         except asyncio.QueueFull:

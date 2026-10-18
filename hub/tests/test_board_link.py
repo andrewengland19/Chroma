@@ -141,17 +141,15 @@ async def test_a_boot_nonce_seen_before_cannot_be_replayed_after_a_restart(bench
     assert link2._accept(s3.packet(), 0.0) is not None         # a fresh boot
 
 
-def test_listener_stays_off_without_a_key(tmp_path):
-    async def go():
-        d, fc = fake_daemon(board_port=0, board_host="127.0.0.1")
-        assert d.board.key is None and d.board.transport is None
-        await d.board.start()
-        assert d.board.transport is None
-        assert await d.board.receive(b"{}") is False
-        assert d.state.build()["board_link"] == {"paired": False, "port": 9876, "id": None}
-        assert d.state.build()["health"]["board"] == "none"
-        await d.shutdown()
-    asyncio.run(go())
+async def test_listener_stays_off_without_a_key():
+    d, fc = fake_daemon(board_port=0, board_host="127.0.0.1")
+    assert d.board.key is None and d.board.transport is None
+    await d.board.start()
+    assert d.board.transport is None
+    assert await d.board.receive(b"{}") is False
+    assert d.state.build()["board_link"] == {"paired": False, "port": 9876, "id": None}
+    assert d.state.build()["health"]["board"] == "none"
+    await d.shutdown()
 
 
 # ---- snapshot diff -> intents ------------------------------------------------------------------------
@@ -214,18 +212,20 @@ async def test_encoders_are_absolute_counts_that_may_wrap(bench):
     b = bench
     s = await b.online()
     await s.fader(1, 0.5)
-    h0, sat0 = b.ch(1).hue, b.ch(1).sat
+    h0 = b.ch(1).hue
     await s.turn("hue", 4)
     assert b.ch(1).hue == pytest.approx((h0 + 20) % 360)
-    s.e[1] = 2 ** 31 - 1                                       # sat jumps to the top of the 32-bit range ...
-    await s.changed()                                          # ... a huge delta clamps at 1.0
-    assert b.ch(1).sat == 1.0
-    s.e[1] = -2 ** 31 + 5                                      # ... and wraps around: +6 detents
-    await s.changed()
-    assert b.ch(1).sat == 1.0
+    await s.turn("sat", 10)
+    assert b.ch(1).sat == pytest.approx(0.2)
+    await s.turn("sat", -4)
+    assert b.ch(1).sat == pytest.approx(0.12)
+    # counts are signed 32-bit and wrap: the difference is taken modulo 2**32
     assert BL._delta32(-2 ** 31 + 5, 2 ** 31 - 1) == 6
-    assert BL._delta32(0, 2 ** 31 - 3) == -(2 ** 31 - 3)
-    assert sat0 != 1.0 or True
+    assert BL._delta32(2 ** 31 - 1, -2 ** 31 + 5) == -6
+    assert BL._delta32(7, 3) == 4 and BL._delta32(3, 7) == -4
+    s.e[1] = 2 ** 31                                           # outside int32: not a valid packet
+    assert await s.emit() is True and b.link.stats["bad_format"] >= 1
+    assert b.ch(1).sat == pytest.approx(0.12)
 
 
 async def test_palette_and_cue_short_press_applies_long_press_stores(bench):
@@ -445,7 +445,7 @@ async def test_parity_the_same_intents_via_ipc_and_via_the_board_give_identical_
     await s.emit()
     await s.play(script)
     await b.sleep(2.0)
-    assert not any(p for p in [s.lost])                         # lossless link
+    assert s.lost == 0                                          # lossless link
     ours, theirs = _outputs(a), _outputs(b.d)
     assert len(ours) >= 15 and len(pushed_a) >= 15
     assert pushed_b == pushed_a                                 # every fixture, LIFX included (scheduler output)
@@ -487,7 +487,7 @@ async def test_a_lost_flash_release_is_repaired_by_the_next_datagram(bench):
     assert not b.ch(6).flash
 
 
-async def test_replaying_a_take_as_a_board_reproduces_its_intents(bench, tmp_path):
+async def test_replaying_a_take_as_a_board_reproduces_its_intents(bench):
     b = bench
     from test_takes_daemon import SCRIPT
     d = b.d

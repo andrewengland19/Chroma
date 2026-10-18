@@ -482,7 +482,7 @@ path, so process tests compile their stand-ins.
 
 ## M6 — board link and simulator
 
-Branch `claude/jovial-bohr-7ac7e5` (from main d9e3c26). Not merged, not pushed. 4 commits.
+Branch `claude/jovial-bohr-7ac7e5` (from main d9e3c26). Not merged, not pushed. 4 commits (flaky-test fix, board link + sim, Setup card + docs, review fixes).
 
 - **Commit 1:** `test_flash_hammering_is_held_to_3hz_on_every_fixture` now runs on a fake clock (`fake_daemon` + `advance`),
   so the §8.1 strobe-cap guard can no longer flake under load.
