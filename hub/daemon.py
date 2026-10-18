@@ -114,6 +114,10 @@ class Chromad:
         self.scheduler = OutputScheduler(lambda: self.clock.monotonic() * 1000.0, self._push,
                                          self._klass, self.store.limits)
         self._board_ready = False        # seeded from the art look since BOARD began (D2)
+        self._auto_ready = False         # AUTO: the console is seeded and rides on the art
+        self._auto_shown: dict = {}      # AUTO: fixture id -> HSB the lights show (art x faders)
+        self.engine.output_filter = self._auto_filter
+        self.rig.level_filter = self._auto_levels
         self._save_task: Optional[asyncio.Task] = None
         # M5: recorder + replay (takes.py); State rec/play/activity/takes_rev come from it
         self.takes = TakeService(self, os.path.join(self.home, "takes"), offset_ms=replay_offset_ms)
@@ -142,7 +146,7 @@ class Chromad:
         for b, row in self.store.banks.items():
             for i, gid in enumerate(row):
                 self.console.channel(b, i + 1).group_id = gid
-        if self._board_ready and not self.engine.enabled:
+        if self._board_ready and not self.engine.enabled or self._auto_ready:
             self._drive(self.clock.monotonic() * 1000.0)     # membership / caps changed
         self.ipc.mark_dirty()
 
@@ -227,8 +231,10 @@ class Chromad:
         board = not self.engine.enabled
         if board:
             self._ensure_board()                    # before apply: the seed must not undo this move
-        elif self._board_ready:
-            self._leave_board()                     # re-enabled elsewhere (/agent, /lights/set)
+        else:
+            if self._board_ready:
+                self._leave_board()                 # re-enabled elsewhere (/agent, /lights/set)
+            self._ensure_auto()                     # AUTO: faders ride on the art colours
         try:
             effects = console_logic.apply(self.console, intent, src, at=at)
         except ConsoleError as e:
@@ -244,8 +250,7 @@ class Chromad:
                 self.rig.changed()
             elif eff[0] == "recall":
                 fade = eff[2]
-        if board:
-            self._drive(t_intent, fade)
+        self._drive(t_intent, fade)
         self._console_changed()
         return None
 
@@ -259,8 +264,6 @@ class Chromad:
         return "slow" if f is None or f.type == "lifx" else "fast"
 
     def _push(self, fid: str, hsb: HSB, fade_ms: int) -> None:
-        if self.engine.enabled:                     # AUTO: the art painter owns the fixtures
-            return
         f = self.store.fixtures.get(fid)
         if f is None or f.status != "active":
             return
@@ -272,7 +275,7 @@ class Chromad:
         self.ipc.mark_dirty()
 
     def drive_now(self) -> None:
-        if not self.engine.enabled:
+        if not self.engine.enabled or self._auto_ready:
             self._drive(self.clock.monotonic() * 1000.0)
         self._console_changed()
 
@@ -283,7 +286,7 @@ class Chromad:
         t_intent = self.clock.monotonic() * 1000.0
         effects = console_logic.apply(self.console, intent, "replay", at=ev if ev.get("a") else None)
         fade = next((e[2] for e in effects if e[0] == "recall"), 0)
-        if drive and not self.engine.enabled:
+        if drive and (not self.engine.enabled or self._auto_ready):
             self._drive(t_intent, fade)
 
     def ensure_board(self, why: str) -> None:
@@ -299,6 +302,8 @@ class Chromad:
 
     def _drive(self, t_intent_ms: float, fade_ms: int = 0) -> None:
         targets = console_logic.resolve(self.console, self._members(), self.store.limits)
+        if self.engine.enabled:
+            self._auto_shown.update(targets)
         self.scheduler.submit(targets, t_intent_ms, fade_ms, dark=self.console.blackout)
 
     def art_look(self) -> dict:
@@ -318,10 +323,58 @@ class Chromad:
                 out[f.id] = self.virtual.current[f.id]
         return out
 
+    # ---- AUTO: the console's faders ride on the art colours ----------------------------
+    def _auto_levels(self, art: dict) -> dict:
+        """The art painter is about to show `art` (fixture id -> HSB): apply the console's
+        faders, master, blackout and flashes (per channel / bank binding) on top of it."""
+        members = self._members()
+        if not self._auto_ready:
+            console_logic.seed_from_art(self.console, {**self.art_look(), **art}, members)
+            self.scheduler.reset()
+            self._auto_ready = True
+        else:
+            console_logic.refresh_art(self.console, art, members)
+        targets = console_logic.resolve(self.console, members, self.store.limits)
+        out = {fid: targets.get(fid, hsb) for fid, hsb in art.items()}
+        self._auto_shown.update(out)
+        self.scheduler.prime(out)
+        self.ipc.mark_dirty()
+        return out
+
+    def _auto_filter(self, labels: list, hsbk: list) -> list:
+        """Engine output hook: the bulbs' art colours (aligned to `labels`) -> what they get."""
+        bulbs = self.rig._engine_bulbs()
+        idx = {}
+        art = {}
+        for f in self.store.active("lifx"):
+            lbl = self.rig.engine_label(f, bulbs)
+            if lbl in labels:
+                i = labels.index(lbl)
+                h, s_, b, _k = hsbk[i]
+                art[f.id] = HSB(h / 65535.0 * 360.0, s_ / 65535.0, b / 65535.0)
+                idx[f.id] = i
+        shown = self._auto_levels(art)
+        out = list(hsbk)
+        for fid, i in idx.items():
+            h, s_, b, k = hsbk[i]
+            v = shown[fid]
+            out[i] = (round(v.h % 360.0 / 360.0 * 65535) % 65536, round(v.s * 65535), round(v.b * 65535), k)
+        return out
+
+    def _ensure_auto(self) -> None:
+        if not self._auto_ready:
+            self._auto_levels(self.art_look())
+
     def _ensure_board(self) -> None:
         """D2: BOARD starts from the art look — channels are seeded from it and nothing is
         pushed until the console changes something."""
         if self._board_ready:
+            return
+        if self._auto_ready:                # AUTO -> BOARD: the console already shows what the lights show
+            self._auto_ready = False
+            self.scheduler.prime(self._auto_shown)
+            self.rig.live = dict((k, v) for k, v in self._auto_shown.items() if self._klass(k) == "slow")
+            self._board_ready = True
             return
         art = self.art_look()
         console_logic.seed_from_art(self.console, art, self._members())
@@ -347,6 +400,7 @@ class Chromad:
 
     def _leave_board(self) -> None:
         self._board_ready = False
+        self._auto_ready = False
         self.scheduler.reset()
         self.rig.live.clear()
 

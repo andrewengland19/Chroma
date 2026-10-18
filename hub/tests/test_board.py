@@ -124,13 +124,14 @@ async def test_flash_holds_and_releases_and_punches_through_blackout(daemon):
     assert await wait_for(lambda: d.virtual.current["virtual-light-1"].b == 0.0)
 
 
-async def test_auto_shows_console_changes_but_pushes_nothing_and_back_to_auto_repaints(daemon):
+async def test_auto_faders_ride_on_the_art_and_back_to_auto_repaints(daemon):
     d = daemon
     tv = bulb(d, "TV Left")
     n = len(colors(tv))
     await intent(d, intent="fader", ch=1, v=0.9)
     await asyncio.sleep(0.2)
-    assert len(colors(tv)) == n and d.console.channel("A", 1).level == 0.9
+    assert await wait_for(lambda: len(colors(tv)) > n and colors(tv)[-1][1][2] == round(0.9 * 65535))
+    assert d.console.channel("A", 1).level == 0.9 and d.engine.enabled
     await board(d)
     await intent(d, intent="fader", ch=1, v=0.1)
     assert await wait_for(lambda: len(colors(tv)) > n)
@@ -138,8 +139,7 @@ async def test_auto_shows_console_changes_but_pushes_nothing_and_back_to_auto_re
     await d.set_who("auto")
     assert await wait_for(lambda: len(colors(tv)) == n + 1)     # the art painter repaints at once
     await intent(d, intent="fader", ch=1, v=0.7)
-    await asyncio.sleep(0.2)
-    assert len(colors(tv)) == n + 1
+    assert await wait_for(lambda: colors(tv)[-1][1][2] == round(0.7 * 65535))
 
 
 async def test_disabled_elsewhere_seeds_on_the_first_console_intent(daemon):
@@ -177,8 +177,8 @@ async def test_nothing_is_pushed_once_auto_resumes_elsewhere(daemon):
     since = len(d.virtual.frames)
     await asyncio.sleep(1.3)                                     # the hold would have expired by now
     assert vframes(d, since) == [] or all(f[2] == d.virtual.current["virtual-light-1"] for f in vframes(d, since))
-    await intent(d, intent="fader", ch=8, v=0.9)                 # AUTO: display only
-    assert not d._board_ready and d.scheduler.pending == {} and d.scheduler.limiter.pending == {}
+    await intent(d, intent="fader", ch=8, v=0.9)                 # AUTO: rides on the art, no BOARD
+    assert not d._board_ready and d._auto_ready and d.scheduler.limiter.pending == {}
 
 
 # ---- safety and pacing ---------------------------------------------------------------------------
@@ -315,3 +315,59 @@ async def test_corrupt_console_file_is_set_aside():
         assert os.path.exists(path + ".bad") and d2.console.bank == "A"
     finally:
         await stop(d2, task2)
+
+
+async def test_master_fader_changes_real_bulb_brightness(daemon):
+    d = daemon
+    await board(d)
+    tv = bulb(d, "TV Left")
+    await intent(d, intent="fader", ch=1, v=0.8)
+    assert await wait_for(lambda: colors(tv) and colors(tv)[-1][1][2] == round(0.8 * 65535))
+    n = len(colors(tv))
+    await intent(d, intent="fader", ch="master", v=0.5)
+    assert await wait_for(lambda: len(colors(tv)) > n)
+    assert colors(tv)[-1][1][2] == round(0.4 * 65535)
+
+
+async def test_master_alone_dims_the_art_look_in_board(daemon):
+    d = daemon
+    await board(d)
+    tv = bulb(d, "TV Left")
+    art = d.art_look()["tv-left"]
+    n = len(colors(tv))
+    await intent(d, intent="fader", ch="master", v=0.5)
+    assert await wait_for(lambda: len(colors(tv)) > n)
+    assert colors(tv)[-1][1][2] == round(art.b * 0.5 * 65535)
+
+
+async def test_master_in_auto_dims_without_leaving_auto(daemon):
+    d = daemon
+    assert d.engine.enabled
+    tv = bulb(d, "TV Left")
+    art = d.art_look()["tv-left"]
+    n = len(colors(tv))
+    await intent(d, intent="fader", ch="master", v=0.5)
+    assert d.engine.enabled is True
+    assert await wait_for(lambda: len(colors(tv)) > n)
+    assert colors(tv)[-1][1][2] == round(art.b * 0.5 * 65535)
+
+
+async def test_auto_fader_blackout_and_flash_follow_the_bank(daemon):
+    d = daemon
+    tv = bulb(d, "TV Left")
+    gid = d.store.banks["A"][0]
+    assert gid and "tv-left" in d._members()[gid]
+    n = len(colors(tv))
+    await intent(d, intent="fader", ch=1, v=0.3)
+    assert d.engine.enabled is True
+    assert await wait_for(lambda: len(colors(tv)) > n and colors(tv)[-1][1][2] == round(0.3 * 65535))
+    hue = colors(tv)[-1][1][0]
+    await d.engine.refresh()                       # a repaint keeps the fader's brightness
+    assert await wait_for(lambda: colors(tv)[-1][1][2] == round(0.3 * 65535))
+    n = len(colors(tv))
+    await intent(d, intent="blackout", on=True)
+    assert await wait_for(lambda: colors(tv)[-1][1][2] == 0)
+    await intent(d, intent="blackout", on=False)
+    await intent(d, intent="flash", ch=1, down=True)
+    assert await wait_for(lambda: colors(tv)[-1][1][2] == 65535)
+    assert d.engine.enabled is True

@@ -39,6 +39,7 @@ class RigService:
         self.fake = fake
         self._discovering = asyncio.Lock()
         self._blinking: set = set()
+        self.level_filter = None      # AUTO: {fixture id: HSB} -> same, with the console's faders applied
         self.live: dict = {}          # BOARD: fixture id -> HSB the console last sent to a LIFX bulb
 
     # ---- ops ---------------------------------------------------------------------
@@ -181,8 +182,11 @@ class RigService:
         except Exception as e:
             log.warning(f"virtual paint failed: {e}")
             return
-        for f, c in zip(vfx, rgb):
-            self.virtual.push(f, HSB.from_rgb(c, b=params.brightness), 0)
+        looks = {f.id: HSB.from_rgb(c, b=params.brightness) for f, c in zip(vfx, rgb)}
+        if self.level_filter:
+            looks = self.level_filter(looks)
+        for f in vfx:
+            self.virtual.push(f, looks[f.id], 0)
         self.notify()
 
     # ---- State pieces -------------------------------------------------------------------

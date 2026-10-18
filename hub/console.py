@@ -501,6 +501,23 @@ def seed_from_art(st: ConsoleState, art: dict, members: dict) -> None:
             _recheck_pickup(st, c)
 
 
+def refresh_art(st: ConsoleState, art: dict, members: dict) -> None:
+    """AUTO: the art repaints while the faders ride on it. Takes the new art colours without
+    a new seed point, so a channel the operator moved (level / hue / sat) keeps its value and
+    the others follow the art on their faders."""
+    st.art.update(art)
+    for c in st.channels:
+        cols = [st.art[f] for f in members.get(c.group_id, ()) if f in st.art] if c.group_id else []
+        if not cols:
+            continue
+        hue, sat = oklab.mean_hue_sat(cols)
+        if c.color_seq <= st.board_seq:
+            c.hue, c.sat = hue, sat
+        if c.level_seq <= st.board_seq:
+            c.level = sum(x.b for x in cols) / len(cols)
+        _recheck_pickup(st, c)
+
+
 # ---- strobe limit (D7, §8.1) --------------------------------------------------------------
 
 def is_edge(a: Optional[HSB], b: HSB) -> bool:

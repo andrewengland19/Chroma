@@ -214,6 +214,8 @@ class Engine(DeviceListener, PushListener):
         self._last_art: Optional[bytes] = None
         self._last_hsbk: list = []
         self._last_per_light: list = []  # [{label,x,y,hex}] for the room canvas
+        # AUTO: (labels, hsbk) -> hsbk the bulbs actually get (the console's faders ride on the art)
+        self.output_filter = None
 
     # ---- pyatv DeviceListener (connection lifecycle) -----------------------
     def connection_lost(self, exception) -> None:
@@ -329,8 +331,9 @@ class Engine(DeviceListener, PushListener):
         ]
 
         if self.enabled and self.lifx.count:
+            out = self.output_filter(labels, hsbk) if self.output_filter else hsbk
             await self.loop.run_in_executor(
-                None, self.lifx.push_aligned, hsbk, self.cfg.transition_ms)
+                None, self.lifx.push_aligned, out, self.cfg.transition_ms)
             log.info(f"   → {len(hsbk)} color(s) → {self.lifx.count} light(s)  🎨 ({mode})")
         elif not self.enabled:
             log.info(f"   → painting off; computed {len(hsbk)} color(s) ({source})")
