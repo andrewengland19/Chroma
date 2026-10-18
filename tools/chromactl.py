@@ -93,6 +93,40 @@ def summarize(ev: dict) -> str:
     return json.dumps(ev)
 
 
+def ha_cmd(action: str) -> int:
+    """`ha status` / `ha lights`: talk to Home Assistant directly with the Keychain token. Works
+    even when chromad is down; sends no commands to any light. Honours CHROMA_HOME."""
+    import asyncio
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hub"))
+    from config import Config
+    import homeassistant as H
+
+    async def run() -> int:
+        cfg = H.HaConfig.from_dict(Config.load().ha)
+        if not cfg.enabled:
+            print(f"ha: disabled (set ha.enabled=true in config.json; url would be {cfg.url})")
+            return 1
+        c = H.HaClient(cfg)
+        try:
+            if action == "status":
+                r = await c.health()
+                print(json.dumps(r, indent=2))
+                return 0 if r["ok"] else 1
+            for l in await c.list_lights():
+                print(f"{l['entity_id']:36} {l['state']:8} {l['name']}  -> {l['mapped_to'] or '(unmapped)'}")
+            return 0
+        except (H.HaError, H.HaConfigError) as e:
+            print(f"ha: {e}", file=sys.stderr)
+            return 1
+        finally:
+            await c.close()
+    try:
+        return asyncio.run(run())
+    except H.HaConfigError as e:
+        print(f"ha: {e}", file=sys.stderr)
+        return 1
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="chromactl")
     ap.add_argument("--socket", default=None)
@@ -106,7 +140,11 @@ def main(argv=None) -> int:
     o = sub.add_parser("op")
     o.add_argument("name")
     o.add_argument("args", nargs="*")
+    h = sub.add_parser("ha", help="Home Assistant connector (standalone: reads ~/.chroma/config.json, no chromad)")
+    h.add_argument("action", choices=["status", "lights"])
     a = ap.parse_args(argv)
+    if a.cmd == "ha":
+        return ha_cmd(a.action)
     conn = Conn(a.socket or default_socket())
 
     if a.cmd == "state":
