@@ -1,3 +1,5 @@
+> **Packaging (M7, 2026-10-18):** `cd app && npm run bundle` builds `Chroma.app` with the engine bundled; tray → *Run engine at login* installs the LaunchAgent; `lite show …` controls the same engine. See `docs/mvp/RUNNING.md`.
+
 > **Status 2026-10-18:** this README describes the original Electron menu-bar app, now archived in `archive/legacy/`. The current product is the Tauri console in `app/` with the `chromad` engine in `hub/`; see `docs/mvp/PROGRESS.md`, `docs/mvp/RUNNING.md` and `hub/README.md`.
 
 # CHROMA

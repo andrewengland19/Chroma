@@ -17,7 +17,7 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 | M4 console, intents, AUTO/BOARD | `app/m4-console` | **done** — merged b88d544 (pending-hardware: H4.1–H4.2) |
 | M5 recorder, replay, Takes | `app/m5-takes` | **done** — merged 14d7f72 (pending-hardware: H5.1–H5.4) |
 | M6 board link + simulator | `app/m6-board` | next — branch on main b7c18a6 |
-| M7 packaging + cutover | `app/m7-cutover` | — |
+| M7 packaging + cutover | `app/m7-cutover` | **safe half built** on `claude/charming-chaum-b37f42` (sidecar, LaunchAgent, `lite show`→chromad, docs); retiring Music page / `lifx_music_daemon.py` awaits the user; pending-hardware: HM7.1–HM7.4 |
 
 ## Hand-off for the next session (start here)
 
@@ -480,3 +480,23 @@ duplication of env parsing. Re-test on main: pytest 369; full suite in a detache
 `lite show status` → stopped. Note found while testing: a copied `/bin/sleep` is killed by macOS outside its signed
 path, so process tests compile their stand-ins.
 
+---
+
+## M7 — packaging and cutover, safe half (2026-10-18) — branch `claude/charming-chaum-b37f42` (not merged, not pushed)
+
+- **Sidecar:** PyInstaller one-dir bundle of `chromad` (`tools/build_sidecar.sh`, `npm run bundle`). Verified: the frozen
+  engine answers `get_state` with `--fake`; `tauri build --bundles app` produced `Chroma.app` (85 MB) with
+  `Contents/Resources/chromad/chromad`; the built app, started with a temp `CHROMA_HOME` and `--fake`, spawned that
+  bundled binary and the UI path got state. Choice and trade-offs: DECISIONS 2026-10-18. Not signed/notarized (RUNNING.md
+  lists what that needs). Real-device behaviour of the frozen engine = HM7.1.
+- **LaunchAgent:** `app/src-tauri/src/launch_agent.rs`; tray + Chroma menu "Run engine at login". Writes/removes
+  `~/Library/LaunchAgents/com.chroma.chromad.plist` only on click; tests use a temp HOME and a recording launchd (never
+  real `launchctl`). Login-time behaviour and the attach = HM7.3 (not run).
+- **`lite show`:** `hub/showctl.py` controls chromad (new `chromad.pid`, socket `get_state`/`refresh`), `--legacy` keeps
+  the old hub. Verified end to end against a real `chromad --fake`: start/start/status/refresh/restart/stop/stop.
+  `docs/mvp/lite-show.patch` for `~/.local/bin/lite` (applies cleanly, dry run). Live `lite` = HM7.4.
+- **Left for the user (not done on purpose):** retire the hub Music page; retire `lifx_music_daemon.py` (what it needs is
+  in DECISIONS); `archive/` untouched. `hub/web/lights.html`, `remote.html`, `lights_agent.py` and their routes untouched;
+  they only run with `lite show start --legacy`, and cannot run together with chromad on one home.
+- Not covered by tests: the menu click path (Tauri event wiring), `SystemLaunchd` (real `launchctl`), the frozen engine on
+  real devices.

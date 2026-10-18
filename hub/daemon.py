@@ -500,6 +500,7 @@ class Chromad:
 
     async def run(self) -> None:
         await self.ipc.start()
+        self._write_pid()   # after the single-instance lock: a losing second chromad never gets here
         engine_task = self.loop.create_task(self.engine.run())
         self._tasks = [engine_task] + [self.loop.create_task(c()) for c in
                                        (self._bus_watch, self._poll_position, self._ticker,
@@ -513,7 +514,29 @@ class Chromad:
         finally:
             await self.shutdown(engine_task)
 
+    @property
+    def pid_path(self) -> str:
+        return os.path.join(self.home, "chromad.pid")
+
+    def _write_pid(self) -> None:
+        """$home/chromad.pid: how `lite show stop` finds an engine it did not start
+        (the app's or a LaunchAgent's)."""
+        try:
+            with open(self.pid_path, "w") as f:
+                f.write(str(os.getpid()))
+        except OSError as e:
+            log.warning(f"could not write {self.pid_path}: {e}")
+
+    def _remove_pid(self) -> None:
+        try:
+            with open(self.pid_path) as f:
+                if f.read().strip() == str(os.getpid()):
+                    os.remove(self.pid_path)
+        except OSError:
+            pass
+
     async def shutdown(self, engine_task=None) -> None:
+        self._remove_pid()
         self.takes.stop_rec("engine stopped")
         await self.ipc.stop()
         if self._save_task is not None:

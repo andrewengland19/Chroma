@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "gen:types": "node scripts/gen-types.mjs",
     "gen:types:check": "node scripts/gen-types.mjs --check",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bundle": "zsh ../tools/build_sidecar.sh && tauri build --bundles app --config src-tauri/tauri.sidecar.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

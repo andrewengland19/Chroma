@@ -264,3 +264,10 @@ def test_room_coordinates_are_clamped():
     sa.engine = E()
     assert sa._room() == [{"fixture_id": "off-canvas", "label": "Off Canvas", "x": 1.0, "y": 0.0,
                            "hex": "#ffffff", "online": True}]
+
+
+async def test_pid_file_follows_the_run(daemon):
+    """`lite show stop` finds an engine by $home/chromad.pid: present while running, gone after."""
+    assert open(daemon.pid_path).read() == str(os.getpid())
+    daemon._remove_pid()
+    assert not os.path.exists(daemon.pid_path)

@@ -45,7 +45,7 @@ impl EngineConfig {
         let program = match nonempty("CHROMAD_CMD") {
             Some(p) => Some(expand(&p, user_home)),
             None if debug => Some(repo_root.join("hub/.venv/bin/python")),
-            None => None, // M7: the bundled sidecar
+            None => bundled_sidecar(),
         };
         let mut full_args = Vec::new();
         if nonempty("CHROMAD_CMD").is_none() && debug {
@@ -66,6 +66,18 @@ impl EngineConfig {
     pub fn log_file(&self) -> PathBuf {
         self.home.join("chromad.log")
     }
+}
+
+/// The PyInstaller bundle shipped inside the .app: `Contents/Resources/chromad/chromad`
+/// (tools/build_sidecar.sh + tauri.sidecar.conf.json), found from the app binary in
+/// `Contents/MacOS/`. None when running from `cargo`/`tauri dev` or an unbundled build.
+pub fn bundled_sidecar() -> Option<PathBuf> {
+    sidecar_for(&std::env::current_exe().ok()?)
+}
+
+fn sidecar_for(exe: &Path) -> Option<PathBuf> {
+    let p = exe.parent()?.parent()?.join("Resources/chromad/chromad");
+    p.is_file().then_some(p)
 }
 
 fn expand(p: &str, user_home: &Path) -> PathBuf {
@@ -102,6 +114,17 @@ mod tests {
         assert_eq!(c.home, PathBuf::from("/Users/a/.chroma"));
         assert_eq!(c.program, None);
         assert!(!c.supervise && !c.fake);
+    }
+
+    #[test]
+    fn the_bundled_sidecar_is_found_next_to_the_app_binary() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("Chroma.app/Contents/MacOS/chroma");
+        assert_eq!(sidecar_for(&exe), None);
+        let side = dir.path().join("Chroma.app/Contents/Resources/chromad/chromad");
+        std::fs::create_dir_all(side.parent().unwrap()).unwrap();
+        std::fs::write(&side, "").unwrap();
+        assert_eq!(sidecar_for(&exe), Some(side));
     }
 
     #[test]
