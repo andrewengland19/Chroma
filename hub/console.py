@@ -237,6 +237,17 @@ def _fader(st: ConsoleState, intent: dict, src: str) -> None:
         _recheck_pickup(st, c)
 
 
+def observe_board(st: ConsoleState, faders: list) -> None:
+    """The board's first report (or the first after it came back): record where its 8 physical
+    faders are without applying them, so pickup knows which channels the board may not move
+    yet (ghost markers). Not an intent: nothing changes in the look."""
+    for i, v in enumerate(faders[:CHANNELS_PER_BANK]):
+        st.board_raw[i] = _unit(v)
+    for c in st.channels:
+        if c.bank == st.bank:
+            _recheck_pickup(st, c)
+
+
 def _flash(st: ConsoleState, intent: dict, src: str) -> None:
     c = st.channel(st.bank, _ch(intent))
     down = _flag(intent, "down")

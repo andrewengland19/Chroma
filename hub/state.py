@@ -46,6 +46,7 @@ class StateAssembler:
         self.activity: dict = {"source": None, "dur_ms": None, "lanes": []}
         self.takes = None                   # chromad's TakeService: rec / play / activity / takes_rev
         self.agent = None                   # chromad's AgentService: the Agent tab
+        self.board = None                   # chromad's BoardLink: State.board_link
         self._art_ref = None
         self._art_rev = 0
         self._pos_val: Optional[int] = None
@@ -115,6 +116,7 @@ class StateAssembler:
             "takes_rev": self.takes_rev,
             "activity": self.activity,
             "agent": idle_state(),
+            "board_link": self.board.info() if self.board else {"paired": False, "port": 9876, "id": None},
         }
         if self.takes is not None:
             state.update(self.takes.state_fields())

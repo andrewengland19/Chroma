@@ -1,0 +1,8 @@
+{
+  "id": 22,
+  "ok": true,
+  "key": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+  "port": 9876,
+  "hosts": ["192.168.1.20"],
+  "created": true
+}

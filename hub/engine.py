@@ -558,7 +558,9 @@ class Engine(DeviceListener, PushListener):
     async def set_config(self, partial: dict) -> dict:
         """Apply a partial config, persist it, and repaint from cached artwork so
         slider moves are visible immediately (mirrors the old Electron 'Apply=live')."""
-        known = {f.name for f in fields(Config)}
+        # `ha` is edited in config.json only: this path is reachable unauthenticated over the LAN,
+        # and ha.url decides where the Keychain Home Assistant token is sent.
+        known = {f.name for f in fields(Config)} - {"ha"}
         updates = {k: v for k, v in partial.items() if k in known}
         for k, v in updates.items():
             setattr(self.cfg, k, v)

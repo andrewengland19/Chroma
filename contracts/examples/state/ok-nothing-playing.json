@@ -353,5 +353,10 @@
     "error": null,
     "can_undo": false,
     "saved_as": null
+  },
+  "board_link": {
+    "paired": false,
+    "port": 9876,
+    "id": null
   }
 }

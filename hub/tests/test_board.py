@@ -12,6 +12,7 @@ from conftest import assert_valid
 from console import is_edge
 from outputs.base import HSB
 from test_rig_ops import op, start, stop, wait_for
+from test_takes_daemon import advance, fake_daemon
 
 
 @pytest.fixture
@@ -183,27 +184,25 @@ async def test_nothing_is_pushed_once_auto_resumes_elsewhere(daemon):
 
 # ---- safety and pacing ---------------------------------------------------------------------------
 
-async def test_flash_hammering_is_held_to_3hz_on_every_fixture(daemon):
-    d = daemon
-    await board(d)
-    await intent(d, intent="fader", ch=8, v=0.0)
+async def test_flash_hammering_is_held_to_3hz_on_every_fixture():
+    # Fake clock: nothing moves until the test advances it, so load cannot change the edge count.
+    d, fc = fake_daemon()
+    await d.handle({"op": "intent", "intent": {"intent": "fader", "ch": 8, "v": 0.0}})
+    advance(d, fc, 100)
     since = len(d.virtual.frames)
-    t0 = time.monotonic()
-    i = 0
-    while time.monotonic() - t0 < 2.5:                          # 20 Hz press/release
-        await intent(d, intent="flash", ch=8, down=i % 2 == 0)
-        i += 1
-        await asyncio.sleep(0.025)
-    await asyncio.sleep(1.2)
-    frames = vframes(d, since)
+    for i in range(100):                                        # 20 Hz press/release for 2.5 s
+        await d.handle({"op": "intent", "intent": {"intent": "flash", "ch": 8, "down": i % 2 == 0}})
+        advance(d, fc, 25)
+    advance(d, fc, 1200)
     edges, last = [], None
-    for t, _fid, hsb, _f in frames:
+    for t, _fid, hsb, _f in vframes(d, since):
         if is_edge(last, hsb):
             edges.append(t)
         last = hsb
     assert len(edges) >= 8                                       # it still flashes ...
     for a in edges:                                              # ... but <= 6 edges in any second
         assert len([b for b in edges if a <= b < a + 1.0]) <= 6
+    await d.shutdown()
 
 
 async def test_blackout_is_not_delayed_by_the_strobe_hold(daemon):

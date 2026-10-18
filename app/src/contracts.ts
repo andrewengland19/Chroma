@@ -360,6 +360,7 @@ export interface State {
   takes_rev: number;
   activity: Activity;
   agent: AgentState;
+  board_link: BoardLink;
 }
 export interface NowPlayingState {
   /**
@@ -496,6 +497,14 @@ export interface AgentState {
   error: string | null;
   can_undo: boolean;
   saved_as: string | null;
+}
+/**
+ * Board UDP link (BUILD_ORDER §5.5). paired = ~/.chroma/board.key exists, so the listener is on; id = board id of the last valid datagram, null until one arrives.
+ */
+export interface BoardLink {
+  paired: boolean;
+  port: number;
+  id: string | null;
 }
 /**
  * Raw fader position. Board-sourced values go through pickup (§5.3).

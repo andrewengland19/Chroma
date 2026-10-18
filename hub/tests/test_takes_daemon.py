@@ -19,11 +19,11 @@ from test_rig_ops import op, start, stop
 VL = "virtual-light-1"           # on channel A8 (FX) in the default rig
 
 
-def fake_daemon():
+def fake_daemon(**kw):
     from daemon import Chromad
     fc = FakeClock()
     sock = os.path.join(tempfile.mkdtemp(prefix="cx"), "chromad.sock")
-    d = Chromad(asyncio.get_running_loop(), fake=True, clock=fc, socket_path=sock)
+    d = Chromad(asyncio.get_running_loop(), fake=True, clock=fc, socket_path=sock, **kw)
     d.engine.provider = d.fake_provider          # what engine.run() would connect
     d.fake_provider.set_index(0)                 # "Older", playing from 0
     d.poll_now()
