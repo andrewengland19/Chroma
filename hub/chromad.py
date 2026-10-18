@@ -33,6 +33,8 @@ def parse_args(argv=None):
     ap.add_argument("--socket", help="socket path (default <home>/chromad.sock)")
     ap.add_argument("--replay-offset-ms", type=int, default=0,
                     help="global take replay offset (ms, + = later), on top of each take's nudge")
+    ap.add_argument("--board-port", type=int, default=9876,
+                    help="UDP port for the physical board (listens only after board.pairing created board.key)")
     ap.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     ap.add_argument("--allow-alongside", action="store_true",
                     help="start even if the old hub (server.py) is running on this home")
@@ -90,7 +92,7 @@ def main(argv=None) -> int:
     async def run():
         loop = asyncio.get_running_loop()
         d = Chromad(loop, fake=args.fake, no_lifx=args.no_lifx, socket_path=args.socket,
-                    replay_offset_ms=args.replay_offset_ms)
+                    replay_offset_ms=args.replay_offset_ms, board_port=args.board_port)
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, d.request_stop)
         await d.run()

@@ -400,6 +400,11 @@
       "error": null,
       "can_undo": false,
       "saved_as": null
+    },
+    "board_link": {
+      "paired": true,
+      "port": 9876,
+      "id": "sim-1"
     }
   }
 }

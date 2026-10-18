@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["now", "who", "art_mode", "bank", "fader_fn", "master", "blackout", "channels",
                "last_touched", "room", "cues", "cue_active", "palette", "rec", "play", "health",
-               "fixtures_rev", "takes_rev", "activity", "agent"],
+               "fixtures_rev", "takes_rev", "activity", "agent", "board_link"],
   "additionalProperties": false,
   "properties": {
     "now": { "$ref": "#/$defs/now" },
@@ -28,7 +28,8 @@
     "fixtures_rev": { "type": "integer", "minimum": 0, "description": "Bumps when fixtures/groups/banks change; the UI refetches them." },
     "takes_rev": { "type": "integer", "minimum": 0, "description": "Bumps when the take library changes; the UI refetches takes.list." },
     "activity": { "$ref": "#/$defs/activity" },
-    "agent": { "$ref": "#/$defs/agent" }
+    "agent": { "$ref": "#/$defs/agent" },
+    "board_link": { "$ref": "#/$defs/board_link" }
   },
   "$defs": {
     "now": {
@@ -150,6 +151,12 @@
         "pos_ms": { "$ref": "common.schema.json#/$defs/ms" },
         "loop": { "type": "boolean" }
       }
+    },
+    "board_link": {
+      "type": "object", "title": "BoardLink", "required": ["paired", "port", "id"], "additionalProperties": false,
+      "description": "Board UDP link (BUILD_ORDER §5.5). paired = ~/.chroma/board.key exists, so the listener is on; id = board id of the last valid datagram, null until one arrives.",
+      "properties": { "paired": { "type": "boolean" }, "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+                      "id": { "type": ["string", "null"] } }
     },
     "health": {
       "type": "object", "title": "Health", "required": ["atv", "lifx", "board"], "additionalProperties": false,

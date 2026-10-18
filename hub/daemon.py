@@ -14,6 +14,7 @@ import logging
 import os
 from typing import Optional
 
+from board_link import BOARD_PORT, BoardLink
 from clock import ClockSample, MonotonicClock, SongClock
 from agentsvc import AgentService
 from config import Config
@@ -65,7 +66,8 @@ class Chromad:
     TICK_S = 0.25         # publish the interpolated position at 4 Hz while playing
 
     def __init__(self, loop, *, fake: bool = False, no_lifx: bool = False, clock=None,
-                 socket_path: Optional[str] = None, tracks: Optional[list] = None, replay_offset_ms: int = 0):
+                 socket_path: Optional[str] = None, tracks: Optional[list] = None, replay_offset_ms: int = 0,
+                 board_port: int = BOARD_PORT, board_host: str = "0.0.0.0"):
         self.loop = loop
         self.home = chroma_dir()
         self.clock = clock or MonotonicClock()
@@ -130,6 +132,10 @@ class Chromad:
         self.state.takes = self.takes
         self.agent = AgentService(self)
         self.state.agent = self.agent
+        # M6: the physical board over UDP (off until board.key exists)
+        self.board = BoardLink(self, port=board_port, host=board_host)
+        self.state.board = self.board
+        self.state.board_health = "none"
 
     # ---- now playing → SongClock -------------------------------------------
     def _on_np(self, np, source: str) -> None:
@@ -184,6 +190,8 @@ class Chromad:
             return None
         if op == "intent":
             return await self.apply_intent(req.get("intent"), src="ui")
+        if op == "board.pairing":
+            return await self.board.pair()
         if op == "cues.rename":
             i, name = req.get("i"), req.get("name")
             if isinstance(i, bool) or not isinstance(i, int) or not 0 <= i <= 7:
@@ -513,7 +521,7 @@ class Chromad:
         engine_task = self.loop.create_task(self.engine.run())
         self._tasks = [engine_task] + [self.loop.create_task(c()) for c in
                                        (self._bus_watch, self._poll_position, self._ticker,
-                                        self.scheduler.run, self.takes.run)]
+                                        self.scheduler.run, self.takes.run, self.board.run)]
         log.info(f"chromad running (home {self.home}{', fake devices' if self.fake else ''})")
         if not any(f.type == "lifx" for f in self.store.fixtures.values()):
             # first start (or an earlier import found nothing): bring the bulbs into the rig
@@ -525,6 +533,7 @@ class Chromad:
 
     async def shutdown(self, engine_task=None) -> None:
         self.takes.stop_rec("engine stopped")
+        self.board.close()
         await self.ipc.stop()
         if self._save_task is not None:
             self._save_task.cancel()
