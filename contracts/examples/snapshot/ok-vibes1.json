@@ -1,0 +1,8 @@
+{ "v": 1, "scene": "vibes1", "captured_at": "2026-10-18T20:00:00Z", "source": "capture", "static": true,
+  "fixtures": {
+    "tv-left": { "hue": 280, "sat": 0.7, "brightness": 0.5, "kelvin": 3500 },
+    "couch-left": { "hue": 0, "sat": 0, "brightness": 0.6, "kelvin": 2400, "hex": "#996d2f" },
+    "pendant": { "hue": 0, "sat": 0, "brightness": 0, "kelvin": 2700 } },
+  "unmatched": ["Garage"],
+  "descriptors": { "lit_count": 2, "mean_brightness": 0.55, "peak_brightness": 0.6, "kelvin_mean": 2400, "kelvin_min": 2400,
+                   "kelvin_max": 2400, "dominant_hue": "purple", "lr_balance": -0.2, "fb_balance": 0.1, "zone_contrast": 0.1 } }

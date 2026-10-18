@@ -1,0 +1,3 @@
+{ "v": 1, "scene": "agent.off", "source": "stored", "static": true, "fixtures": {},
+  "descriptors": { "lit_count": 0, "mean_brightness": 0, "peak_brightness": 0, "kelvin_mean": null, "kelvin_min": null,
+                   "kelvin_max": null, "dominant_hue": null, "lr_balance": 0, "fb_balance": 0, "zone_contrast": 0 } }
