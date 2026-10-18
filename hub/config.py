@@ -67,6 +67,10 @@ class Config:
     api_host: str = "0.0.0.0"
     api_port: int = 8765
 
+    # Home Assistant connector (hub/homeassistant.py). Disabled by default; the token is
+    # NOT stored here (macOS Keychain, see keystore.load_ha_token). Shape: see HaConfig.
+    ha: dict = field(default_factory=dict)
+
     def pipeline_params(self) -> PipelineParams:
         return PipelineParams(
             white_sat_threshold=self.white_sat_threshold,

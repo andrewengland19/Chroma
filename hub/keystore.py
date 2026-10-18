@@ -48,3 +48,39 @@ def store_anthropic_key(key: str) -> bool:
 
 def has_anthropic_key() -> bool:
     return load_anthropic_key() is not None
+
+
+# ---- Home Assistant long-lived access token (never in config.json or git) -------
+# Env var CHROMA_HA_TOKEN overrides; else Keychain item `chroma-hub` / `homeassistant`.
+_HA_ACCOUNT = "homeassistant"
+
+
+def load_ha_token() -> str | None:
+    tok = os.environ.get("CHROMA_HA_TOKEN")
+    if tok and tok.strip():
+        return tok.strip()
+    try:
+        out = subprocess.run(
+            ["security", "find-generic-password", "-s", _SERVICE, "-a", _HA_ACCOUNT, "-w"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if out.returncode == 0:
+            return out.stdout.strip() or None
+    except Exception:
+        pass
+    return None
+
+
+def store_ha_token(token: str) -> bool:
+    token = (token or "").strip()
+    if not token:
+        return False
+    try:
+        r = subprocess.run(
+            ["security", "add-generic-password", "-U",
+             "-s", _SERVICE, "-a", _HA_ACCOUNT, "-w", token],
+            capture_output=True, text=True, timeout=5,
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
