@@ -66,7 +66,7 @@ Separate home + `--no-lifx`: real now-playing / artwork / position, no bulbs, th
 | `CHROMA_SUPERVISE` | `1` | `0` = only attach to an already-running chromad |
 | `CHROMA_DEBUG_IPC` | unset | log every UI request in the terminal |
 
-A packaged `.app` (double-click to open, engine at login) arrives in M7.
+See "Packaged app" below for the double-clickable `.app` (M7).
 
 ## Devices: Fake | Real (Chroma → Devices, or the tray)
 
@@ -109,6 +109,57 @@ first if `package-lock.json` changed. "Latest" = whatever local `main` (or the c
 pulled, no branch is switched. `CHROMA_HOME` / `CHROMAD_ARGS` / `CHROMAD_CMD` / `CHROMA_SUPERVISE` carry over. The
 relaunched app runs detached (no terminal); its output and the steps go to `~/Library/Logs/CHROMA/force-update.log`.
 Plan only, kills nothing: `FORCE_UPDATE_DRY_RUN=1 bash app/src-tauri/force_update.sh 0 /Users/andy/Code/Chroma`.
+
+## Packaged app (M7)
+
+A clean checkout builds a self-contained `Chroma.app` (no Python or Node needed to *run* it). Needs: Rust,
+Node, Python 3.13 with `hub/.venv` (below). Apple-silicon Mac (the sidecar is built for the host's architecture).
+
+```bash
+cd /Users/andy/Code/Chroma
+python3 -m venv hub/.venv && hub/.venv/bin/pip install -r hub/requirements.txt   # once
+npm --prefix app install                                                         # once
+cd app && npm run bundle
+open src-tauri/target/release/bundle/macos/Chroma.app
+```
+
+- `npm run bundle` = `tools/build_sidecar.sh` (PyInstaller freezes `hub/chromad.py` into
+  `app/src-tauri/sidecar/chromad/`, ~30 s, installs PyInstaller into `hub/.venv` if missing) + `tauri build --bundles app`
+  with `src-tauri/tauri.sidecar.conf.json`, which puts that folder in the app as `Contents/Resources/chromad/`.
+  `tools/build_sidecar.sh --smoke` builds the engine alone, starts it with `--fake` and checks that it answers.
+- A release app defaults to the **real** engine in `~/.chroma` (the bundled `chromad`); Devices → Fake still works.
+  `CHROMA_HOME` / `CHROMAD_ARGS` / `CHROMAD_CMD` / `CHROMA_SUPERVISE` behave as above.
+- Plain `npm run tauri build` (no `--config`) makes an app without the engine; it then needs `CHROMAD_CMD`.
+- Re-run `npm run bundle` after any `hub/` change; `tauri dev` is unaffected (it runs `hub/.venv` + `chromad.py`).
+- Not done: code signing, hardened runtime, notarization, universal2 / Intel. An unsigned app opened from a download
+  needs right-click → Open the first time; the Local Network prompt (Apple TV, bulbs) appears on first real use.
+  Needed to ship it to others: an Apple Developer ID certificate, `codesign --options runtime` on the app and on every
+  Mach-O in `Resources/chromad/` (PyInstaller's `--codesign-identity`), the `com.apple.security.network.client`-style
+  entitlements for the runtime, then `notarytool submit` and `stapler staple`.
+
+### Engine at login (LaunchAgent)
+
+Tray (or **Chroma** menu) → **Run engine at login** (a check item) writes
+`~/Library/LaunchAgents/com.chroma.chromad.plist`; unchecking removes it (and stops the engine launchd started).
+Nothing is written before you click, and installing does not start anything now: it takes effect at the next login,
+when chromad runs headless with no window (real devices, `~/.chroma`, log `~/.chroma/chromad.log`). Opening the app
+then **attaches** to it (status "Engine: running"); Quit leaves it running. A crash restarts it; `lite show stop`
+leaves it stopped until the next login. The plist stores the engine's path: a bundled app writes the sidecar inside the
+`.app`, a dev build writes `hub/.venv/bin/python` + `hub/chromad.py` of the checkout. Click it off and on after moving
+or rebuilding the app. By hand: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.chroma.chromad.plist`
+starts it now; `launchctl bootout gui/$(id -u)/com.chroma.chromad` stops it.
+
+### `lite show` (the CLI)
+
+`lite show start|stop|status|restart|refresh` controls **chromad** (the same engine the app and the LaunchAgent run):
+`start` spawns it detached (log `~/.chroma/chromad.log`), `stop` signals the pid in `~/.chroma/chromad.pid`, `status`
+prints pid / device / lights / track, `refresh` repaints now through the socket. `lite show setkey` is unchanged.
+After this change, `lite show start` does **not** serve `http://<mac>:8765/` (Lights tab, TV Remote, `/agent`,
+Ctrl+Shift+L): for those run `lite show start --legacy` instead (the old `server.py` hub; it and chromad refuse to run
+together on one home because both drive the bulbs). `lite` itself is outside the repo: apply
+`docs/mvp/lite-show.patch` (`cd ~ && patch -p1 < /Users/andy/Code/Chroma/docs/mvp/lite-show.patch`; it only passes
+`--legacy` through and updates the help text). Without the patch `lite show …` already delegates to chromad because
+`lite` runs `hub/showctl.py`.
 
 ## Tests
 

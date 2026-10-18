@@ -82,6 +82,20 @@ impl DeviceModes {
         }
     }
 
+    /// The engine a login LaunchAgent runs: always the real devices in `~/.chroma`, plain
+    /// arguments (no launch-time `CHROMA_HOME` / `CHROMAD_ARGS`, never `--fake`), the same
+    /// engine command as the app (`CHROMAD_CMD`, else the bundled sidecar / dev venv).
+    pub fn agent_config(&self) -> EngineConfig {
+        let home = self.user_home.join(".chroma").to_string_lossy().into_owned();
+        let get = |k: &str| match k {
+            "CHROMA_HOME" => Some(home.clone()),
+            "CHROMAD_ARGS" => Some(String::new()),
+            "CHROMAD_CMD" => self.cmd.clone(),
+            _ => None,
+        };
+        EngineConfig::resolve(get, self.debug, &self.repo_root, &self.user_home)
+    }
+
     pub fn config_for(&self, mode: Devices) -> EngineConfig {
         let home = self.home_for(mode).to_string_lossy().into_owned();
         let mut args = self.launch_extra.clone();
@@ -162,6 +176,20 @@ mod tests {
         assert_eq!(real.args, vec!["/repo/hub/chromad.py", "--home", "/Users/a/.chroma"]);
         assert!(!real.fake && real.supervise);
         assert_eq!(m.config_for(Devices::Fake), *m.launch());
+    }
+
+    #[test]
+    fn the_login_agent_runs_the_real_engine_whatever_the_launch_environment() {
+        let m = DeviceModes::new(
+            env(&[("CHROMA_HOME", "/tmp/chroma-hw"), ("CHROMAD_ARGS", "--no-lifx --fake")]),
+            true,
+            Path::new("/repo"),
+            Path::new("/Users/a"),
+        );
+        let a = m.agent_config();
+        assert_eq!(a.home, PathBuf::from("/Users/a/.chroma"));
+        assert_eq!(a.args, vec!["/repo/hub/chromad.py", "--home", "/Users/a/.chroma"]);
+        assert!(!a.fake);
     }
 
     #[test]

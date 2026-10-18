@@ -77,7 +77,8 @@ launchd, Pass 5) shuts it down cleanly.
 | `distribute.py` | **Pass 4** — round-robin + OKLab IDW colour distribution |
 | `scenes.py` | **Pass 4.5** — persistent per-album scenes (`~/.chroma/scenes.json`) |
 | `web/` | **Pass 4** — the web GUI (`index.html`, `app.js`, `style.css`) |
-| `showctl.py` | background start/stop/refresh (`lite show …`), now launches `server.py` |
+| `showctl.py` | `lite show start\|stop\|status\|restart\|refresh`: controls **chromad** (pid file + Unix socket); `--legacy` = the old `server.py` hub (M7) |
+| `chromad.py` / `daemon.py` | the MVP engine daemon the app, `lite show` and the login LaunchAgent run; PyInstaller-frozen into the app by `tools/build_sidecar.sh` |
 | `tv_cmd.py` | **`tv` CLI** — rapid-fire Apple TV remote from any terminal |
 | `tv` | shell wrapper — `exec .venv/bin/python tv_cmd.py "$@"` |
 | `tv_hotkey.py` | global hotkey daemon — `Ctrl+Shift+Enter` → `tv ok` (select) |
@@ -86,7 +87,10 @@ launchd, Pass 5) shuts it down cleanly.
 
 ## 6. Web GUI (Pass 4)
 
-`lite show start` serves a full control GUI at `http://<mac-ip>:8765/` (open it on desktop
+> **M7:** `lite show start` now starts `chromad` (no web GUI). The GUI, Lights tab and TV Remote below are served by
+> the old hub: `lite show start --legacy`.
+
+`lite show start --legacy` serves a full control GUI at `http://<mac-ip>:8765/` (open it on desktop
 or phone). One **bidirectional** WebSocket carries state + events out and commands in:
 - **Room canvas** — drag each light to its real `(x,y)`; nodes show live per-bulb colour.
 - **Modes** — Deterministic (art per region), Paint, AI (Ollama reasoning shown live).

@@ -113,3 +113,22 @@ kill %1; unset CHROMA_HOME
 hub/.venv/bin/python tools/ui_compare.py takes /tmp/ui
 hub/.venv/bin/python tools/ui_compare.py console /tmp/ui --region 0 600 1178 691
 ```
+
+## M7 — packaging and `lite show` (safe half)
+
+```bash
+# lite show against a throwaway fake engine (no hardware, ~/.chroma untouched)
+export CHROMA_HOME=$(mktemp -d /tmp/cx.XXXX) CHROMAD_CMD="$PWD/hub/.venv/bin/python $PWD/hub/chromad.py --fake"
+S="hub/.venv/bin/python hub/showctl.py"
+$S start && $S status && $S refresh && $S restart && $S stop && $S stop
+unset CHROMA_HOME CHROMAD_CMD
+
+# the frozen engine, then the packaged app
+tools/build_sidecar.sh --smoke            # "smoke ok: sidecar answers get_state"
+(cd app && npm run bundle)                # app/src-tauri/target/release/bundle/macos/Chroma.app
+
+# tests
+(cd hub && .venv/bin/python -m pytest -q tests/test_showctl.py tests/test_chromad.py)
+(cd app/src-tauri && cargo test launch_agent)
+```
+Login agent and live `lite`: HARDWARE_CHECKLIST HM7.1–HM7.4.

@@ -1,0 +1,36 @@
+--- a/.local/bin/lite	2026-10-09 21:34:58
++++ b/.local/bin/lite	2026-10-18 14:05:16
+@@ -45,11 +45,14 @@
+                                 # describe a look; Claude sets the lights
+   lite ask --undo               # put the room back how it was before the last ask
+   lite ask --save NAME          # save the room as a NEW scene (never overwrites)
+-  lite show {start|stop|status|restart|refresh|setkey}
+-                                # CHROMA hub: automated Apple TV → LIFX light show.
+-                                # Apple Music plays on the Apple TV; the hub paints the
++  lite show {start|stop|status|restart|refresh|setkey} [--legacy]
++                                # CHROMA engine (chromad): automated Apple TV → LIFX light
++                                # show. Apple Music plays on the Apple TV; chromad paints the
+                                 # living-room lights from the album art. Runs headless in
+-                                # the background → ~/.chroma/hub.log
++                                # the background → ~/.chroma/chromad.log. The CHROMA app (or
++                                # its login LaunchAgent) runs the same engine; these commands
++                                # control it too. --legacy = the old server.py hub (Music page,
++                                # Lights agent, TV Remote web UI) → ~/.chroma/hub.log
+   lite show refresh             # force the running hub to re-read the current album art
+                                 # and repaint the lights now (e.g. after idle time)
+ 
+@@ -965,12 +968,12 @@
+             print("failed to store key", file=sys.stderr)
+         sys.exit(r.returncode)
+     if sub not in ("start", "stop", "restart", "status", "refresh"):
+-        print("usage: lite show {start|stop|restart|status|refresh|setkey}", file=sys.stderr)
++        print("usage: lite show {start|stop|restart|status|refresh|setkey} [--legacy]", file=sys.stderr)
+         sys.exit(2)
+     if not os.path.exists(HUB_SHOWCTL):
+         print(f"hub not found at {HUB_SHOWCTL}", file=sys.stderr); sys.exit(1)
+     py = HUB_VENV_PY if os.path.exists(HUB_VENV_PY) else PYTHON_BIN
+-    os.execv(py, [py, HUB_SHOWCTL, sub])
++    os.execv(py, [py, HUB_SHOWCTL, sub] + [a for a in rest[1:] if a == "--legacy"])
+ 
+ 
+ # ── voice ───────────────────────────────────────────────────────────────────

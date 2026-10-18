@@ -168,4 +168,155 @@ def test_usage(sc, monkeypatch, capsys):
     with pytest.raises(SystemExit) as e:
         sc.main()
     assert e.value.code == 2
-    assert capsys.readouterr().err == "usage: showctl.py {start|stop|restart|status|refresh}\n"
+    assert capsys.readouterr().err == "usage: showctl.py [--legacy] {start|stop|restart|status|refresh}\n"
+
+
+# ---- M7: the default engine is chromad (socket + pid file), --legacy is the old hub ----------
+
+DUMMY_CHROMAD = r"""
+import json, os, signal, socket, sys, threading
+home = sys.argv[sys.argv.index("--home") + 1]
+if os.environ.get("DUMMY_FAIL"):
+    sys.exit(int(os.environ["DUMMY_FAIL"]))
+state = json.loads(os.environ.get("DUMMY_REPLY", "{}"))
+srv = socket.socket(socket.AF_UNIX); srv.bind(os.path.join(home, "chromad.sock")); srv.listen(4)
+open(os.path.join(home, "chromad.pid"), "w").write(str(os.getpid()))
+signal.signal(signal.SIGTERM, lambda *a: os._exit(0))
+def serve(c):
+    f = c.makefile("rwb")
+    for line in f:
+        req = json.loads(line)
+        out = {"id": req["id"], "ok": True}
+        if req["op"] == "refresh":
+            out["result"] = state
+        f.write(json.dumps(out).encode() + b"\n"); f.flush()
+while True:
+    c, _ = srv.accept(); threading.Thread(target=serve, args=(c,), daemon=True).start()
+"""
+
+
+@pytest.fixture
+def eng(monkeypatch, tmp_path_factory):
+    """showctl pointed at a short throwaway home; chromad replaced by a dummy that listens on the socket."""
+    import tempfile
+    import showctl
+    home = tempfile.mkdtemp(prefix="cx")
+    monkeypatch.setattr(showctl, "CHROMA_DIR", home)
+    monkeypatch.setattr(showctl, "PID_FILE", os.path.join(home, "hub.pid"))
+    monkeypatch.setattr(showctl, "LOG_FILE", os.path.join(home, "hub.log"))
+    monkeypatch.setattr(showctl, "STATE_FILE", os.path.join(home, "state.json"))
+    monkeypatch.setattr(showctl, "ENGINE_PID_FILE", os.path.join(home, "chromad.pid"))
+    monkeypatch.setattr(showctl, "ENGINE_LOG_FILE", os.path.join(home, "chromad.log"))
+    monkeypatch.setattr(showctl, "ENGINE_SOCKET", os.path.join(home, "chromad.sock"))
+    script = os.path.join(home, "dummy_chromad.py")
+    with open(script, "w") as f:
+        f.write(DUMMY_CHROMAD)
+    monkeypatch.setenv("CHROMAD_CMD", f"{sys.executable} {script}")
+    yield showctl
+    pid = showctl._engine_pid()
+    if pid:
+        os.kill(pid, 9)
+
+
+def test_engine_status_stopped(eng, capsys):
+    assert eng.engine_status() == 0
+    assert capsys.readouterr().out == "chroma show: stopped\n"
+
+
+def test_engine_start_status_refresh_stop_restart(eng, autoreap, capsys, monkeypatch):
+    monkeypatch.setenv("DUMMY_REPLY", json.dumps(
+        {"ok": True, "enabled": True, "message": "lights refreshed", "track": "A — B", "album": "C"}))
+    assert eng.engine_start() == 0
+    pid = eng._engine_pid()
+    assert pid and capsys.readouterr().out == f"chroma show started (pid {pid}) → tail -f {eng.ENGINE_LOG_FILE}\n"
+    assert eng.engine_start() == 0
+    assert capsys.readouterr().out == f"chroma show already running (pid {pid}) → tail -f {eng.ENGINE_LOG_FILE}\n"
+    with open(os.path.join(eng.CHROMA_DIR, "state.json"), "w") as f:
+        json.dump({"connected": True, "device": "Living Room", "lights": 5, "track": "A — B", "playing": False}, f)
+    assert eng.engine_status() == 0
+    assert capsys.readouterr().out == (
+        f"chroma show: running (pid {pid})\n"
+        "  device: Living Room (connected)   lights: 5\n"
+        "  track:  A — B  (paused)\n")
+    assert eng.engine_refresh() == 0                                   # through the socket, no HTTP
+    assert capsys.readouterr().out == "chroma show: lights refreshed — A — B  [C]\n"
+    assert eng.engine_stop() == 0
+    assert capsys.readouterr().out == f"chroma show stopped (pid {pid})\n"
+    assert not eng._alive(pid) and not os.path.exists(eng.ENGINE_PID_FILE)
+    assert eng.engine_stop() == 0
+    assert capsys.readouterr().out == "chroma show not running\n"
+
+
+@pytest.mark.parametrize("reply,rc,out", [
+    ({"ok": True, "reconnecting": True, "message": "Apple TV not connected — reconnecting now"}, 0,
+     "chroma show: Apple TV not connected — reconnecting now; lights update once it's back (tail -f {log})\n"),
+    ({"ok": False, "message": "nothing playing on the Apple TV"}, 1,
+     "chroma show: nothing playing on the Apple TV\n"),
+])
+def test_engine_refresh_outputs(eng, autoreap, capsys, monkeypatch, reply, rc, out):
+    monkeypatch.setenv("DUMMY_REPLY", json.dumps(reply))
+    assert eng.engine_start() == 0
+    capsys.readouterr()
+    assert eng.engine_refresh() == rc
+    assert capsys.readouterr().out == out.format(log=eng.ENGINE_LOG_FILE)
+
+
+def test_engine_refresh_painting_off_hint(eng, autoreap, capsys, monkeypatch):
+    monkeypatch.setenv("DUMMY_REPLY", json.dumps({"ok": True, "enabled": False, "message": "refreshed, but painting is disabled"}))
+    eng.engine_start()
+    capsys.readouterr()
+    assert eng.engine_refresh() == 0
+    assert "painting is off, so the lights weren't touched" in capsys.readouterr().out
+
+
+def test_engine_refresh_when_not_running(eng, capsys):
+    assert eng.engine_refresh() == 1
+    assert capsys.readouterr().err == "chroma show: not running — start it with: lite show start\n"
+
+
+def test_engine_start_reports_immediate_failure(eng, capsys, monkeypatch):
+    monkeypatch.setenv("DUMMY_FAIL", "1")
+    assert eng.engine_start() == 1
+    assert capsys.readouterr().err == f"chroma show failed to start — see {eng.ENGINE_LOG_FILE}\n"
+
+
+def test_engine_start_refuses_next_to_the_old_hub(eng, capsys):
+    with open(eng.PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    assert eng.engine_start() == 1
+    assert "the old hub (server.py) is running" in capsys.readouterr().err
+    os.remove(eng.PID_FILE)
+
+
+def test_engine_ignores_a_stale_pid_file(eng, capsys):
+    with open(eng.ENGINE_PID_FILE, "w") as f:
+        f.write(str(os.getpid()))   # alive, but not a chromad: never signalled
+    assert eng._engine_pid() is None
+    assert eng.engine_stop() == 0
+    assert capsys.readouterr().out == "chroma show not running\n"
+
+
+def test_main_routes_legacy_flag(eng, monkeypatch):
+    calls = []
+    monkeypatch.setattr(eng, "start", lambda: calls.append("legacy") or 0)
+    monkeypatch.setattr(eng, "engine_start", lambda: calls.append("engine") or 0)
+    for argv, want in ((["showctl.py", "start"], "engine"), (["showctl.py", "--legacy", "start"], "legacy")):
+        monkeypatch.setattr(sys, "argv", argv)
+        with pytest.raises(SystemExit):
+            eng.main()
+        assert calls[-1] == want
+
+
+def test_engine_without_a_pid_file_is_reported_not_ignored(eng, autoreap, capsys):
+    """An engine from before chromad.pid existed: socket answers, no pid file."""
+    assert eng.engine_start() == 0
+    pid = eng._engine_pid()
+    os.remove(eng.ENGINE_PID_FILE)
+    capsys.readouterr()
+    assert eng.engine_status() == 0
+    assert "running (pid unknown" in capsys.readouterr().out
+    assert eng.engine_start() == 0
+    assert "already running (pid unknown)" in capsys.readouterr().out
+    assert eng.engine_stop() == 1
+    assert "without a pid file" in capsys.readouterr().err
+    os.kill(pid, 9)

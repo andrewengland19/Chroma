@@ -15,3 +15,7 @@ hub/.venv/
 app/node_modules/
 app/dist/
 app/src-tauri/target/
+
+# chromad sidecar (tools/build_sidecar.sh) and PyInstaller scratch
+app/src-tauri/sidecar/
+build/

@@ -99,7 +99,9 @@ def main(argv=None) -> int:
         asyncio.run(run())
     except RuntimeError as e:
         print(f"chromad: {e}", file=sys.stderr)
-        return 1
+        # losing the single-instance lock is not a failure: exit 0 so a launchd KeepAlive
+        # (SuccessfulExit=false) agent doesn't respawn forever next to the app's engine
+        return 0 if "already running" in str(e) else 1
     return 0
 
 

@@ -7,6 +7,8 @@
 //!   engine between fake devices (~/.chroma/dev) and the real ones (~/.chroma); saved.
 //! - Tray (and the CHROMA app menu): Force Update (force_update.rs) quits, ends every
 //!   CHROMA process, stops `lite show` and relaunches the latest dev version.
+//! - Tray and Chroma menu: "Run engine at login" (launch_agent.rs) installs / removes a LaunchAgent
+//!   that runs chromad headless at login; the app then attaches to it.
 //! - Tray: status, Open, Restart engine, Quit. Closing the window only hides it;
 //!   the engine keeps running. Quit (tray or ⌘Q) stops an engine the app spawned.
 //! - `chroma-art://` serves the current artwork (art.rs).
@@ -16,6 +18,7 @@ mod config;
 mod devices;
 mod force_update;
 mod ipc;
+mod launch_agent;
 mod supervisor;
 
 use ipc::EventSink;
@@ -71,6 +74,8 @@ struct Shell {
     target: StdMutex<Devices>,
     switch_lock: tokio::sync::Mutex<()>,
     checks: StdMutex<Vec<(CheckMenuItem<Wry>, Devices)>>,
+    /// the "Run engine at login" check items (tray + app menu)
+    login_checks: StdMutex<Vec<CheckMenuItem<Wry>>>,
 }
 
 fn toast(app: &AppHandle, level: &str, text: impl Into<String>) {
@@ -82,6 +87,54 @@ fn devices_submenu(app: &tauri::App, current: Devices) -> tauri::Result<(Submenu
     let real = CheckMenuItem::with_id(app, "devices_real", "Real", true, current == Devices::Real, None::<&str>)?;
     let sub = Submenu::with_items(app, "Devices", true, &[&fake, &real])?;
     Ok((sub, vec![(fake, Devices::Fake), (real, Devices::Real)]))
+}
+
+fn login_item(app: &tauri::App, installed: bool) -> tauri::Result<CheckMenuItem<Wry>> {
+    CheckMenuItem::with_id(app, "login_item", "Run engine at login", true, installed, None::<&str>)
+}
+
+/// What the LaunchAgent runs: the real engine in ~/.chroma (see `DeviceModes::agent_config`).
+fn agent_spec(modes: &DeviceModes) -> Result<launch_agent::AgentSpec, String> {
+    let cfg = modes.agent_config();
+    let program = cfg.program.clone().ok_or(
+        "no bundled engine found next to this app (build it with `npm run bundle`, or set CHROMAD_CMD)",
+    )?;
+    if !program.exists() {
+        return Err(format!("the engine command {} does not exist", program.display()));
+    }
+    Ok(launch_agent::AgentSpec { program, args: cfg.args.clone(), log: cfg.log_file() })
+}
+
+/// Chroma → Run engine at login: install or remove the LaunchAgent (only on this click).
+fn toggle_login(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let shell = app.state::<Shell>();
+        let home = shell.user_home.clone();
+        let modes = shell.modes.clone();
+        let done = tauri::async_runtime::spawn_blocking(move || {
+            if launch_agent::is_installed(&home) {
+                launch_agent::remove(&home, &launch_agent::SystemLaunchd)
+                    .map(|_| "The engine will no longer start at login".to_string())
+                    .map_err(|e| format!("could not remove the login agent: {e}"))
+            } else {
+                let spec = agent_spec(&modes)?;
+                launch_agent::install(&home, &spec)
+                    .map(|p| format!("The engine will start at login ({})", p.display()))
+                    .map_err(|e| format!("could not write the login agent: {e}"))
+            }
+        })
+        .await;
+        match done {
+            Ok(Ok(text)) => toast(&app, "info", text),
+            Ok(Err(e)) => toast(&app, "error", e),
+            Err(_) => {}
+        }
+        let installed = launch_agent::is_installed(&shell.user_home); // a click flips the check itself: show the truth
+        for item in shell.login_checks.lock().unwrap().iter() {
+            let _ = item.set_checked(installed);
+        }
+    });
 }
 
 fn sync_checks(shell: &Shell, mode: Devices) {
@@ -282,6 +335,8 @@ pub fn run() {
             let cfg = devices::initial(&modes, env_pinned, devices::load_choice(&choice_path));
             let current = Devices::of(&cfg);
             let (tray_devices, mut checks) = devices_submenu(app, current)?;
+            let installed = launch_agent::is_installed(&user_home);
+            let tray_login = login_item(app, installed)?;
             let status_item = MenuItem::with_id(app, "status", "Engine: connecting…", false, None::<&str>)?;
             let menu = Menu::with_items(
                 app,
@@ -291,6 +346,7 @@ pub fn run() {
                     &MenuItem::with_id(app, "open", "Open CHROMA", true, None::<&str>)?,
                     &MenuItem::with_id(app, "restart", "Restart engine", true, None::<&str>)?,
                     &tray_devices,
+                    &tray_login,
                     &PredefinedMenuItem::separator(app)?,
                     &MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?,
                     &MenuItem::with_id(app, "quit", "Quit CHROMA", true, None::<&str>)?,
@@ -312,6 +368,7 @@ pub fn run() {
                         });
                     }
                     "force_update" => force_update(app),
+                    "login_item" => toggle_login(app),
                     "devices_fake" => set_devices(app, Devices::Fake),
                     "devices_real" => set_devices(app, Devices::Real),
                     "quit" => quit(app),
@@ -320,17 +377,20 @@ pub fn run() {
                 .build(app)?;
 
             // the same item in the app menu (Chroma → Force Update), after "About"
+            let app_login = login_item(app, installed)?;
             let app_menu = Menu::default(app.handle())?;
             if let Some(MenuItemKind::Submenu(first)) = app_menu.items()?.into_iter().next() {
                 let (app_devices, more) = devices_submenu(app, current)?;
                 checks.extend(more);
                 first.insert(&PredefinedMenuItem::separator(app)?, 1)?;
                 first.insert(&app_devices, 2)?;
-                first.insert(&MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?, 3)?;
+                first.insert(&app_login, 3)?;
+                first.insert(&MenuItem::with_id(app, "force_update", "Force Update", true, None::<&str>)?, 4)?;
             }
             app.set_menu(app_menu)?;
             app.on_menu_event(|app, event| match event.id.as_ref() {
                 "force_update" => force_update(app),
+                "login_item" => toggle_login(app),
                 "devices_fake" => set_devices(app, Devices::Fake),
                 "devices_real" => set_devices(app, Devices::Real),
                 _ => {}
@@ -349,6 +409,7 @@ pub fn run() {
                 target: StdMutex::new(current),
                 switch_lock: tokio::sync::Mutex::new(()),
                 checks: StdMutex::new(checks),
+                login_checks: StdMutex::new(vec![tray_login, app_login]),
             });
             // a saved Real choice drives the real bulbs: the old hub must not run next to it
             // (chromad would refuse to start); an explicit environment is left as given
