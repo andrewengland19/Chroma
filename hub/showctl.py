@@ -225,6 +225,9 @@ def engine_start() -> int:
     if pid:
         print(f"chroma show already running (pid {pid}) → tail -f {ENGINE_LOG_FILE}")
         return 0
+    if _engine_up():   # an engine from before chromad.pid existed
+        print(f"chroma show already running (pid unknown) → tail -f {ENGINE_LOG_FILE}")
+        return 0
     if _running_pid():
         print("chroma show: the old hub (server.py) is running — stop it first: "
               "lite show stop  (or use --legacy)", file=sys.stderr)
@@ -258,6 +261,10 @@ def engine_start() -> int:
 def engine_stop() -> int:
     pid = _engine_pid()
     if not pid:
+        if _engine_up():
+            print("chroma show: an engine is running without a pid file (started by an older build); "
+                  "quit it from the Chroma app or kill the chromad process", file=sys.stderr)
+            return 1
         if _running_pid():
             return stop()   # only the old hub is up
         print("chroma show not running")
@@ -281,6 +288,9 @@ def engine_stop() -> int:
 
 def engine_status() -> int:
     pid = _engine_pid()
+    if not pid and _engine_up():
+        print("chroma show: running (pid unknown: started by an older build)")
+        return 0
     if not pid:
         if _running_pid():
             print("chroma show: the old hub (server.py) is running — use --legacy")

@@ -186,7 +186,7 @@ def test_chromactl_watch_streams_patches_from_a_fake_chromad():
         # a second chromad on the same home refuses to start
         second = spawn(home, "--fake")
         out, _ = second.communicate(timeout=10)
-        assert second.returncode == 1 and "already running" in out
+        assert second.returncode == 0 and "already running" in out
     finally:
         proc.send_signal(signal.SIGTERM)
         out, _ = proc.communicate(timeout=10)

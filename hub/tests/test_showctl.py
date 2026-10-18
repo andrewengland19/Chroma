@@ -305,3 +305,18 @@ def test_main_routes_legacy_flag(eng, monkeypatch):
         with pytest.raises(SystemExit):
             eng.main()
         assert calls[-1] == want
+
+
+def test_engine_without_a_pid_file_is_reported_not_ignored(eng, autoreap, capsys):
+    """An engine from before chromad.pid existed: socket answers, no pid file."""
+    assert eng.engine_start() == 0
+    pid = eng._engine_pid()
+    os.remove(eng.ENGINE_PID_FILE)
+    capsys.readouterr()
+    assert eng.engine_status() == 0
+    assert "running (pid unknown" in capsys.readouterr().out
+    assert eng.engine_start() == 0
+    assert "already running (pid unknown)" in capsys.readouterr().out
+    assert eng.engine_stop() == 1
+    assert "without a pid file" in capsys.readouterr().err
+    os.kill(pid, 9)

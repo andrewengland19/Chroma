@@ -99,6 +99,9 @@ fn agent_spec(modes: &DeviceModes) -> Result<launch_agent::AgentSpec, String> {
     let program = cfg.program.clone().ok_or(
         "no bundled engine found next to this app (build it with `npm run bundle`, or set CHROMAD_CMD)",
     )?;
+    if !program.exists() {
+        return Err(format!("the engine command {} does not exist", program.display()));
+    }
     Ok(launch_agent::AgentSpec { program, args: cfg.args.clone(), log: cfg.log_file() })
 }
 
