@@ -86,6 +86,7 @@ function Fader({ value, color, ghost, onChange, cx, testId, label, scale }: {
         onPointerMove={(e) => { if (e.buttons & 1) send(e.clientY); }}
         onKeyDown={(e) => {
           const step = e.shiftKey ? 0.1 : 0.01;
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") e.preventDefault();
           if (e.key === "ArrowUp") onChange(Math.min(1, value + step));
           if (e.key === "ArrowDown") onChange(Math.max(0, value - step));
         }} />
@@ -193,6 +194,16 @@ function Strip({ c, index, fn }: { c: ChannelState; index: number; fn: FaderFn }
       window.removeEventListener("blur", release);
     };
   });
+  // Option+number picks this lane's fader; its own ↑/↓ handler then nudges it (Shift = 10 %).
+  useEffect(() => {
+    const pick = (e: KeyboardEvent) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey || (e.code !== `Digit${c.ch}` && e.code !== `Numpad${c.ch}`)) return;
+      e.preventDefault();   // Option+digit would otherwise type a symbol
+      document.querySelector<HTMLElement>(`[data-testid="fader-${c.ch}"]`)?.focus();
+    };
+    window.addEventListener("keydown", pick);
+    return () => window.removeEventListener("keydown", pick);
+  }, [c.ch]);
   const cx = 41;
   return (
     <div data-testid={`strip-${c.ch}`} className="absolute rounded-[7px] border border-line bg-ctl"
@@ -260,10 +271,17 @@ function MasterStrip() {
       if (!live.current) void store.intent({ intent: "blackout", on: true });
     };
     const up = (e: KeyboardEvent) => { if (e.key === "0") release(); };
+    const pick = (e: KeyboardEvent) => {   // Option+0 selects the master fader for ↑/↓
+      if (!e.altKey || e.metaKey || e.ctrlKey || (e.code !== "Digit0" && e.code !== "Numpad0")) return;
+      e.preventDefault();
+      document.querySelector<HTMLElement>('[data-testid="fader-master"]')?.focus();
+    };
+    window.addEventListener("keydown", pick);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", release);
     return () => {
+      window.removeEventListener("keydown", pick);
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", release);
