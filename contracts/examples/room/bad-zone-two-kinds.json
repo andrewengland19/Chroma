@@ -1,0 +1,2 @@
+{ "v": 1, "anchors": { "seat": { "position": [1, 1, 1] } },
+  "zones": { "seating": { "within": { "anchor": "seat", "radius": 1 }, "fixtures": ["tv-left"] } } }

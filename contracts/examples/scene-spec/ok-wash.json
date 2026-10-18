@@ -1,0 +1,5 @@
+{ "name": "agent.wash", "layers": [
+  { "op": "fill", "brightness": 0.1, "color": { "kelvin": 2700 } },
+  { "op": "wash", "surface": "tv_wall", "color": { "hue_deg": 185, "sat": 0.8 }, "brightness": 0.5 },
+  { "op": "wash", "surface": "ceiling", "color": { "kelvin": 2400 }, "brightness": 0.3 },
+  { "op": "wash", "surface": "window", "color": { "kelvin": 4000 }, "brightness": 0.35 } ] }

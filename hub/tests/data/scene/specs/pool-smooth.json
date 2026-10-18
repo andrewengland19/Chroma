@@ -1,0 +1,2 @@
+{ "name": "agent.pool_smooth", "layers": [
+  { "op": "pool", "center": "main_seat", "radius_m": 2.5, "falloff": "smooth", "color": { "kelvin": 2200 }, "brightness": 0.6 } ] }

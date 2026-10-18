@@ -1,0 +1,50 @@
+{
+  "clamped": {},
+  "fixtures": {
+    "couch-left": {
+      "brightness": 0.45,
+      "hex": "#735c2e",
+      "hue": 40.0,
+      "kelvin": 2700,
+      "sat": 0.6
+    },
+    "couch-right": {
+      "brightness": 0.45,
+      "hex": "#735c2e",
+      "hue": 40.0,
+      "kelvin": 2700,
+      "sat": 0.6
+    },
+    "pendant": {
+      "brightness": 0.2,
+      "hex": "#332111",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    },
+    "tv-left": {
+      "brightness": 0.2,
+      "hex": "#332111",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    },
+    "tv-right": {
+      "brightness": 0.8,
+      "hex": "#cc1433",
+      "hue": 350.0,
+      "kelvin": 2700,
+      "sat": 0.9
+    },
+    "window-lamp": {
+      "brightness": 0.2,
+      "hex": "#332111",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.accent",
+  "transition_s": 0,
+  "warnings": []
+}

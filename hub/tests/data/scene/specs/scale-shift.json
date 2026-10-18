@@ -1,0 +1,6 @@
+{ "name": "agent.vibes1_cooler_tv", "base": { "scene": "vibes1", "mode": "start_from" },
+  "layers": [
+    { "op": "scale", "target": { "zone": "tv_side" }, "brightness_factor": 0.4 },
+    { "op": "shift", "target": { "zone": "tv_side" }, "kelvin_delta": 600 },
+    { "op": "shift", "target": { "zone": "couch" }, "kelvin_delta": -200, "opacity": 0.5 },
+    { "op": "shift", "target": { "fixture": "pendant" }, "hue_deg": 20, "sat_delta": 0.2 } ] }

@@ -1,0 +1,1 @@
+{ "name": "agent.x", "layers": [ { "op": "fill", "target": { "fixture": "; rm -rf ~" }, "brightness": 0.5 } ] }

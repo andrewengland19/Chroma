@@ -1,0 +1,10 @@
+{ "name": "agent.rainy_evening", "base": { "scene": "vibes1", "mode": "start_from" },
+  "summary": "Warm low pool at the seating area, TV wall darker and cooler, ceiling dim.",
+  "layers": [
+    { "op": "scale", "target": { "zone": "tv_side" }, "brightness_factor": 0.4 },
+    { "op": "shift", "target": { "zone": "tv_side" }, "kelvin_delta": 600 },
+    { "op": "pool", "center": "main_seat", "radius_m": 2.0, "color": { "kelvin": 2200 }, "brightness": 0.30, "falloff": "smooth" },
+    { "op": "gradient", "from": "window_side", "to": "tv_side",
+      "colors": [ { "hue_deg": 200, "sat": 0.35 }, { "hue_deg": 190, "sat": 0.6 } ], "brightness": 0.2, "target": { "role": "accent" } },
+    { "op": "scale", "target": { "zone": "high" }, "brightness_factor": 0.5, "opacity": 0.8 } ],
+  "transition_s": 3.0 }

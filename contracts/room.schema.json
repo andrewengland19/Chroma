@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RoomFile",
+  "description": "Scene Agent room model (lighting-scene-agent-spec §4), $CHROMA_HOME/scene-agent/room.yaml (YAML or JSON). Fixture x/y come from fixtures.json (0..1, scaled by dimensions; y = 0 is the top edge of the Setup floor plan); this file adds height, aim, role, limits, anchors and zones. Units are metres. hub/room_model.py loads it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "room": { "$ref": "#/$defs/name" },
+    "units": { "const": "meters" },
+    "dimensions": {
+      "type": "object", "required": ["x", "y", "z"], "additionalProperties": false,
+      "properties": { "x": { "$ref": "#/$defs/size" }, "y": { "$ref": "#/$defs/size" }, "z": { "$ref": "#/$defs/size" } }
+    },
+    "viewpoint": {
+      "type": "object", "required": ["from", "facing"], "additionalProperties": false,
+      "description": "'left', 'behind' etc. mean: sitting at `from`, facing `facing` (both anchors).",
+      "properties": { "from": { "$ref": "#/$defs/name" }, "facing": { "$ref": "#/$defs/name" } }
+    },
+    "default_kelvin": { "$ref": "#/$defs/kelvin", "description": "White a fixture starts at when a scene starts from darkness." },
+    "anchors": {
+      "type": "object", "propertyNames": { "$ref": "#/$defs/name" },
+      "description": "Named points or surfaces. 'ceiling' and 'floor' are built in.",
+      "additionalProperties": { "$ref": "#/$defs/anchor" }
+    },
+    "zones": {
+      "type": "object", "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": { "$ref": "#/$defs/zone" }
+    },
+    "fixtures": {
+      "type": "object", "propertyNames": { "$ref": "common.schema.json#/$defs/slug_id" },
+      "description": "Per-fixture additions, keyed by fixtures.json id. Only active fixtures are in the room.",
+      "additionalProperties": { "$ref": "#/$defs/fixture" }
+    }
+  },
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+    "size": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+    "kelvin": { "type": "integer", "minimum": 1500, "maximum": 9000 },
+    "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "vec23": { "type": "array", "minItems": 2, "maxItems": 3, "items": { "type": "number" } },
+    "anchor": {
+      "oneOf": [
+        { "type": "object", "required": ["position"], "additionalProperties": false,
+          "properties": { "position": { "$ref": "#/$defs/vec3" } } },
+        { "type": "object", "required": ["plane"], "additionalProperties": false,
+          "properties": { "plane": { "type": "string", "pattern": "^\\s*[xyz]\\s*=\\s*-?[0-9]+(\\.[0-9]+)?\\s*$",
+                                     "description": "A wall, e.g. \"y=4.2\"." } } }
+      ]
+    },
+    "zone": {
+      "oneOf": [
+        { "type": "object", "required": ["within"], "additionalProperties": false,
+          "properties": { "within": { "type": "object", "required": ["anchor", "radius"], "additionalProperties": false,
+            "properties": { "anchor": { "$ref": "#/$defs/name" }, "radius": { "$ref": "#/$defs/size" } } } } },
+        { "type": "object", "required": ["box"], "additionalProperties": false,
+          "properties": { "box": { "type": "object", "required": ["min", "max"], "additionalProperties": false,
+            "properties": { "min": { "$ref": "#/$defs/vec23" }, "max": { "$ref": "#/$defs/vec23" } } } } },
+        { "type": "object", "required": ["fixtures"], "additionalProperties": false,
+          "properties": { "fixtures": { "type": "array", "uniqueItems": true,
+                                        "items": { "$ref": "common.schema.json#/$defs/slug_id" } } } }
+      ]
+    },
+    "fixture": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "z": { "type": "number", "minimum": 0, "maximum": 100, "description": "Height in metres (default 1.0)." },
+        "aim": {
+          "description": "Where its light lands: up, down, an anchor or zone name, or a direction vector.",
+          "anyOf": [ { "enum": ["up", "down"] }, { "$ref": "#/$defs/name" }, { "$ref": "#/$defs/vec3" } ]
+        },
+        "role": { "enum": ["ambient", "accent", "task"] },
+        "capability": { "enum": ["single", "multizone", "matrix"] },
+        "exclude": { "type": "boolean", "description": "Leave this active fixture out of the room." },
+        "limits": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "max_brightness": { "$ref": "common.schema.json#/$defs/unit" },
+            "kelvin_min": { "$ref": "#/$defs/kelvin" },
+            "kelvin_max": { "$ref": "#/$defs/kelvin" },
+            "color": { "type": "boolean", "description": "false = white-only bulb." }
+          }
+        }
+      }
+    }
+  }
+}

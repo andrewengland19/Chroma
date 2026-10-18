@@ -1,0 +1,54 @@
+{
+  "clamped": {
+    "window-lamp": [
+      "white-only: colour dropped"
+    ]
+  },
+  "fixtures": {
+    "couch-left": {
+      "brightness": 0.4,
+      "hex": "#664a3f",
+      "hue": 16.68,
+      "kelvin": 2700,
+      "sat": 0.3812
+    },
+    "couch-right": {
+      "brightness": 0.4,
+      "hex": "#66381b",
+      "hue": 23.1,
+      "kelvin": 2700,
+      "sat": 0.7391
+    },
+    "pendant": {
+      "brightness": 0.4,
+      "hex": "#663118",
+      "hue": 19.49,
+      "kelvin": 2700,
+      "sat": 0.7632
+    },
+    "tv-left": {
+      "brightness": 0.4,
+      "hex": "#66493e",
+      "hue": 16.73,
+      "kelvin": 2700,
+      "sat": 0.3886
+    },
+    "tv-right": {
+      "brightness": 0.4,
+      "hex": "#66381b",
+      "hue": 23.16,
+      "kelvin": 2700,
+      "sat": 0.7381
+    },
+    "window-lamp": {
+      "brightness": 0.4,
+      "hex": "#664323",
+      "hue": 0.0,
+      "kelvin": 2700,
+      "sat": 0.0
+    }
+  },
+  "name": "agent.gradient",
+  "transition_s": 0,
+  "warnings": []
+}

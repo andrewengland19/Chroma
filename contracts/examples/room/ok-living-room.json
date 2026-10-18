@@ -1,0 +1,111 @@
+{
+  "v": 1,
+  "room": "living_room",
+  "units": "meters",
+  "dimensions": {
+    "x": 5.0,
+    "y": 4.2,
+    "z": 2.6
+  },
+  "viewpoint": {
+    "from": "main_seat",
+    "facing": "tv_wall"
+  },
+  "default_kelvin": 2700,
+  "anchors": {
+    "main_seat": {
+      "position": [
+        2.5,
+        3.4,
+        1.0
+      ]
+    },
+    "tv_wall": {
+      "plane": "y=0"
+    },
+    "window": {
+      "plane": "x=0"
+    }
+  },
+  "zones": {
+    "seating": {
+      "within": {
+        "anchor": "main_seat",
+        "radius": 1.8
+      }
+    },
+    "tv_side": {
+      "within": {
+        "anchor": "tv_wall",
+        "radius": 1.5
+      }
+    },
+    "window_side": {
+      "within": {
+        "anchor": "window",
+        "radius": 1.0
+      }
+    },
+    "high": {
+      "box": {
+        "min": [
+          0,
+          0,
+          2.0
+        ],
+        "max": [
+          5,
+          4.2,
+          2.6
+        ]
+      }
+    },
+    "couch": {
+      "fixtures": [
+        "couch-left",
+        "couch-right"
+      ]
+    }
+  },
+  "fixtures": {
+    "tv-left": {
+      "z": 0.6,
+      "aim": "tv_wall",
+      "role": "accent"
+    },
+    "tv-right": {
+      "z": 0.6,
+      "aim": "tv_wall",
+      "role": "accent"
+    },
+    "couch-left": {
+      "z": 0.9,
+      "aim": "up"
+    },
+    "couch-right": {
+      "z": 0.9,
+      "aim": "up",
+      "limits": {
+        "max_brightness": 0.6
+      }
+    },
+    "window-lamp": {
+      "z": 1.5,
+      "aim": [
+        -1,
+        0,
+        0
+      ],
+      "limits": {
+        "color": false,
+        "kelvin_min": 2000,
+        "kelvin_max": 6500
+      }
+    },
+    "pendant": {
+      "z": 2.3,
+      "aim": "down",
+      "role": "task"
+    }
+  }
+}

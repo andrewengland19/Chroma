@@ -1,0 +1,10 @@
+{
+  "vibes1": {
+    "tv-left":     { "hue": 280, "sat": 0.7, "brightness": 0.5, "kelvin": 3500 },
+    "tv-right":    { "hue": 300, "sat": 0.6, "brightness": 0.5, "kelvin": 3500 },
+    "couch-left":  { "hue": 0, "sat": 0, "brightness": 0.6, "kelvin": 2400 },
+    "couch-right": { "hue": 0, "sat": 0, "brightness": 0.55, "kelvin": 2400 },
+    "window-lamp": { "hue": 0, "sat": 0, "brightness": 0.4, "kelvin": 2700 },
+    "pendant":     { "hue": 30, "sat": 0.5, "brightness": 0.3, "kelvin": 2700 }
+  }
+}
