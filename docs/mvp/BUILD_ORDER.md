@@ -1,7 +1,7 @@
 # CHROMA Console — MVP build order
 
-**Audience:** the engineer/agent who will build this. **Author's note:** this is a spec. Nothing in it has
-been built. Where something could not be verified it is marked **⚠** — treat those as "measure or confirm
+**Audience:** the engineer/agent who will build this. **Author's note:** this is the spec. As of 2026-10-18 M0–M5 are built (status and evidence live in
+`PROGRESS.md`; M6–M7 are pending). Where something could not be verified it is marked **⚠** — treat those as "measure or confirm
 before relying on it" and report what you found.
 
 Read in this order: §0 rules → §1–2 what and why → §3 repo → §4 architecture → §5 contracts → §6 milestones.
@@ -28,7 +28,7 @@ Hardware context (physical board, Playbill bars) lives in `assets/lighting-board
 6. **No secrets in the repo.** The Anthropic key stays in the macOS Keychain (`hub/keystore.py`). The board
    pairing key lives in `~/.chroma/`, never in git.
 7. **Prefer small, reviewable commits on a branch per milestone** (`app/m3-fixtures` etc.). Ask before
-   deleting directories (`chroma/`, `hub/web/`).
+   deleting directories (`archive/`, `hub/web/`).
 8. **Do not write ESP32 firmware here.** The board protocol (§5.5) is defined so firmware can be written
    separately; you only build the engine side and a simulator.
 
@@ -51,7 +51,7 @@ that exists only on screen or only on the board.
 | Topic | Decision |
 |---|---|
 | App shell | **Tauri 2** (Rust shell + web UI). Not Electron. |
-| UI | React + TypeScript + Tailwind + Vite (the existing `chroma/src` renderer is a reference; port freely). |
+| UI | React + TypeScript + Tailwind + Vite (the existing `archive/legacy/chroma/src` renderer is a reference; port freely). |
 | Engine | **Python sidecar `chromad`**, evolved from `hub/engine.py`. Apple TV support (pyatv) is Python-only, so no Rust rewrite. |
 | UI ↔ engine | **Unix domain socket**, newline-delimited JSON (§5.1). No HTTP/TCP for the UI. The webview never talks to the socket; the Rust shell proxies. |
 | Board ↔ engine | One **UDP** port, LAN, authenticated datagrams, **state-snapshot** protocol (§5.5). |
@@ -73,7 +73,7 @@ hub/server.py        FastAPI + WS + hub/web/*  (kept; includes /agent, /lights, 
 hub/lights_agent.py, hub/lights_prompt.py, hub/web/lights.html, hub/web/remote.html   Pass 5 (user-owned, keep working)
 hub/showctl.py       background process control (lite show ...)
 hub/keystore.py      Keychain access for the Anthropic key
-chroma/              older Electron menu-bar app; React components worth porting; delete only in M7 with approval
+archive/legacy/chroma/  older Electron menu-bar app (archived 2026-10-18); React components worth porting; delete only with approval
 ```
 
 New (create):
@@ -308,7 +308,7 @@ configurable), connect to the socket, proxy `invoke('chromad_request')` and emit
 (Tauri 2 tray API) with status + menu (Open, Restart engine, Quit); window with Console/Takes/Setup tabs
 (Takes/Setup stubs). Tasks (UI): the top bar of the Console mockup: WHO DRIVES and ART MODE segmented
 controls (functional), Now Playing card with art + progress, status chips, and the Room view fed by `room`.
-Port components from `chroma/src/components` where they help.
+Port components from `archive/legacy/chroma/src/components` where they help.
 AC: real track/art/progress appear live; ART MODE changes the engine mode; WHO DRIVES toggles
 `Engine.enabled`; closing the window leaves lights running; Quit from the tray stops a supervised engine; app
 works with FakeProvider when the Apple TV is off.
@@ -366,7 +366,7 @@ Tasks: bundle `chromad` as a Tauri sidecar (PyInstaller or embedded venv; docume
 item to install/remove a **LaunchAgent** so the engine runs headless at login and the app attaches; make
 `lite show start|stop|status|restart|refresh` delegate to chromad (keep the CLI names and output style);
 update READMEs. Then, **with the user's explicit approval only:** retire the hub Music page (`hub/web/index.html`,
-`app.js`, `style.css` and its routes) and the old `chroma/` Electron app. **Do not remove `hub/web/lights.html`,
+`app.js`, `style.css` and its routes) and the old Electron app (`archive/legacy/chroma/`). **Do not remove `hub/web/lights.html`,
 `hub/web/remote.html`, `hub/lights_agent.py` or their routes** (`/agent*`, `/lights*`, `/scenes*`, `/tv*`): that would
 remove the user's Lights agent and TV Remote with no replacement. If `server.py` must stay running for them,
 say so in the report and leave it running alongside chromad (⚠ they both drive LIFX; keep `Engine.enabled`
@@ -415,4 +415,4 @@ with the date, so the user can overrule it later.
 | Board UDP port / enablement | Port **9876**; listener stays off until `board.pairing` creates a key. |
 | Hardware layout (cues on the right in `assets/lighting-board-proposal.svg`) | Not a software concern; the user will decide separately. Do not edit hardware SVGs. |
 | Real-device checks (Apple TV position spike, real bulbs, real board) | **Do not run them autonomously** (see "Autonomy and hardware" in the kickoff). Build tools and a checklist; mark those AC "pending hardware". |
-| Deleting anything at M7 | **Never delete without explicit user approval.** The Lights/Remote pages and light agent stay regardless. Stop and ask about the Music page and `chroma/`. |
+| Deleting anything at M7 | **Never delete without explicit user approval.** The Lights/Remote pages and light agent stay regardless. Stop and ask about the Music page and `archive/`. |

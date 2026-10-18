@@ -67,7 +67,7 @@ launchd, Pass 5) shuts it down cleanly.
 |---|---|
 | `pair_atv.py` | scan + pair AirPlay/Companion, save credentials |
 | `providers.py` | `NowPlaying`, `NowPlayingProvider` Protocol, `AppleTVProvider` |
-| `color_pipeline.py` | pure color functions (copied from `../lifx_music_app.py`), `PipelineParams` |
+| `color_pipeline.py` | pure color functions (copied from `archive/legacy/lifx_music_app.py`), `PipelineParams` |
 | `config.py` | `Config` — persisted tunables (`~/.chroma/config.json`) |
 | `engine.py` | **headless daily-driver engine** — connect → react → paint → write contracts |
 | `server.py` | **Pass 3 control plane** — FastAPI + WebSocket embedding the engine |

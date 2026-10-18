@@ -21,18 +21,21 @@ Worktree: `/Users/andy/Code/Chroma-app` (venv `hub/.venv`). Merges go into `/Use
 
 ## Hand-off for the next session (start here)
 
-Status on 2026-10-16: **M0–M5 done and merged into local main (M5 = 14d7f72)**; next is **M6 (board link +
-simulator)** on branch `app/m6-board` (on main b7c18a6 in the worktree; it only holds these notes). Also on main: **Force Update** (merged
-01262df; check HFU.1) and **Devices → Fake | Real** (merged b7c18a6; check HD.1), both in the tray and the Chroma
-app menu (RUNNING.md). Hardware checks:
-`HARDWARE_CHECKLIST.md` (none run yet; H5.1–H5.4 added). BLACKOUT decisions made: going dark bypasses the D7 hold
-(the edge still counts), and a held FLASH punches through BLACKOUT. No open user decisions.
+Status on 2026-10-18: **M0–M5 done and merged; M6 (board link + simulator) is next and not started; M7 not started.**
+Also on main: Force Update (HFU.1), Devices → Fake | Real (HD.1), Agent tab, Scenes and Spaces modals, Auto-mode keys,
+Option+digit fader focus, and Scene Agent M1 (`hub/room_model.py`, `hub/scene_render.py`, schemas; nothing writes to
+bulbs; scene-agent spec M2–M5 untouched). All worktrees and finished branches were removed on 2026-10-18: work now
+happens in new branches cut from main (`git worktree add ../Chroma-app -b app/m6-board`). Suites: 495 pytest, 56 vitest,
+23 cargo, all green; `test_board.py::test_flash_hammering_is_held_to_3hz_on_every_fixture` flaked once under load.
+Hardware checks: `HARDWARE_CHECKLIST.md` (none run yet). Legacy code (Electron `chroma/`, `lifx_music_app.py`) moved to
+`archive/legacy/` (see its README); `lifx_music_daemon.py` stays at the root because `lite chroma` launches it by path.
+No open user decisions.
 
 How the build has been run (keep doing it this way):
-- Work in the worktree `/Users/andy/Code/Chroma-app` (its own `hub/.venv`; `app/node_modules`). Branch per milestone
+- Work in a worktree such as `/Users/andy/Code/Chroma-app` (create it per milestone; it needs its own `hub/.venv` and `app/node_modules`). Branch per milestone
   from **local** main; small commits; `/code-review high` before merging; merge into `/Users/andy/Code/Chroma` with
   `git -C /Users/andy/Code/Chroma merge --no-ff app/mN-…` only after checking that checkout is clean and on main.
-  Never push. After a merge: pytest in the user's checkout with the worktree interpreter, the full
+  Push only when the user asks. After a merge: pytest in the user's checkout with the worktree interpreter, the full
   `tools/test_all.sh` in a temporary **detached** worktree at main (`CARGO_TARGET_DIR` shared), `lite show status`.
 - Tests never touch devices: `hub/tests/conftest.py` sandboxes HOME and blocks lifxlan/pyatv/Keychain. Use the fakes
   in `hub/testing/` and `chromad --fake`. Keep Unix socket paths short (`mktemp -d -t cx`; macOS limit 104 bytes).

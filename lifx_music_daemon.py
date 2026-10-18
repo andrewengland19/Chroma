@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# DEPRECATED (2026-10-18): superseded by hub/chromad.py. Kept only because `lite chroma` launches it by path; retire in M7.
 # =============================================================================
 # lifx_music_daemon.py
 # Author: Andrew England / andrewengland19

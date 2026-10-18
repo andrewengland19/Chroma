@@ -1,3 +1,5 @@
+> **Status 2026-10-18:** this README describes the original Electron menu-bar app, now archived in `archive/legacy/`. The current product is the Tauri console in `app/` with the `chromad` engine in `hub/`; see `docs/mvp/PROGRESS.md`, `docs/mvp/RUNNING.md` and `hub/README.md`.
+
 # CHROMA
 
 > A macOS menu bar app that paints your room in the colors of whatever you're listening to.
