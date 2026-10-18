@@ -501,6 +501,21 @@ path, so process tests compile their stand-ins.
 - Not covered by tests: the menu click path (Tauri event wiring), `SystemLaunchd` (real `launchctl`), the frozen engine on
   real devices.
 
+## Packaging finish — icon and install (2026-10-18) — branch `claude/cranky-gauss-442883` (not pushed)
+
+- **Icon:** `app/src-tauri/icons/source/chroma-icon.svg` (white beam through a glass prism fanning into a spectrum, dark
+  rounded square, 1024 canvas). Full set generated with `tauri icon` (icns, ico, pngs; the android/ios dirs it adds are
+  dropped). Monochrome tray template from `tray-template.svg` (36 px). Checked at 1024, 128 and 32 px; preview
+  `icons/source/chroma-icon-1024.png`.
+- **Install:** `tools/install_app.sh` copies `Chroma.app` to `/Applications` (replaces only an earlier Chroma, refuses
+  while running, leaves the Dock alone and prints how to add it). Gatekeeper step and icon regeneration in RUNNING.md.
+- Hardware: HP.1 (Dock icon and double-click launch) added to the checklist.
+- Verified: `npm run bundle` builds `Chroma.app` with the new icon (bundle `icon.icns` identical to the generated one);
+  `open` with a temp `CHROMA_HOME` + `--fake` starts the app and its supervised `chromad`; an AppleScript/Dock-style quit
+  used to leave that engine orphaned (no `ExitRequested`), so `RunEvent::Exit` now also runs the idempotent shutdown;
+  re-tested: both processes gone. Tray-click quit itself and the Dock look not driven (no accessibility/screen access) = HP.1.
+  `install_app.sh` syntax-checked only, not run (it would write to `/Applications`).
+
 ## M6 — board link and simulator
 
 Branch `claude/jovial-bohr-7ac7e5` (from main d9e3c26). Merged 2026-10-18, not pushed. 4 commits (flaky-test fix, board link + sim, Setup card + docs, review fixes).

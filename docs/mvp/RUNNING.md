@@ -131,6 +131,18 @@ open src-tauri/target/release/bundle/macos/Chroma.app
   `CHROMA_HOME` / `CHROMAD_ARGS` / `CHROMAD_CMD` / `CHROMA_SUPERVISE` behave as above.
 - Plain `npm run tauri build` (no `--config`) makes an app without the engine; it then needs `CHROMAD_CMD`.
 - Re-run `npm run bundle` after any `hub/` change; `tauri dev` is unaffected (it runs `hub/.venv` + `chromad.py`).
+- **Install and Dock icon**: `tools/install_app.sh` (builds if needed, or `tools/install_app.sh /path/Chroma.app`)
+  copies the app to `/Applications/Chroma.app`, replacing only a previous Chroma (same bundle id) and refusing while
+  Chroma is running. It does not touch the Dock: drag Chroma from `/Applications` onto the Dock, or launch it and
+  right-click its Dock icon → Options → Keep in Dock.
+- **Gatekeeper, once** (unsigned app that came from a download or another Mac; an app built on this Mac is not
+  quarantined): right-click Chroma in `/Applications` → Open → Open, or
+  `xattr -dr com.apple.quarantine /Applications/Chroma.app`.
+- **Icon**: single master `app/src-tauri/icons/source/chroma-icon.svg` (prism and spectrum on a dark rounded square, 1024
+  canvas, 824 px tile), plus `tray-template.svg` for the monochrome menu-bar icon. Regenerate with
+  `rsvg-convert -w 1024 -h 1024 chroma-icon.svg -o /tmp/m.png && cd app && npx tauri icon /tmp/m.png`, then delete the
+  `icons/android`, `icons/ios` and `64x64.png` it adds, and re-render the tray PNG
+  (`rsvg-convert -w 36 -h 36 tray-template.svg -o ../tray-template.png`).
 - Not done: code signing, hardened runtime, notarization, universal2 / Intel. An unsigned app opened from a download
   needs right-click → Open the first time; the Local Network prompt (Apple TV, bulbs) appears on first real use.
   Needed to ship it to others: an Apple Developer ID certificate, `codesign --options runtime` on the app and on every
