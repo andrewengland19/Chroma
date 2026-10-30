@@ -17,6 +17,8 @@ rm -rf "$OUT" "$ROOT/build/pyinstaller"
   --distpath "$OUT" --workpath "$ROOT/build/pyinstaller" --specpath "$ROOT/build/pyinstaller" \
   --paths "$ROOT/hub" \
   --hidden-import lights_agent --hidden-import lights_prompt \
+  --hidden-import bitstring.bitstore_bitarray --hidden-import bitstring.bitstore_bitarray_helpers \
+  --hidden-import bitstring.bitstore_common_helpers \
   --collect-submodules pyatv --collect-submodules lifxlan --collect-submodules anthropic \
   --collect-data pyatv --collect-data certifi \
   "$ROOT/hub/chromad.py"
